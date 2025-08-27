@@ -3,6 +3,7 @@ use tracing_actix_web::root_span_macro::private::tracing::dispatcher::set_global
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_log::LogTracer;
 use tracing_subscriber::fmt::MakeWriter;
+use tracing_subscriber::fmt::time::ChronoLocal;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::{EnvFilter, Registry, fmt};
 
@@ -25,15 +26,19 @@ where
     let mut is_local = false;
 
     // 2. 环境变量覆盖（APP_ENV=local 强制本地彩色日志）
-    if let Ok(env) = std::env::var("APP_ENV") {
-        if env.to_lowercase() == "local" {
-            is_local = true;
-        }
+    if let Ok(env) = std::env::var("APP_ENV")
+        && env.to_lowercase() == "local"
+    {
+        is_local = true;
     }
 
     if is_local {
         // 本地：彩色 + compact
-        let formatting_layer = fmt::layer().with_writer(sink).with_target(true).compact();
+        let formatting_layer = fmt::layer()
+            .with_writer(sink)
+            .with_target(true)
+            .with_timer(ChronoLocal::rfc_3339())
+            .compact();
         //.pretty();
         Box::new(Registry::default().with(env_filter).with(formatting_layer))
     } else {
