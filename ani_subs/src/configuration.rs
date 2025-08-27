@@ -10,7 +10,7 @@ pub struct Setting {
     pub application: ApplicationSettings,
     // email_client
     pub email_client: EmailClientSettings,
-    pub datasource: TaskConfig,
+    pub task_config: TaskConfig,
 }
 
 #[derive(serde::Deserialize)]

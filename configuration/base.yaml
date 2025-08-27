@@ -12,7 +12,7 @@ email_client:
   base_url: "localhost"
   sender_email: "test@gmail.com"
   authorization_token: "my-secret-token"
-datasource:
+task_config:
   anime:
     - name: "哔哩哔哩国创"
       arg: "https://api.bilibili.com/pgc/web/timeline?types=4&before=6&after=6"
