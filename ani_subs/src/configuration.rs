@@ -59,7 +59,7 @@ pub fn get_configuration() -> Result<Setting, config::ConfigError> {
     // 获取根目录路径
     let base_path = std::env::current_dir().expect("Failed to determine the current directory");
     // 读取配置文件目录
-    let configuration_directory = base_path.join("./configuration");
+    let configuration_directory = base_path.join("configuration");
     // 检查运行时环境，如果没有指定则默认是"local"
     let environment: Environment = std::env::var("APP_ENVIRONMENT")
         .unwrap_or_else(|_| "local".into())
