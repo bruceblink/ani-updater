@@ -37,3 +37,4 @@ cron = { workspace = true }
 async-trait = { workspace = true }
 num_cpus = { workspace = true }
 common = { path = "../common" }
+chrono-tz = { workspace = true }

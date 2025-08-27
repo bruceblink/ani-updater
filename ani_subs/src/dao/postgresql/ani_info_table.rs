@@ -1,7 +1,9 @@
 use crate::dao::postgresql::run_query;
+use crate::domain::dto::AniInfoDto;
 use crate::domain::po::AniInfo;
 use ani_spiders::AniItem;
 use anyhow::Result;
+use chrono_tz::Asia::Shanghai;
 use sqlx::PgPool;
 
 /// 动漫信息插入新记录
@@ -39,7 +41,7 @@ pub async fn upsert_ani_info(item: &AniItem, db_pool: &PgPool) -> Result<()> {
 }
 
 /// 根据 id 查询单条
-pub async fn get_ani_info_by_id(id: i64, db_pool: &PgPool) -> Result<Option<AniInfo>> {
+pub async fn get_ani_info_by_id(id: i64, db_pool: &PgPool) -> Result<Option<AniInfoDto>> {
     let rec = sqlx::query_as::<_, AniInfo>(
         r#"
                 SELECT id,
@@ -58,7 +60,18 @@ pub async fn get_ani_info_by_id(id: i64, db_pool: &PgPool) -> Result<Option<AniI
     .bind(id)
     .fetch_optional(db_pool)
     .await?;
-    Ok(rec)
+    // 转换时间字段到上海时区
+    let dto = rec.map(|ani| AniInfoDto {
+        id: ani.id,
+        title: ani.title,
+        update_count: ani.update_count,
+        update_info: ani.update_info,
+        image_url: ani.image_url,
+        detail_url: ani.detail_url,
+        update_time: ani.update_time.with_timezone(&Shanghai).to_rfc3339(),
+        platform: ani.platform,
+    });
+    Ok(dto)
 }
 
 /// 查询所有动漫信息

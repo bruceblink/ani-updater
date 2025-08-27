@@ -1,4 +1,4 @@
-use crate::domain::dto::AniDto;
+use crate::domain::dto::AniInfoDto;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
@@ -16,7 +16,7 @@ pub struct AniInfo {
     pub platform: String,
 }
 
-pub type AniResult = HashMap<String, Vec<AniDto>>;
+pub type AniResult = HashMap<String, Vec<AniInfoDto>>;
 
 #[derive(Debug, Clone, FromRow, PartialEq, Deserialize, Serialize)]
 pub struct AniCollect {
