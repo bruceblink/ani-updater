@@ -1,40 +1,15 @@
 pub mod commands;
 pub mod scheduler;
 pub mod task;
-use crate::configuration::load_timer_task_conf;
 use crate::timer_tasker::commands::build_cmd_map;
 use crate::timer_tasker::scheduler::Scheduler;
 use crate::timer_tasker::task::{TaskMeta, TaskResult, build_tasks_from_meta};
-use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::warn;
 
-///从配置文件加载定时作业的配置数据
-pub fn load_timer_tasks_config(config_path: PathBuf) -> Vec<TaskMeta> {
-    let configuration = load_timer_task_conf(config_path).expect("Failed to read configuration.");
-    let anime_sources = configuration
-        .datasource
-        .get("anime")
-        .expect("Missing anime category");
-
-    let mut tasks: Vec<TaskMeta> = Vec::new();
-    for datasource in anime_sources {
-        tasks.push(TaskMeta {
-            name: datasource.name.clone(),
-            cron_expr: datasource.cron_expr.clone(),
-            cmd: datasource.cmd.clone(),
-            arg: datasource.url.clone(),
-            retry_times: datasource.retry_times,
-        });
-    }
-    tasks
-}
-
 /// 启动异步定时任务
-pub async fn start_async_timer_task(config_path: PathBuf) {
-    // 1) 构造/加载配置
-    let task_metas = load_timer_tasks_config(config_path);
+pub async fn start_async_timer_task(task_metas: Vec<TaskMeta>) {
     // 2) 构建命令表（CmdFn 映射）
     let cmd_map = build_cmd_map();
     // 3) 从 metas -> 运行时 Tasks

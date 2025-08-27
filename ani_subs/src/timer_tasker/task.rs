@@ -1,6 +1,7 @@
 use ani_spiders::{AniItemResult, ApiResponse};
 use async_trait::async_trait;
 use cron::Schedule;
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
@@ -10,7 +11,7 @@ use std::sync::Arc;
 /// -----------------
 /// 配置层 TaskMeta
 /// -----------------
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct TaskMeta {
     pub name: String,
     pub cmd: String,
