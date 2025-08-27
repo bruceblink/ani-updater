@@ -64,20 +64,23 @@ pub enum Environment {
     Production,
 }
 
-impl Environment {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Environment::Local => "local",
-            Environment::Production => "production",
+impl std::str::FromStr for Environment {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "local" => Ok(Environment::Local),
+            "production" => Ok(Environment::Production),
+            _ => Ok(Environment::Production), // 默认生产环境
         }
     }
+}
 
-    /// 根据字符串解析环境
-    pub fn from_str(s: &str) -> Self {
-        match s.to_lowercase().as_str() {
-            "local" => Environment::Local,
-            "production" => Environment::Production,
-            _ => Environment::Production, // 默认生产环境
+impl std::fmt::Display for Environment {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Environment::Local => write!(f, "local"),
+            Environment::Production => write!(f, "production"),
         }
     }
 }
@@ -93,7 +96,7 @@ pub fn get_configuration(
 
     // 环境默认 production
     let env = environment.unwrap_or(Environment::Production);
-    let env_filename = format!("{}.yaml", env.as_str());
+    let env_filename = format!("{}.yaml", env);
 
     // 构建配置
     let settings = config::Config::builder()
