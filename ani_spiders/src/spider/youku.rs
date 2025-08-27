@@ -134,13 +134,13 @@ fn process_module_list(modules: &[Value]) -> Result<Vec<AniItem>> {
                     vec![v]
                 }
             }) {
-                if item.get("updateTips").and_then(Value::as_str) == Some("有更新") {
-                    if let Some(map) = item.as_object() {
-                        let ani = build_aniitem(map);
-                        if seen.insert(ani.title.clone(), ()).is_none() {
-                            info!("识别到更新: {} {}", ani.title, ani.update_info);
-                            found.push(ani);
-                        }
+                if item.get("updateTips").and_then(Value::as_str) == Some("有更新")
+                    && let Some(map) = item.as_object()
+                {
+                    let ani = build_aniitem(map);
+                    if seen.insert(ani.title.clone(), ()).is_none() {
+                        info!("识别到更新: {} {}", ani.title, ani.update_info);
+                        found.push(ani);
                     }
                 }
             }
