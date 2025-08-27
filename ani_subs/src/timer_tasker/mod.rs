@@ -1,15 +1,17 @@
 pub mod commands;
 pub mod scheduler;
 pub mod task;
+use crate::service::task_service::run_task_service;
 use crate::timer_tasker::commands::build_cmd_map;
 use crate::timer_tasker::scheduler::Scheduler;
 use crate::timer_tasker::task::{TaskMeta, TaskResult, build_tasks_from_meta};
+use sqlx::PgPool;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::warn;
 
 /// 启动异步定时任务
-pub async fn start_async_timer_task(task_metas: Vec<TaskMeta>) {
+pub async fn start_async_timer_task(task_metas: Vec<TaskMeta>, connect_pool: PgPool) {
     // 2) 构建命令表（CmdFn 映射）
     let cmd_map = build_cmd_map();
     // 3) 从 metas -> 运行时 Tasks
@@ -20,17 +22,17 @@ pub async fn start_async_timer_task(task_metas: Vec<TaskMeta>) {
 
     // 6) 创建 mpsc channel 用于接收 TaskResult
     let (tx, mut rx) = mpsc::channel::<TaskResult>(128);
-
+    let connect_pool = Arc::new(connect_pool);
     // 8) 启动结果接收器（异步）
     tokio::spawn({
         async move {
             while let Some(res) = rx.recv().await {
                 if let Some(ani_item_result) = res.result {
-                    //let db = state_for_loop.db.clone(); // Arc<SqlitePool>
+                    let connect_pool = Arc::clone(&connect_pool);
                     tokio::spawn(async move {
-                        //if let Err(e) = save_ani_item_data_db(db, ani_item_result).await {
-                        warn!("task {:?} 保存失败", ani_item_result);
-                        //}
+                        if let Err(e) = run_task_service(ani_item_result, connect_pool).await {
+                            warn!("task {:?} 保存失败", e);
+                        }
                     });
                 }
             }

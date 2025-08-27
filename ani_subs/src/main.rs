@@ -18,7 +18,7 @@ async fn main() -> std::io::Result<()> {
         PgPoolOptions::new().connect_lazy_with(configuration.database.connect_options());
     // 启动异步定时任务
     let task_config = configuration.task_config;
-    start_async_timer_task(task_config["anime"].clone()).await;
+    start_async_timer_task(task_config["anime"].clone(), connection_pool.clone()).await;
     let address = format!(
         "{}:{}",
         configuration.application.host, configuration.application.port
