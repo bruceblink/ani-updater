@@ -86,7 +86,7 @@ pub async fn fetch_qq_ani_data(url: String) -> Result<ApiResponse<AniItemResult>
 
     // 4. 构建结果并记录日志
     let mut comics: Vec<AniItem> = Vec::new();
-    for item in today_videos.iter().filter_map(|v| build_aniitem(v)) {
+    for item in today_videos.iter().filter_map(build_aniitem) {
         info!("识别到更新：{}, {}", item.title, item.update_info);
         comics.push(item);
     }
