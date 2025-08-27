@@ -75,7 +75,7 @@ pub async fn get_ani_info_by_id(id: i64, db_pool: &PgPool) -> Result<Option<AniI
 }
 
 /// 查询所有动漫信息
-pub async fn list_all_ani_info(title: String, db_pool: &PgPool) -> Result<Vec<AniInfoDto>> {
+pub async fn list_all_ani_info(_title: String, db_pool: &PgPool) -> Result<Vec<AniInfoDto>> {
     // 构造带绑定参数的 QueryAs
     let query = sqlx::query_as::<_, AniInfo>(
         r#"
