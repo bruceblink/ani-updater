@@ -1,7 +1,12 @@
 use secrecy::{ExposeSecret, Secret};
+use serde::Deserialize;
 use serde_aux::field_attributes::deserialize_number_from_string;
 use sqlx::postgres::{PgConnectOptions, PgSslMode};
+use std::collections::HashMap;
 use std::convert::TryInto;
+use std::fs;
+use std::path::PathBuf;
+use tracing::info;
 
 #[derive(serde::Deserialize)]
 pub struct Setting {
@@ -109,4 +114,67 @@ impl TryFrom<String> for Environment {
             )),
         }
     }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DataSource {
+    pub name: String,
+    pub url: String,
+    pub cmd: String,
+    pub cron_expr: String,
+    pub retry_times: u8,
+}
+
+// 不再需要 DataSourceCategory 结构体
+#[derive(Debug, Deserialize)]
+pub struct AppConfig {
+    pub datasource: HashMap<String, Vec<DataSource>>, // 直接映射到 Vec<DataSource>
+}
+
+// 读取配置文件
+pub fn load_timer_task_conf(config_path: PathBuf) -> Result<AppConfig, config::ConfigError> {
+    // 读取配置文件目录
+    let configuration_directory = config_path;
+    let settings = config::Config::builder()
+        .add_source(config::File::from(
+            configuration_directory.join("tasks.yaml"),
+        ))
+        .add_source(
+            config::Environment::with_prefix("APP")
+                .prefix_separator("_")
+                .separator("__"),
+        )
+        .build()?;
+    settings.try_deserialize::<AppConfig>()
+}
+
+/// 初始化应用配置
+pub fn init_config() -> std::io::Result<PathBuf> {
+    let app_path = std::env::current_dir().expect("Failed to determine the current directory"); // 应用程序的根目录
+    // 配置文件目录
+    let config_path = app_path.join("conf");
+    // 配置文件的目标路径
+    let target_config_path = config_path.join("tasks.yaml");
+
+    // 检查配置文件是否已存在，如果不存在则复制
+    if !target_config_path.exists() {
+        let config_file_in_resources = config_path.join("conf").join("tasks.yaml");
+
+        // 复制配置文件到目标目录
+        if !config_file_in_resources.exists() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "Config file not found in resources",
+            ));
+        }
+
+        // 复制文件
+        fs::create_dir_all(config_path.clone())?; // 如果目标目录不存在则创建
+        fs::copy(config_file_in_resources, target_config_path)?;
+        info!("配置文件已复制到目标目录");
+    } else {
+        info!("配置文件已存在");
+    }
+
+    Ok(config_path)
 }
