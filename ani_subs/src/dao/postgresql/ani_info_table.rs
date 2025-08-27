@@ -30,7 +30,10 @@ pub async fn upsert_ani_info(item: &AniItem, db_pool: &PgPool) -> Result<()> {
     .bind(&item.platform)
     .execute(db_pool)
     .await
-    .map_err(|e| anyhow::anyhow!("插入或更新 ani_info {:?} 失败: {}", item, e))?;
+    .map_err(|e| {
+        tracing::error!("插入或更新 ani_info {:?} 失败: {}", item, e);
+        anyhow::anyhow!(e)
+    })?;
 
     Ok(())
 }
