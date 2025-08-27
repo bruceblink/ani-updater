@@ -20,7 +20,6 @@ serde = { workspace = true }
 config = { workspace = true }
 sqlx = { workspace = true }
 uuid = { workspace = true }
-chrono = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tracing-bunyan-formatter = { workspace = true }
@@ -29,19 +28,4 @@ tracing-log = { workspace = true }
 tracing-actix-web = { workspace = true }
 secrecy = { workspace = true }
 unicode-segmentation = { workspace = true }
-validator = { workspace = true }
-quickcheck = { workspace = true }
-quickcheck_macros = { workspace = true }
 reqwest = { workspace = true }
-base64 = { workspace = true }
-serde_json = { workspace = true }
-scraper ={ workspace = true }
-anyhow = { workspace = true }
-cron = { workspace = true }
-async-trait = { workspace = true }
-num_cpus = { workspace = true }
-chrono-tz = { workspace = true }
-once_cell = { workspace = true }
-thiserror = { workspace = true }
-regex = { workspace = true }
-common = { path = "../common" }
