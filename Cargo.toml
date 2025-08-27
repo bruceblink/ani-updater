@@ -1,0 +1,55 @@
+[workspace]
+resolver = "2"
+members = [
+    "ani_subs",
+    "ani_spiders",
+    "common",
+]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.88"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yourname/ani-updater"
+version = "0.0.5"
+categories = ["web-programming", "development-tools", "network-programming"]
+
+[workspace.dependencies]
+actix-web = "4"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+serde = "1.0.115"
+config = { version = "0.15", default-features = false, features = ["yaml"] }
+sqlx = { version = "0.8", default-features = false, features = [
+    "runtime-tokio-rustls",
+    "macros",
+    "postgres",
+    "uuid",
+    "chrono",
+    "migrate",
+] }
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4.22", default-features = false, features = ["clock"] }
+tracing = "0.1.19"
+tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
+tracing-bunyan-formatter = "0.3.1"
+serde-aux = "4"
+tracing-log = "0.2.0"
+tracing-actix-web = "0.7"
+secrecy = { version = "0.8", features = ["serde"] }
+unicode-segmentation = "1.12.0"
+validator = "0.20"
+quickcheck = "1.0.3"
+quickcheck_macros = "1.1.0"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+base64 = "0.22"
+serde_json = "1"
+scraper = "0.24.0"
+anyhow = "1"
+cron = "0.15"
+async-trait = "0.1"
+num_cpus = "1.17"
+chrono-tz = "0.10"
+once_cell = "1.21"
+thiserror = "2"
+regex = "1.11.1"
+

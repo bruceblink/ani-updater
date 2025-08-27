@@ -1,0 +1,6 @@
+FROM ghcr.io/cross-rs/x86_64-unknown-linux-gnu:latest
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    libpq-dev pkg-config && \
+    rm -rf /var/lib/apt/lists/*

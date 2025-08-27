@@ -1,0 +1,8 @@
+[target.x86_64-unknown-linux-gnu]
+image = "custom-cross:latest"
+
+[target.x86_64-pc-windows-gnu]
+image = "custom-cross:latest"
+
+[target.x86_64-apple-darwin]
+image = "custom-cross:latest"

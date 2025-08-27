@@ -1,0 +1,47 @@
+[package]
+name = "ani_subs"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+path = "src/main.rs"
+name = "ani_subs"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+actix-web = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+config = { workspace = true }
+sqlx = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-bunyan-formatter = { workspace = true }
+serde-aux = { workspace = true }
+tracing-log = { workspace = true }
+tracing-actix-web = { workspace = true }
+secrecy = { workspace = true }
+unicode-segmentation = { workspace = true }
+validator = { workspace = true }
+quickcheck = { workspace = true }
+quickcheck_macros = { workspace = true }
+reqwest = { workspace = true }
+base64 = { workspace = true }
+serde_json = { workspace = true }
+scraper ={ workspace = true }
+anyhow = { workspace = true }
+cron = { workspace = true }
+async-trait = { workspace = true }
+num_cpus = { workspace = true }
+chrono-tz = { workspace = true }
+once_cell = { workspace = true }
+thiserror = { workspace = true }
+regex = { workspace = true }
+common = { path = "../common" }

@@ -1,0 +1,6 @@
+/target
+.idea
+*.iml
+/postgresql
+/postgresql/data
+/postgresql/logs

@@ -1,0 +1,138 @@
+name: Rust CI & Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+    paths-ignore:
+      - 'README.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.gitattributes'
+      - 'picture/**'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  SQLX_VERSION: "0.8.0"
+  SQLX_FEATURES: "rustls,postgres"
+  APP_USER: app
+  APP_USER_PWD: secret
+  APP_DB_NAME: newsletter
+
+jobs:
+  ci:
+    name:  CI fmt, clippy, test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: ani_tracker
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://postgres:password@localhost:5432/newsletter
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      # 1️⃣ 下载仓库代码
+      - uses: actions/checkout@v4
+
+      # 2️⃣ 缓存 Cargo registry，加速依赖下载
+      - name: Cache Cargo registry
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: cargo-registry-
+
+      # 3️⃣ 缓存 Cargo target 目录，加速重复构建
+      - name: Cache Cargo target
+        uses: actions/cache@v3
+        with:
+          path: target
+          key: cargo-target-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: cargo-target-
+
+      # 4️⃣ 安装 Rust 工具链及必要组件
+      - name: Install Rust with tools
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: rustfmt,clippy,llvm-tools-preview
+
+      # 5️⃣ 安装 sqlx-cli，用于数据库迁移和 SQL 检查
+      - name: Install sqlx-cli
+        run: cargo install sqlx-cli --version=${{ env.SQLX_VERSION }} --features ${{ env.SQLX_FEATURES }} --no-default-features --locked
+
+      # 6️⃣ 等待 Postgres 服务启动完成
+      - name: Wait for Postgres to be ready
+        run: |
+          for i in {1..20}; do
+            if PGPASSWORD=password pg_isready -h localhost -U postgres; then
+              break
+            fi
+            echo "Waiting for Postgres..."
+            sleep 2
+          done
+
+      # 7️⃣ 创建应用数据库用户并授予权限
+      - name: Create app user in Postgres
+        run: |
+          CREATE_QUERY="CREATE USER ${APP_USER} WITH PASSWORD '${APP_USER_PWD}';"
+          PGPASSWORD="password" psql -U "postgres" -h "localhost" -c "${CREATE_QUERY}"
+          GRANT_QUERY="ALTER USER ${APP_USER} CREATEDB;"
+          PGPASSWORD="password" psql -U "postgres" -h "localhost" -c "${GRANT_QUERY}"
+
+      # 8️⃣ 确保本地脚本可执行
+      - name: Ensure scripts executable
+        run: chmod +x ./scripts/*.sh
+
+      # 9️⃣ 执行数据库迁移
+      - name: Migrate database
+        run: SKIP_DOCKER=true ./scripts/init_db.sh
+
+      # 🔟1️⃣格式检查
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+      # 1️⃣1️⃣ Clippy 代码静态分析
+      - name: Run Clippy
+        run: cargo clippy -- -D warnings
+
+      # 1️⃣2️⃣ 运行单元测试
+      - name: Run tests
+        run: cargo test
+
+      # 1️⃣3️⃣ 构建release版本
+      - name: Build release
+        run: cargo build --release
+
+      # 1️⃣4️⃣ 打包 Releases
+      - name: Package Linux binary
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          mkdir -p dist
+          cp target/release/ani-updater dist/
+          tar -czf ani-updater-${{ github.ref_name }}-linux-x86_64.tar.gz -C dist ani-updater
+      # 1️⃣5️⃣ 发布上传到 GitHub
+      - name: Upload Linux release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ani-updater-${{ github.ref_name }}-linux-x86_64.tar.gz
