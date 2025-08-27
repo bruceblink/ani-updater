@@ -109,8 +109,8 @@ pub fn get_configuration(
     let config_directory = config_dir
         .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("configuration"));
 
-    // 环境默认 production
-    let env = environment.unwrap_or(Environment::Production);
+    // 环境默认 local
+    let env = environment.unwrap_or(Environment::Local);
     let env_filename = format!("{}.yaml", env);
 
     // 构建配置
