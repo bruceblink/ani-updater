@@ -51,7 +51,7 @@ pub async fn fetch_bilibili_ani_data(url: String) -> Result<ApiResponse<AniItemR
 fn process_json_value(json_value: &Value) -> AniItemResult {
     // 1. 验证响应状态和数据结构
     let code = json_value.get("code").and_then(Value::as_i64).unwrap_or(-1);
-    if code != 0 || !json_value.get("result").map_or(false, Value::is_array) {
+    if code != 0 || !json_value.get("result").is_some_and(Value::is_array) {
         error!("接口返回数据异常：{}", json_value);
         return HashMap::new();
     }
