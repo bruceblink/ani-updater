@@ -1,3 +1,4 @@
+use crate::routes::get_ani_info::get_ani_info;
 use crate::routes::health_check::health_check;
 use actix_web::dev::Server;
 use actix_web::{App, HttpServer, web};
@@ -12,6 +13,7 @@ pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Er
         App::new()
             .wrap(TracingLogger::default())
             .route("/health_check", web::get().to(health_check))
+            .route("/anis/{id}", web::get().to(get_ani_info))
             // 获取连接的副本绑定到应用程序
             .app_data(db_pool.clone())
     })

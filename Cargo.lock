@@ -278,11 +278,15 @@ name = "ani_subs"
 version = "0.0.5"
 dependencies = [
  "actix-web",
+ "ani_spiders",
+ "anyhow",
+ "chrono",
  "config",
  "reqwest",
  "secrecy",
  "serde",
  "serde-aux",
+ "serde_json",
  "sqlx",
  "tokio",
  "tracing",
@@ -452,6 +456,7 @@ dependencies = [
  "android-tzdata",
  "iana-time-zone",
  "num-traits",
+ "serde",
  "windows-link",
 ]
 

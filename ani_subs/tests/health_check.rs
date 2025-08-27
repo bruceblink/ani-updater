@@ -92,3 +92,22 @@ async fn health_check_works() {
     assert!(response.status().is_success());
     assert_eq!(Some(0), response.content_length());
 }
+
+#[tokio::test]
+async fn test_get_ani_info() {
+    // Arrange
+    let app = spawn_app().await;
+    let client = reqwest::Client::new();
+
+    // Act
+    let response = client
+        // Use the returned application address
+        .get(&format!("{}/anis/1", &app.address))
+        .send()
+        .await
+        .expect("Failed to execute request.");
+
+    // Assert
+    assert_eq!(response.status().as_u16(), 404);
+    assert_eq!(Some(0), response.content_length());
+}

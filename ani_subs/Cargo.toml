@@ -29,3 +29,7 @@ tracing-actix-web = { workspace = true }
 secrecy = { workspace = true }
 unicode-segmentation = { workspace = true }
 reqwest = { workspace = true }
+chrono ={ workspace = true }
+anyhow = { workspace = true }
+ani_spiders = { path = "../ani_spiders" }
+serde_json = "1.0.143"
