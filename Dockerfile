@@ -1,12 +1,30 @@
-FROM rust:1.86.0
+FROM lukemathwalker/cargo-chef:latest-rust-1.88 AS chef
 WORKDIR /app
 RUN apt update && apt install lld clang -y
+
+FROM chef AS planner
 COPY . .
-# 使用离线模式
-ENV SQLX_OFFINE true
-# 构建二进制文件 使用release参数优化
-RUN cargo build --release
-# 运行环境参数
-ENV APP_ENVIRONMENT production
-# 执行docker run时，启动二进制文件
-ENTRYPOINT ["./target/release/ani-updater"]
+# Compute a lock-like file for our project
+RUN cargo chef prepare  --recipe-path recipe.json
+
+FROM chef AS builder
+COPY --from=planner /app/recipe.json recipe.json
+# Build our project dependencies, not our application!
+RUN cargo chef cook --release --recipe-path recipe.json
+COPY . .
+ENV SQLX_OFFLINE=true
+# Build our project
+RUN cargo build --release --bin ani_subs
+
+FROM debian:bookworm-slim AS runtime
+WORKDIR /app
+RUN apt-get update -y \
+    && apt-get install -y --no-install-recommends openssl ca-certificates \
+    # Clean up
+    && apt-get autoremove -y \
+    && apt-get clean -y \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /app/target/release/ani_subs ani_subs
+COPY configuration configuration
+ENV APP_ENV=production
+ENTRYPOINT ["./ani_subs"]
