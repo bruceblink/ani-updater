@@ -52,7 +52,7 @@ sh scripts/init_db.sh
 
 ```bash
 # 启动数据库
-docker-compose -f docker/docker-compose-pg.yml -p ani-updater up -d
+docker-compose -f docker/docker-compose.yml -p ani-updater up -d postgresql
 # 构建所有子项目
 cargo build --workspace
 # 运行订阅服务
@@ -63,7 +63,7 @@ cargo run -p ani_subs
 #### 方式二：Docker
 
 ```bash
-# 启动数据库与服务
+# 启动数据库与应用服务
 docker-compose -f docker/docker-compose.yml -p ani-updater up -d
 ```
 
