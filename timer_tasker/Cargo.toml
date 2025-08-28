@@ -1,0 +1,21 @@
+[package]
+name = "timer_tasker"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+categories.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+tokio = { workspace = true }
+serde = { workspace = true }
+tracing = { workspace = true }
+chrono ={ workspace = true }
+ani_spiders = { path = "../ani_spiders" }
+cron = { workspace = true }
+async-trait = { workspace = true }
+num_cpus = { workspace = true }

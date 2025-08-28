@@ -3,6 +3,7 @@ use serde_aux::field_attributes::deserialize_number_from_string;
 use sqlx::postgres::{PgConnectOptions, PgSslMode};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use timer_tasker::task::TaskMeta;
 
 #[derive(serde::Deserialize)]
 pub struct Setting {
@@ -56,7 +57,7 @@ impl DatabaseSettings {
     }
 }
 
-pub type TaskConfig = HashMap<String, Vec<crate::timer_tasker::task::TaskMeta>>;
+pub type TaskConfig = HashMap<String, Vec<TaskMeta>>;
 
 /// ------------------------ 环境 ------------------------
 pub enum Environment {

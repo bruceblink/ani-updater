@@ -1,4 +1,5 @@
-use crate::timer_tasker::task::{Task, TaskResult};
+use crate::task::Task;
+use crate::task::TaskResult;
 use chrono::Local;
 use std::sync::{Arc, Mutex};
 use tokio::sync::{Notify, Semaphore, mpsc};
@@ -116,8 +117,10 @@ impl Scheduler {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::timer_tasker::commands::{CmdFn, build_cmd_map};
-    use crate::timer_tasker::task::{TaskMeta, build_tasks_from_meta};
+    use crate::commands::CmdFn;
+    use crate::commands::build_cmd_map;
+    use crate::task::TaskMeta;
+    use crate::task::build_tasks_from_meta;
     use std::collections::HashMap;
     use tokio::sync::mpsc;
 

@@ -280,19 +280,17 @@ dependencies = [
  "actix-web",
  "ani_spiders",
  "anyhow",
- "async-trait",
  "chrono",
  "chrono-tz",
  "common",
  "config",
- "cron",
- "num_cpus",
  "reqwest",
  "secrecy",
  "serde",
  "serde-aux",
  "serde_json",
  "sqlx",
+ "timer_tasker",
  "tokio",
  "tracing",
  "tracing-actix-web",
@@ -2803,6 +2801,20 @@ checksum = "3526739392ec93fd8b359c8e98514cb3e8e021beb4e5f597b00a0221f8ed8a49"
 dependencies = [
  "num-conv",
  "time-core",
+]
+
+[[package]]
+name = "timer_tasker"
+version = "0.0.5"
+dependencies = [
+ "ani_spiders",
+ "async-trait",
+ "chrono",
+ "cron",
+ "num_cpus",
+ "serde",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

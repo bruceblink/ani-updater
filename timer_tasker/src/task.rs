@@ -80,7 +80,7 @@ pub type CmdFn = Arc<
 >;
 
 /// 将 TaskMeta 列表和命令表合并，生成运行时 Task 列表
-pub fn build_tasks_from_meta(metas: &[TaskMeta], cmd_map: &HashMap<String, CmdFn>) -> Vec<Task> {
+pub fn build_tasks_from_meta(metas: &Vec<TaskMeta>, cmd_map: &HashMap<String, CmdFn>) -> Vec<Task> {
     let mut tasks = Vec::new();
 
     for meta in metas {

@@ -33,8 +33,6 @@ chrono ={ workspace = true }
 anyhow = { workspace = true }
 ani_spiders = { path = "../ani_spiders" }
 serde_json = { workspace = true }
-cron = { workspace = true }
-async-trait = { workspace = true }
-num_cpus = { workspace = true }
 common = { path = "../common" }
 chrono-tz = { workspace = true }
+timer_tasker = { path = "../timer_tasker" }

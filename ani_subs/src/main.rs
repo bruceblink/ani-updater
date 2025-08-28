@@ -1,3 +1,4 @@
+use ani_subs::service::task_service::start_async_timer_task;
 use sqlx::postgres::PgPoolOptions;
 use std::net::TcpListener;
 use std::path::PathBuf;
@@ -5,7 +6,6 @@ use std::path::PathBuf;
 use ani_subs::configuration::get_configuration;
 use ani_subs::startup::run;
 use ani_subs::telemetry::{get_subscriber, init_subscriber};
-use ani_subs::timer_tasker::start_async_timer_task;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
