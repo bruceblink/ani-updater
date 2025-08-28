@@ -137,3 +137,18 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: ani-updater-${{ github.ref_name }}-linux-x86_64.tar.gz
+
+  fly-deploy:
+    name: Fly Deploy
+    runs-on: ubuntu-latest
+    needs: [ci] # 确保 CI 成功后再触发
+    concurrency: deploy-group
+    steps:
+      # 1️⃣ 下载仓库代码
+      - uses: actions/checkout@v4
+      # 2️⃣ 安装 flyctl
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      # 3️⃣ 部署应用到 Fly.io
+      - run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
