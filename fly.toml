@@ -18,8 +18,15 @@ TZ = "Asia/Shanghai"
 internal_port = 8000
 protocol = "tcp"
 
+# 使用 Fly 的 HTTP/HTTPS 代理
 [[services.ports]]
-port = 8000
+port = 80
+handlers = ["http"]  # HTTP 流量
+
+[[services.ports]]
+port = 443
+handlers = ["tls", "http"]  # HTTPS 流量
+
 [[vm]]
 cpu_kind = "shared"
 cpus = 1
