@@ -1,5 +1,5 @@
 -- Add migration script here
-create table subscriptions (
+CREATE TABLE IF NOT EXISTS subscriptions (
 	id uuid not null,
 	primary key (id),
 	email text not null unique,

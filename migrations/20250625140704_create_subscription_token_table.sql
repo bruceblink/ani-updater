@@ -1,5 +1,5 @@
 -- Add migration script here
-create table subscription_token (
+CREATE TABLE IF NOT EXISTS subscription_token (
     subscription_token TEXT NOT NULL,
     subscriber_id uuid NOT NULL
       references subscriptions (id),
