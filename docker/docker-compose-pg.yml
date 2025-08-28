@@ -52,22 +52,5 @@ services:
 #    command: redis-server /usr/local/redis/config/redis.conf --appendonly yes --requirepass 123456
 #    networks:
 #      - ani-updater  # 加入 ani-updater 网络
-  ani_subs:
-    build:
-      context: ../          # Dockerfile 相对于 docker-compose.yml 的路径
-      dockerfile: Dockerfile
-    container_name: ani_subs
-    restart: always
-    depends_on:
-      - postgresql
-    ports:
-      - '8000:8000'
-    environment:
-      TZ: Asia/Shanghai
-      APP_ENV: production   # 设置应用环境为生产环境,如果本地改成local
-      DATABASE_URL: postgres://postgres:password@postgresql:5432/newsletter
-    volumes:
-      - ../configuration:/app/configuration:ro  # 配置文件挂载，可按需调整
-    networks:
-      - ani-updater
+
 
