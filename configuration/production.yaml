@@ -1,7 +1,7 @@
 application:
   host: 0.0.0.0
 database:
-  require_ssl: true
+  require_ssl: false  # docker通常不需要 SSL，除非你有特殊需求
 email_client:
   base_url: "https://api.postmarkapp.com"
   sender_email: "test@gmail.com"
