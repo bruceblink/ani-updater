@@ -1,19 +1,21 @@
-# fly.toml app configuration file generated for hot-dog-solitary-brook-6267 on 2025-07-31T01:59:47+08:00
-#
-# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
-#
-
 app = "ani-subs"
-primary_region = "lax"
+primary_region = "hkg"
 
-[http_service]
-auto_start_machines = true
-auto_stop_machines = true
-force_https = true
+kill_signal = "SIGINT"
+kill_timeout = 5
+processes = []
+
+[env]
+APP_ENV = "production"
+DATABASE_URL = "postgres://postgres:${POSTGRES_PASSWORD}@ani-postgres.internal:5432/newsletter"
+TZ = "Asia/Shanghai"
+
+[[services]]
 internal_port = 8000
-min_machines_running = 0
-processes = ["app"]
+protocol = "tcp"
 
+[[services.ports]]
+port = 8000
 [[vm]]
 cpu_kind = "shared"
 cpus = 1
