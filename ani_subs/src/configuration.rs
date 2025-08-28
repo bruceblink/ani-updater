@@ -41,6 +41,35 @@ pub struct DatabaseSettings {
 }
 
 impl DatabaseSettings {
+    /// 从环境变量或默认值初始化
+    pub fn from_env(database: DatabaseSettings) -> Self {
+        let host = std::env::var("DB_HOST").unwrap_or_else(|_| database.host.clone());
+        let username = std::env::var("DB_USERNAME").unwrap_or_else(|_| database.username.clone());
+        let password = Secret::new(
+            std::env::var("POSTGRES_PASSWORD")
+                .unwrap_or_else(|_| database.password.expose_secret().clone()),
+        );
+        let port = std::env::var("DB_PORT")
+            .unwrap_or_else(|_| database.port.to_string())
+            .parse()
+            .unwrap();
+        let database_name =
+            std::env::var("DB_NAME").unwrap_or_else(|_| database.database_name.clone());
+        let require_ssl = std::env::var("DB_REQUIRE_SSL")
+            .ok()
+            .map(|v| v == "true")
+            .unwrap_or(database.require_ssl);
+
+        DatabaseSettings {
+            host,
+            username,
+            password,
+            port,
+            database_name,
+            require_ssl,
+        }
+    }
+
     pub fn connect_options(&self) -> PgConnectOptions {
         let ssl_mode = if self.require_ssl {
             PgSslMode::Require

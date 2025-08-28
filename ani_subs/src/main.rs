@@ -3,7 +3,7 @@ use sqlx::postgres::PgPoolOptions;
 use std::net::TcpListener;
 use std::path::PathBuf;
 
-use ani_subs::configuration::get_configuration;
+use ani_subs::configuration::{DatabaseSettings, get_configuration};
 use ani_subs::startup::run;
 use ani_subs::telemetry::{get_subscriber, init_subscriber};
 
@@ -14,8 +14,8 @@ async fn main() -> std::io::Result<()> {
     init_subscriber(subscriber);
     let configuration = get_configuration(Some(PathBuf::from("./configuration")))
         .expect("Failed to read configuration.");
-    let connection_pool =
-        PgPoolOptions::new().connect_lazy_with(configuration.database.connect_options());
+    let connection_pool = PgPoolOptions::new()
+        .connect_lazy_with(DatabaseSettings::from_env(configuration.database).connect_options());
     // 启动异步定时任务
     let task_config = configuration.task_config;
     start_async_timer_task(task_config["anime"].clone(), connection_pool.clone()).await;
