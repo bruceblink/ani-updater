@@ -102,15 +102,17 @@ impl TryFrom<String> for Environment {
 
 /// ------------------------ 配置加载 ------------------------
 pub fn get_configuration(
-    config_dir: Option<PathBuf>,      // 可选覆盖目录
-    environment: Option<Environment>, // 可选覆盖环境
+    config_dir: Option<PathBuf>, // 可选覆盖目录
 ) -> Result<Setting, config::ConfigError> {
     // 配置目录默认使用 crate 根目录下的 configuration
     let config_directory = config_dir
         .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("configuration"));
 
     // 环境默认 local
-    let env = environment.unwrap_or(Environment::Local);
+    let env: Environment = std::env::var("APP_ENV")
+        .unwrap_or_else(|_| "production".into())
+        .try_into()
+        .expect("Failed to parse APP_ENVIRONMENT.");
     let env_filename = format!("{}.yaml", env);
 
     // 构建配置
@@ -125,4 +127,37 @@ pub fn get_configuration(
         .build()?;
 
     settings.try_deserialize::<Setting>()
+}
+
+mod tests {
+    #[test]
+    fn test_environment_from_str() {
+        use super::Environment;
+        let env: Environment = "local".parse().unwrap();
+        assert!(matches!(env, Environment::Local));
+
+        let env: Environment = "production".parse().unwrap();
+        assert!(matches!(env, Environment::Production));
+
+        let env: Environment = "unknown".parse().unwrap();
+        assert!(matches!(env, Environment::Production)); // 默认生产环境
+
+        unsafe {
+            std::env::set_var("APP_ENV", "local");
+        }
+        let environment: Environment = std::env::var("APP_ENV")
+            .unwrap_or_else(|_| "local".into())
+            .try_into()
+            .expect("Failed to parse APP_ENVIRONMENT.");
+        assert!(matches!(environment, Environment::Local)); //
+
+        unsafe {
+            std::env::set_var("APP_ENV", "production");
+        }
+        let environment: Environment = std::env::var("APP_ENV")
+            .unwrap_or_else(|_| "local".into())
+            .try_into()
+            .expect("Failed to parse APP_ENVIRONMENT.");
+        assert!(matches!(environment, Environment::Production)); // 
+    }
 }
