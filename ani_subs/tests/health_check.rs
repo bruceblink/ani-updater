@@ -1,4 +1,3 @@
-use ani_subs::configuration::Environment;
 use ani_subs::configuration::{DatabaseSettings, get_configuration};
 use ani_subs::startup::run;
 use ani_subs::telemetry::{get_subscriber, init_subscriber};
@@ -37,11 +36,8 @@ async fn spawn_app() -> TestApp {
     let port = listener.local_addr().unwrap().port();
     let address = format!("http://127.0.0.1:{}", port);
 
-    let mut configuration = get_configuration(
-        Some(PathBuf::from("../configuration")),
-        Some(Environment::Local),
-    )
-    .expect("Failed to read configuration.");
+    let mut configuration = get_configuration(Some(PathBuf::from("../configuration")))
+        .expect("Failed to read configuration.");
     configuration.database.database_name = Uuid::new_v4().to_string();
     let connection_pool = configure_database(&configuration.database).await;
 
@@ -108,7 +104,7 @@ async fn test_get_ani_info() {
     // Act
     let response = client
         // Use the returned application address
-        .get(&format!("{}/anis/1", &app.address))
+        .get(&format!("{}/anis/{}", &app.address, 1))
         .send()
         .await
         .expect("Failed to execute request.");
@@ -116,4 +112,21 @@ async fn test_get_ani_info() {
     // Assert
     assert_eq!(response.status().as_u16(), 404);
     assert_eq!(Some(0), response.content_length());
+}
+
+#[tokio::test]
+async fn test_get_ani_info_list() {
+    // Arrange
+    let app = spawn_app().await;
+    let client = reqwest::Client::new();
+
+    // Act
+    let response = client
+        // Use the returned application address
+        .get(&format!("{}/anis", &app.address))
+        .send()
+        .await
+        .expect("Failed to execute request.");
+    // Assert
+    assert_eq!(response.status().as_u16(), 200);
 }
