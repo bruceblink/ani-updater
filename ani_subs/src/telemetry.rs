@@ -1,9 +1,11 @@
+use crate::telemetry::fmt::format::Writer;
+use crate::telemetry::fmt::time::FormatTime;
+use chrono::Local;
 use tracing_actix_web::root_span_macro::private::tracing::Subscriber;
 use tracing_actix_web::root_span_macro::private::tracing::dispatcher::set_global_default;
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_log::LogTracer;
 use tracing_subscriber::fmt::MakeWriter;
-use tracing_subscriber::fmt::time::ChronoLocal;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::{EnvFilter, Registry, fmt};
 
@@ -37,7 +39,7 @@ where
         let formatting_layer = fmt::layer()
             .with_writer(sink)
             .with_target(true)
-            .with_timer(ChronoLocal::rfc_3339())
+            .with_timer(MilliTimeFormater)
             .compact();
         //.pretty();
         Box::new(Registry::default().with(env_filter).with(formatting_layer))
@@ -57,4 +59,13 @@ where
 pub fn init_subscriber(subscriber: impl Subscriber + Send + Sync) {
     LogTracer::init().expect("Failed to set logger");
     set_global_default(subscriber.into()).expect("Failed to set subscriber");
+}
+
+struct MilliTimeFormater;
+
+impl FormatTime for MilliTimeFormater {
+    fn format_time(&self, w: &mut Writer<'_>) -> std::fmt::Result {
+        let now = Local::now();
+        write!(w, "{}", now.format("%Y-%m-%dT%H:%M:%S%.3f%:z"))
+    }
 }
