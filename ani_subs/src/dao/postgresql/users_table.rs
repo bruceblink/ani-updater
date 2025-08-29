@@ -1,9 +1,9 @@
-use crate::domain::dto::UserDto;
+use crate::domain::dto::{NewUser, UserDto};
 use crate::domain::po::User;
 use chrono_tz::Asia::Shanghai;
 use sqlx::PgPool;
 
-/// 根据 id 查询单条
+/// 根据用户名查询用户信息
 pub async fn get_user_by_username(
     username: String,
     db_pool: &PgPool,
@@ -41,4 +41,45 @@ pub async fn get_user_by_username(
             .map(|dt| dt.with_timezone(&Shanghai).to_rfc3339()),
     });
     Ok(dto)
+}
+
+/// 新增用户
+pub async fn insert_users(users: &[NewUser], pool: &PgPool) -> anyhow::Result<()> {
+    if users.is_empty() {
+        return Ok(());
+    }
+    // 取第一个 user 的字段数量（这里假设所有 User 结构字段数相同）
+    // 注意：这里我们只取要插入的字段，不要像 id、created_at 这种默认生成的
+    let field_count = 5; // email, username, password, display_name, avatar_url
+
+    // 1️⃣ 动态拼接 VALUES 部分
+    let mut placeholders = Vec::new();
+    for i in 0..users.len() {
+        let base = i * field_count;
+        let group: Vec<String> = (1..=field_count)
+            .map(|j| format!("${}", base + j))
+            .collect();
+        placeholders.push(format!("({})", group.join(", ")));
+    }
+
+    // 2️⃣ 拼接完整 SQL
+    let query = format!(
+        "INSERT INTO users (email, username, password, display_name, avatar_url) VALUES {}",
+        placeholders.join(", ")
+    );
+
+    // 3️⃣ 绑定参数
+    let mut sql = sqlx::query(&query);
+    for user in users {
+        sql = sql
+            .bind(&user.email)
+            .bind(&user.username)
+            .bind(&user.password)
+            .bind(&user.display_name)
+            .bind(&user.avatar_url);
+    }
+
+    // 4️⃣ 执行
+    sql.execute(pool).await?;
+    Ok(())
 }

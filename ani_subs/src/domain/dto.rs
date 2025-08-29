@@ -24,3 +24,12 @@ pub struct UserDto {
     pub created_at: String,
     pub updated_at: Option<String>,
 }
+
+#[derive(Debug, Clone)]
+pub struct NewUser {
+    pub email: String,
+    pub username: String,
+    pub password: String,
+    pub display_name: String,
+    pub avatar_url: String,
+}
