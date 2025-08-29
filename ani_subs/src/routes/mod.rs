@@ -1,8 +1,8 @@
-mod get_ani_info;
+mod anis;
 mod health_check;
 mod login;
 mod register;
 
-pub use get_ani_info::*;
+pub use anis::*;
 pub use health_check::*;
 pub use login::*;

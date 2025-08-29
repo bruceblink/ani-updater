@@ -1,5 +1,5 @@
-use crate::routes::get_ani_info;
-use crate::routes::get_ani_info_list;
+use crate::routes::get_ani;
+use crate::routes::get_anis;
 use crate::routes::health_check;
 use crate::routes::login;
 use actix_web::dev::Server;
@@ -15,8 +15,8 @@ pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Er
         App::new()
             .wrap(TracingLogger::default())
             .route("/health_check", web::get().to(health_check))
-            .route("/anis/{id}", web::get().to(get_ani_info))
-            .route("/anis", web::get().to(get_ani_info_list))
+            .route("/anis/{id}", web::get().to(get_ani))
+            .route("/anis", web::get().to(get_anis))
             .route("/login", web::post().to(login))
             // 获取连接的副本绑定到应用程序
             .app_data(db_pool.clone())
