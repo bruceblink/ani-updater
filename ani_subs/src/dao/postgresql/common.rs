@@ -1,6 +1,3 @@
-pub mod ani_info_table;
-
-use anyhow::Result;
 use serde::Serialize;
 use serde_json::Value;
 use sqlx::postgres::PgRow;
@@ -12,7 +9,7 @@ pub async fn query_with_condition<T, S>(
     pool: &PgPool,
     table: &str,
     conditions: &S,
-) -> Result<Vec<T>>
+) -> anyhow::Result<Vec<T>>
 where
     T: for<'r> FromRow<'r, PgRow> + Send + Unpin,
     S: Serialize,
@@ -64,7 +61,7 @@ where
 pub async fn run_query<'q, T>(
     pool: &PgPool, // PostgreSQL 连接池
     query: QueryAs<'q, Postgres, T, sqlx::postgres::PgArguments>,
-) -> std::result::Result<Vec<T>, anyhow::Error>
+) -> Result<Vec<T>, anyhow::Error>
 where
     for<'r> T: FromRow<'r, PgRow> + Send + Unpin,
 {

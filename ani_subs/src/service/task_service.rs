@@ -1,4 +1,4 @@
-use crate::dao::postgresql::ani_info_table::upsert_ani_info;
+use crate::dao::upsert_ani_info;
 use ani_spiders::{AniItemResult, ApiResponse};
 use common::utils::date_utils::get_today_weekday;
 use serde_json::json;

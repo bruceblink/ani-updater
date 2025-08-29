@@ -1,1 +1,2 @@
-pub mod postgresql;
+mod postgresql;
+pub use postgresql::*;

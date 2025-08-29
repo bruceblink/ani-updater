@@ -1,5 +1,5 @@
-use crate::dao::postgresql::ani_info_table::get_ani_info_by_id;
-use crate::dao::postgresql::ani_info_table::list_all_ani_info;
+use crate::dao::get_ani_info_by_id;
+use crate::dao::list_all_ani_info;
 use actix_web::{HttpResponse, web};
 use sqlx::PgPool;
 
