@@ -1,4 +1,6 @@
 use ani_subs::configuration::{DatabaseSettings, get_configuration};
+use ani_subs::dao::insert_users;
+use ani_subs::domain::dto::NewUser;
 use ani_subs::startup::run;
 use ani_subs::telemetry::{get_subscriber, init_subscriber};
 use secrecy::Secret;
@@ -129,4 +131,61 @@ async fn test_get_ani_info_list() {
         .expect("Failed to execute request.");
     // Assert
     assert_eq!(response.status().as_u16(), 200);
+}
+
+#[tokio::test]
+async fn test_login_get_token() {
+    // Arrange
+    let app = spawn_app().await;
+    let client = reqwest::Client::new();
+
+    let test_users = build_test_users();
+
+    let _ = insert_users(&test_users, &app.db_pool).await;
+
+    let login_body = serde_json::json!({
+        "username": "bob",
+        "password": "securepass"
+    });
+
+    // Act
+    let response = client
+        .post(&format!("{}/login", &app.address))
+        .json(&login_body) // 这里设置 JSON body
+        .send()
+        .await
+        .expect("Failed to execute request.");
+
+    // Assert
+    assert_eq!(response.status().as_u16(), 401);
+
+    // 可选：解析返回 JSON
+    //let body: serde_json::Value = response.json().await.unwrap();
+    println!("Response body: {:?}", response);
+}
+
+pub fn build_test_users() -> Vec<NewUser> {
+    vec![
+        NewUser {
+            email: "alice@example.com".to_string(),
+            username: "alice".to_string(),
+            password: "password123".to_string(),
+            display_name: "Alice".to_string(),
+            avatar_url: "https://example.com/avatar/alice.png".to_string(),
+        },
+        NewUser {
+            email: "bob@example.com".to_string(),
+            username: "bob".to_string(),
+            password: "securepass".to_string(),
+            display_name: "Bob".to_string(),
+            avatar_url: "https://example.com/avatar/bob.png".to_string(),
+        },
+        NewUser {
+            email: "charlie@example.com".to_string(),
+            username: "charlie".to_string(),
+            password: "charliepw".to_string(),
+            display_name: "Charlie".to_string(),
+            avatar_url: "https://example.com/avatar/charlie.png".to_string(),
+        },
+    ]
 }
