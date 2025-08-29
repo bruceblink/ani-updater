@@ -36,3 +36,5 @@ serde_json = { workspace = true }
 common = { path = "../common" }
 chrono-tz = { workspace = true }
 timer_tasker = { path = "../timer_tasker" }
+jsonwebtoken = { workspace = true }
+bcrypt = { workspace = true }

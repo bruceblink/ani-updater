@@ -68,3 +68,15 @@ pub struct AniHistoryInfo {
     platform: String,
     pub total_count: i64,
 }
+
+#[derive(Serialize, Debug, Clone, FromRow)]
+pub struct User {
+    pub id: i64,
+    pub email: String,
+    pub username: String,
+    pub password: String,
+    pub display_name: String,
+    pub avatar_url: String,
+    pub created_at: chrono::DateTime<Utc>,
+    pub updated_at: Option<chrono::DateTime<Utc>>,
+}
