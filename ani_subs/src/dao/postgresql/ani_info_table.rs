@@ -88,6 +88,8 @@ pub async fn list_all_ani_info(_title: String, db_pool: &PgPool) -> Result<Vec<A
                     update_time,
                     platform
                 FROM ani_info
+                WHERE 
+                    update_time >= current_date
                 ORDER BY update_time DESC
             ;"#,
     );
