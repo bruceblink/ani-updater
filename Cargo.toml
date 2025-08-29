@@ -10,7 +10,7 @@ members = [
 edition = "2024"
 rust-version = "1.88"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/yourname/ani-updater"
+repository = "https://github.com/bruceblink/ani-updater"
 version = "0.0.5"
 categories = ["web-programming", "development-tools", "network-programming"]
 
