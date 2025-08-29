@@ -1,9 +1,9 @@
 use crate::dao::postgresql::run_query;
 use crate::domain::dto::AniInfoDto;
 use crate::domain::po::AniInfo;
-use ani_spiders::AniItem;
 use anyhow::Result;
 use chrono_tz::Asia::Shanghai;
+use common::api::AniItem;
 use sqlx::PgPool;
 
 /// 动漫信息插入新记录

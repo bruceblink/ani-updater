@@ -1,6 +1,8 @@
-use crate::spider::{AniItem, AniItemResult, ApiResponse};
 use anyhow::{Context, Result, anyhow};
 use base64::{Engine as _, engine::general_purpose};
+use common::api::AniItem;
+use common::api::AniItemResult;
+use common::api::ApiResponse;
 use common::utils::date_utils::{get_today_slash, get_today_weekday};
 use common::utils::extract_number;
 use common::utils::http_client::http_client;

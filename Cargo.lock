@@ -528,6 +528,8 @@ dependencies = [
  "once_cell",
  "regex",
  "reqwest",
+ "serde",
+ "serde_json",
  "thiserror",
 ]
 
@@ -2901,6 +2903,7 @@ dependencies = [
  "ani_spiders",
  "async-trait",
  "chrono",
+ "common",
  "cron",
  "num_cpus",
  "serde",

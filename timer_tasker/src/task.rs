@@ -1,5 +1,6 @@
-use ani_spiders::{AniItemResult, ApiResponse};
 use async_trait::async_trait;
+use common::api::AniItemResult;
+use common::api::ApiResponse;
 use cron::Schedule;
 use serde::Deserialize;
 use std::collections::HashMap;
