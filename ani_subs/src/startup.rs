@@ -1,4 +1,4 @@
-use crate::middleware::AuthMiddleware;
+use crate::middleware::{AuthMiddleware, CharsetMiddleware};
 use crate::routes::OAuthConfig;
 use crate::routes::get_ani;
 use crate::routes::get_anis;
@@ -28,6 +28,7 @@ pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Er
     let server = HttpServer::new(move || {
         App::new()
             .wrap(TracingLogger::default())
+            .wrap(CharsetMiddleware)
             .app_data(web::Data::new(oauth.clone()))
             .service(index)
             .service(me)
