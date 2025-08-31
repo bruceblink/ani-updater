@@ -9,7 +9,7 @@ pub async fn get_ani(path: web::Path<(i64,)>, pool: web::Data<PgPool>) -> HttpRe
         Ok(Some(ani)) => HttpResponse::Ok().json(ani), // 查到 → 返回 JSON
         Ok(None) => HttpResponse::NotFound().finish(), // 没查到 → 返回 404
         Err(e) => {
-            eprintln!("数据库查询错误: {:?}", e);
+            eprintln!("数据库查询错误: {e:?}");
             HttpResponse::InternalServerError().finish() // SQL 错误 → 500
         }
     }
@@ -19,7 +19,7 @@ pub async fn get_anis(pool: web::Data<PgPool>) -> HttpResponse {
     match list_all_ani_info("ani_id".to_string(), &pool).await {
         Ok(ani_list) => HttpResponse::Ok().json(ani_list), // 查到 → 返回 JSON
         Err(e) => {
-            eprintln!("数据库查询错误: {:?}", e);
+            eprintln!("数据库查询错误: {e:?}");
             HttpResponse::InternalServerError().finish() // SQL 错误 → 500
         }
     }

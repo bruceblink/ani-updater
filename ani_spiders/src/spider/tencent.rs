@@ -36,7 +36,7 @@ pub async fn fetch_qq_image(url: String) -> Result<String, String> {
 
     // 转 base64，并拼成 Data URL
     let b64 = general_purpose::STANDARD.encode(bytes);
-    Ok(format!("data:{};base64,{}", ct, b64))
+    Ok(format!("data:{ct};base64,{b64}"))
 }
 
 /// 获取腾讯视频动漫频道今日更新数据
@@ -176,7 +176,7 @@ fn build_aniitem(item: &Value) -> Option<AniItem> {
         .unwrap_or("");
     let update_count = extract_number(update_count)?.to_string();
 
-    let update_count_info = format!("更新至{}集", update_count);
+    let update_count_info = format!("更新至{update_count}集");
     let update_info = item
         .get("topicLabel")
         .and_then(Value::as_str)
@@ -184,7 +184,7 @@ fn build_aniitem(item: &Value) -> Option<AniItem> {
         .trim()
         .to_string();
 
-    let update_info = format!("{} {}", update_count_info, update_info);
+    let update_info = format!("{update_count_info} {update_info}");
 
     let image_url = item
         .get("coverPic")
@@ -211,5 +211,5 @@ fn build_aniitem(item: &Value) -> Option<AniItem> {
 
 /// 生成腾讯视频播放链接
 fn get_qq_video_url(cid: &str) -> String {
-    format!("https://v.qq.com/x/cover/{}.html", cid)
+    format!("https://v.qq.com/x/cover/{cid}.html")
 }

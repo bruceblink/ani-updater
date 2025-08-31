@@ -16,7 +16,7 @@ where
 {
     let cond_json = serde_json::to_value(conditions)?;
 
-    let mut builder = QueryBuilder::<Postgres>::new(format!("SELECT * FROM {}", table));
+    let mut builder = QueryBuilder::<Postgres>::new(format!("SELECT * FROM {table}"));
 
     let mut first = true;
     if let Value::Object(map) = cond_json {

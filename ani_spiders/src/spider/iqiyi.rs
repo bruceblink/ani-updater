@@ -32,7 +32,7 @@ pub async fn fetch_iqiyi_image(url: String) -> Result<String, String> {
 
     // 转 base64，并拼成 Data URL
     let b64 = general_purpose::STANDARD.encode(bytes);
-    Ok(format!("data:{};base64,{}", ct, b64))
+    Ok(format!("data:{ct};base64,{b64}"))
 }
 
 pub async fn fetch_iqiyi_ani_data(url: String) -> Result<ApiResponse<AniItemResult>, String> {

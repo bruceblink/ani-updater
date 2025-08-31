@@ -34,7 +34,7 @@ async fn fetch_image_base64(url: &str, referer: &str) -> Result<String> {
         .unwrap_or("application/octet-stream");
 
     let b64 = general_purpose::STANDARD.encode(bytes);
-    Ok(format!("data:{};base64,{}", content_type, b64))
+    Ok(format!("data:{content_type};base64,{b64}"))
 }
 
 pub async fn fetch_youku_image(url: String) -> Result<String, String> {
@@ -63,7 +63,7 @@ pub async fn fetch_youku_ani_data(url: String) -> Result<ApiResponse<AniItemResu
         Ok(d) => d,
         Err(e) => {
             // 业务层面解析失败，返回 ApiResponse::err
-            return Ok(ApiResponse::err(format!("解析初始数据失败：{}", e)));
+            return Ok(ApiResponse::err(format!("解析初始数据失败：{e}")));
         }
     };
 
@@ -82,7 +82,7 @@ pub async fn fetch_youku_ani_data(url: String) -> Result<ApiResponse<AniItemResu
         Ok(list) => list,
         Err(e) => {
             // 业务层面处理失败，同样返回 ApiResponse::err
-            return Ok(ApiResponse::err(format!("处理模块列表失败：{}", e)));
+            return Ok(ApiResponse::err(format!("处理模块列表失败：{e}")));
         }
     };
 

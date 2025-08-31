@@ -31,7 +31,7 @@ pub async fn fetch_bilibili_image(url: String) -> Result<String, String> {
 
     // 转 base64，并拼成 Data URL
     let b64 = general_purpose::STANDARD.encode(bytes);
-    Ok(format!("data:{};base64,{}", ct, b64))
+    Ok(format!("data:{ct};base64,{b64}"))
 }
 
 pub async fn fetch_bilibili_ani_data(url: String) -> Result<ApiResponse<AniItemResult>, String> {
@@ -126,7 +126,7 @@ fn parse_item(ep: &Value) -> AniItem {
         .unwrap_or_default();
 
     // update_info
-    let update_info = format!("更新至{}", pub_index);
+    let update_info = format!("更新至{pub_index}");
 
     // image_url: 优先 square_cover，否则 cover
     let image_url = ep
@@ -141,7 +141,7 @@ fn parse_item(ep: &Value) -> AniItem {
         .get("episode_id")
         .and_then(Value::as_i64)
         .unwrap_or_default();
-    let detail_url = format!("https://www.bilibili.com/bangumi/play/ep{}", episode_id);
+    let detail_url = format!("https://www.bilibili.com/bangumi/play/ep{episode_id}");
 
     // title 清理
     let raw_title = ep.get("title").and_then(Value::as_str).unwrap_or("");

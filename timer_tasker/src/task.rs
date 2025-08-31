@@ -133,12 +133,7 @@ pub fn build_tasks_from_meta(metas: &Vec<TaskMeta>, cmd_map: &HashMap<String, Cm
                 move || {
                     let missing_cmd = missing_cmd.clone();
                     let name = name.clone();
-                    async move {
-                        Err(format!(
-                            "cmd '{}' not found for task '{}'",
-                            missing_cmd, name
-                        ))
-                    }
+                    async move { Err(format!("cmd '{missing_cmd}' not found for task '{name}'")) }
                 },
             );
 

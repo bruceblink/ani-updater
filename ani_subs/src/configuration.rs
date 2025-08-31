@@ -123,8 +123,7 @@ impl TryFrom<String> for Environment {
             "local" => Ok(Self::Local),
             "production" => Ok(Self::Production),
             other => Err(format!(
-                "{} is not a supported environment. Use either `local` or `production`.",
-                other
+                "{other} is not a supported environment. Use either `local` or `production`."
             )),
         }
     }
@@ -143,7 +142,7 @@ pub fn get_configuration(
         .unwrap_or_else(|_| "production".into())
         .try_into()
         .expect("Failed to parse APP_ENVIRONMENT.");
-    let env_filename = format!("{}.yaml", env);
+    let env_filename = format!("{env}.yaml");
 
     // 构建配置
     let settings = config::Config::builder()

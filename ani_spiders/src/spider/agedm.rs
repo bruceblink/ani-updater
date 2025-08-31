@@ -32,7 +32,7 @@ pub async fn fetch_agedm_image(url: String) -> Result<String, String> {
 
     // 转 base64，并拼成 Data URL
     let b64 = general_purpose::STANDARD.encode(bytes);
-    Ok(format!("data:{};base64,{}", ct, b64))
+    Ok(format!("data:{ct};base64,{b64}"))
 }
 
 pub async fn fetch_agedm_ani_data(url: String) -> Result<ApiResponse<AniItemResult>, String> {
@@ -125,7 +125,7 @@ pub async fn fetch_agedm_ani_data(url: String) -> Result<ApiResponse<AniItemResu
                     .replacen("/detail/", "/play/", 1) // 再把路径段换好
                     .trim_end_matches('/') // 去掉末尾多余斜杠（可选）
                     .to_string(); // 拷贝成 String
-                let href = format!("{}/1/{}", href, update_count);
+                let href = format!("{href}/1/{update_count}"); // 拼成最终的详情页链接
                 let txt = a.text().collect::<String>().trim().to_string();
                 (txt, href)
             })

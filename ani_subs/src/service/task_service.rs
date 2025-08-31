@@ -28,7 +28,7 @@ pub async fn run_task_service(
 
     for item in items {
         if let Err(e) = upsert_ani_info(item, &pool).await {
-            return Ok(ApiResponse::err(format!("插入失败：{}", e)));
+            return Ok(ApiResponse::err(format!("插入失败：{e}")));
         }
     }
     Ok(ApiResponse::ok(json!({ "message": "save success" })))
