@@ -30,18 +30,19 @@ pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Er
             .wrap(TracingLogger::default())
             .wrap(CharsetMiddleware)
             .app_data(web::Data::new(oauth.clone()))
+            .app_data(db_pool.clone())
             .service(index)
-            .service(me)
             .service(github_login)
             .service(github_callback)
-            .route("/health_check", web::get().to(health_check))
-            .route("/anis/{id}", web::get().to(get_ani))
-            .route("/anis", web::get().to(get_anis))
             .route("/login", web::post().to(login))
+            .route("/health_check", web::get().to(health_check))
             // 获取连接的副本绑定到应用程序
-            .app_data(db_pool.clone())
             .service(
-                web::scope("/api").wrap(AuthMiddleware), // 在这里添加需要认证的路由
+                web::scope("/api")
+                    .wrap(AuthMiddleware) // 在这里添加需要认证的路由
+                    .service(me)
+                    .route("/anis", web::get().to(get_anis))
+                    .route("/anis/{id}", web::get().to(get_ani)),
             )
     })
     .listen(listener)?
