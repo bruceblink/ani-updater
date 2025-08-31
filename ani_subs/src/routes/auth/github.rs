@@ -195,7 +195,7 @@ async fn github_callback(
 
     // 重定向到前端
     let frontend_url =
-        env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:3000".to_string());
+        env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:8000".to_string());
     let url = format!("{frontend_url}?token={jwt}");
 
     HttpResponse::Found()
