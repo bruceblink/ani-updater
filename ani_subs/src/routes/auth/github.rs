@@ -9,8 +9,12 @@ use rand::Rng;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::env;
+use std::sync::Mutex;
 
 static HTTP: Lazy<Client> = Lazy::new(Client::new);
+// 全局内存存储 state -> pkce_verifier
+static STATE_PKCE_MAP: Lazy<Mutex<std::collections::HashMap<String, String>>> =
+    Lazy::new(|| Mutex::new(std::collections::HashMap::new()));
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Claims {
@@ -97,32 +101,24 @@ async fn github_login(data: web::Data<BasicClient>) -> impl Responder {
         })
         .collect();
 
-    let csrf_state = state.clone();
-    let csrf_token = CsrfToken::new(state);
+    // 保存 state -> pkce_verifier
+    STATE_PKCE_MAP
+        .lock()
+        .unwrap()
+        .insert(state.clone(), pkce_verifier.secret().to_string());
+
+    //let csrf_token = CsrfToken::new(state.clone());
 
     let auth_url = data
         .get_ref()
-        .authorize_url(move || CsrfToken::new(csrf_state.clone()))
+        .authorize_url(move || CsrfToken::new(state.clone()))
         .add_scope(Scope::new("read:user".into()))
         .add_scope(Scope::new("user:email".into()))
         .set_pkce_challenge(pkce_challenge)
         .url();
 
-    // 本地存 pkce_verifier/state 的方式：可以返回前端，再由前端带回
-    // 演示时直接拼在 query（生产中应存在 redis/db）
-    let url = format!(
-        "{}{}{}&pkce={}",
-        auth_url.0.as_str(),
-        if auth_url.0.as_str().contains('?') {
-            "&"
-        } else {
-            "?"
-        },
-        csrf_token.secret(),
-        pkce_verifier.secret()
-    );
     HttpResponse::Found()
-        .append_header(("Location", url))
+        .append_header(("Location", auth_url.0.to_string()))
         .finish()
 }
 
@@ -132,8 +128,14 @@ async fn github_callback(
     query: web::Query<serde_json::Value>,
 ) -> impl Responder {
     let code = query.get("code").and_then(|v| v.as_str()).unwrap_or("");
-    let _state = query.get("state").and_then(|v| v.as_str()).unwrap_or("");
-    let pkce = query.get("pkce").and_then(|v| v.as_str()).unwrap_or("");
+    let state = query.get("state").and_then(|v| v.as_str()).unwrap_or("");
+    // let pkce = query.get("pkce").and_then(|v| v.as_str()).unwrap_or("");
+
+    // 用 state 查找 pkce_verifier
+    let pkce = {
+        let mut map = STATE_PKCE_MAP.lock().unwrap();
+        map.remove(state).unwrap_or_default()
+    };
 
     // PKCE verifier
     let pkce_verifier = PkceCodeVerifier::new(pkce.to_string());
