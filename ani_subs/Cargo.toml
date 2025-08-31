@@ -31,7 +31,6 @@ unicode-segmentation = { workspace = true }
 reqwest = { workspace = true }
 chrono ={ workspace = true }
 anyhow = { workspace = true }
-ani_spiders = { path = "../ani_spiders" }
 serde_json = { workspace = true }
 common = { path = "../common" }
 chrono-tz = { workspace = true }
