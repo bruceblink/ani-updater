@@ -1,3 +1,4 @@
+use crate::authentication::AuthMiddleware;
 use crate::routes::OAuthConfig;
 use crate::routes::get_ani;
 use crate::routes::get_anis;
@@ -38,6 +39,9 @@ pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Er
             .route("/login", web::post().to(login))
             // 获取连接的副本绑定到应用程序
             .app_data(db_pool.clone())
+            .service(
+                web::scope("/api").wrap(AuthMiddleware), // 在这里添加需要认证的路由
+            )
     })
     .listen(listener)?
     .run();
