@@ -1,4 +1,4 @@
-use crate::authentication::AuthMiddleware;
+use crate::middleware::AuthMiddleware;
 use crate::routes::OAuthConfig;
 use crate::routes::get_ani;
 use crate::routes::get_anis;
