@@ -1,5 +1,5 @@
 use actix_web::{HttpRequest, HttpResponse, Responder, cookie::Cookie, get, web};
-use common::utils::{GhUser, generate_jwt, verify_jwt};
+use common::utils::{GithubUser, generate_jwt, verify_jwt};
 use oauth2::{
     AuthorizationCode, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, Scope, TokenResponse,
     basic::BasicClient,
@@ -97,7 +97,7 @@ async fn github_callback(
     let Ok(resp) = user_res else {
         return HttpResponse::BadGateway().body("GitHub /user 请求失败");
     };
-    let Ok(mut user): Result<GhUser, _> = resp.json().await else {
+    let Ok(mut user): Result<GithubUser, _> = resp.json().await else {
         return HttpResponse::BadGateway().body("GitHub 用户信息解析失败");
     };
 
@@ -122,7 +122,7 @@ async fn github_callback(
     }
 
     // 生成 JWT 并设置 HttpOnly Cookie
-    let jwt = generate_jwt(&user, 2); // 2小时过期
+    let jwt = generate_jwt(&user, 20); // 20分钟过期
     let frontend_url =
         env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:8000".to_string());
 
@@ -145,7 +145,7 @@ async fn refresh_token(req: HttpRequest) -> impl Responder {
     if let Some(cookie) = req.cookie("access_token") {
         if let Some(claims) = verify_jwt(cookie.value()) {
             // 生成新的 JWT
-            let user = GhUser {
+            let user = GithubUser {
                 login: claims.sub,
                 id: claims.uid,
                 avatar_url: None,

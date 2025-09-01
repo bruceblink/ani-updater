@@ -12,7 +12,7 @@ pub struct Claims {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct GhUser {
+pub struct GithubUser {
     pub login: String,
     pub id: u64,
     pub avatar_url: Option<String>,
@@ -34,9 +34,11 @@ pub fn verify_jwt(token: &str) -> Option<Claims> {
 
 // 生成 Access Token
 /// 生成 JWT
-pub fn generate_jwt(user: &GhUser, exp_hours: i64) -> String {
+/// `exp_minutes` 过期时间，单位分钟
+/// 例如：60 * 2 表示 2 小时
+pub fn generate_jwt(user: &GithubUser, exp_minutes: i64) -> String {
     let secret = env::var("JWT_SECRET").expect("JWT_SECRET 未设置");
-    let exp = chrono::Utc::now() + chrono::Duration::hours(exp_hours);
+    let exp = chrono::Utc::now() + chrono::Duration::minutes(exp_minutes);
 
     let claims = Claims {
         sub: user.login.clone(),
