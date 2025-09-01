@@ -52,11 +52,18 @@ where
         let srv = Rc::clone(&self.service);
 
         Box::pin(async move {
-            let token_opt = req
+            // 1️⃣ 先尝试从 header 读取
+            let token_header = req
                 .headers()
                 .get("Authorization")
                 .and_then(|h| h.to_str().ok())
                 .and_then(|s| s.strip_prefix("Bearer ").map(|s| s.to_string()));
+
+            // 2️⃣ 再尝试从 cookie 读取
+            let token_cookie = req.cookie("access_token").map(|c| c.value().to_string());
+
+            // 3️⃣ 优先 header，其次 cookie
+            let token_opt = token_header.or(token_cookie);
 
             match token_opt {
                 Some(token) => match decode_jwt(&token) {
