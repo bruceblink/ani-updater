@@ -15,6 +15,7 @@ path = "src/lib.rs"
 
 [dependencies]
 actix-web = { workspace = true }
+actix-cors.workspace = true
 tokio = { workspace = true }
 serde = { workspace = true }
 config = { workspace = true }

@@ -16,6 +16,7 @@ categories = ["web-programming", "development-tools", "network-programming"]
 
 [workspace.dependencies]
 actix-web = "4"
+actix-cors = "0.7"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 serde = { version = "1.0", features = ["derive"] }
 config = { version = "0.15", default-features = false, features = ["yaml"] }
