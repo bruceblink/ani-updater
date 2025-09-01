@@ -127,7 +127,7 @@ async fn github_callback(
         .http_only(true)
         .secure(true) // 生产环境必须 https
         .path("/")
-        .same_site(actix_web::cookie::SameSite::Lax)
+        .same_site(actix_web::cookie::SameSite::None) // 为None时可以跨站点请求携带 Cookie
         .finish();
 
     HttpResponse::Found()
