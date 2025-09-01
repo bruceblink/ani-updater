@@ -14,6 +14,7 @@
 我在项目是使用的是环境变量的方式配置的
 需要配置以下环境变量
 ```bash
+JWT_SECRET=${your_jwt_secret} # 用于JWT签名的密钥
 GITHUB_CLIENT_ID=${your_client_id} # 从GitHub OAuth应用获取
 GITHUB_CLIENT_SECRET=${your_client_secret} # 从GitHub OAuth应用获取
 OAUTH_BASE_URL=${HomePage URL} # 后端应用服务的URL

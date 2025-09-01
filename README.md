@@ -35,8 +35,10 @@ ani-updater/
 - Docker（可选，推荐用于本地开发）
 
 ### 2. 配置
-
-编辑 `configuration/base.yaml`、`local.yaml` 等文件，配置数据库、服务端口等参数。
+配置文件位于 `configuration/` 目录下。
+编辑 [`configuration/base.yaml`、`local.yaml`](configuration) 等文件，配置数据库、服务端口等参数。
+环境变量配置
+参照[github_oauth2.md](docs/github_oauth2.md)配置GitHub第三方登录所需的环境变量。
 
 ### 3. 数据库初始化(可选，现在仅仅CI测试时需要)
 
