@@ -11,7 +11,7 @@ use ani_subs::telemetry::{get_subscriber, init_subscriber};
 const DEFAULT_MAX_CONNECTIONS: u32 = 10;
 
 #[tokio::main]
-async fn main() -> std::io::Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     //初始化日志组件
     let subscriber = get_subscriber("ani-updater".into(), "info".into(), std::io::stdout);
     init_subscriber(subscriber);
@@ -44,7 +44,8 @@ async fn main() -> std::io::Result<()> {
         configuration.application.host, configuration.application.port
     );
     let listener = TcpListener::bind(address).expect("Failed to bind random port");
-    // 启动web服务
-    run(listener, connection_pool)?.await?;
+    // 启动 web 服务
+    let server = run(listener, connection_pool)?; // run 返回 Result<Server, Box<dyn Error>>
+    server.await?;
     Ok(())
 }

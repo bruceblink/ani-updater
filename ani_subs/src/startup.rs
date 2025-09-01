@@ -11,15 +11,19 @@ use actix_web::http::header;
 use actix_web::{App, HttpServer, web};
 use oauth2::basic::BasicClient;
 use sqlx::PgPool;
+use std::error::Error;
 use std::net::TcpListener;
 use std::sync::Arc;
 use tracing::info;
 use tracing_actix_web::TracingLogger;
 
-pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Error> {
+pub fn run(
+    listener: TcpListener,
+    db_pool: PgPool,
+) -> anyhow::Result<Server, Box<dyn Error + Send + Sync>> {
     dotenvy::dotenv().ok();
 
-    let config = OAuthConfig::from_env();
+    let config = OAuthConfig::from_env()?;
     let oauth = BasicClient::new(
         config.client_id,
         Some(config.client_secret),
