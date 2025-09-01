@@ -1,10 +1,10 @@
 use crate::middleware::{AuthMiddleware, CharsetMiddleware};
-use crate::routes::OAuthConfig;
 use crate::routes::get_ani;
 use crate::routes::get_anis;
 use crate::routes::health_check;
 use crate::routes::login;
-use crate::routes::{github_callback, github_login, index, me};
+use crate::routes::{OAuthConfig, logout};
+use crate::routes::{github_callback, github_login, me};
 use actix_web::dev::Server;
 use actix_web::{App, HttpServer, web};
 use oauth2::basic::BasicClient;
@@ -31,9 +31,9 @@ pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Er
             .wrap(CharsetMiddleware)
             .app_data(web::Data::new(oauth.clone()))
             .app_data(db_pool.clone())
-            .service(index)
             .service(github_login)
             .service(github_callback)
+            .service(logout)
             .route("/login", web::post().to(login))
             .route("/health_check", web::get().to(health_check))
             .service(

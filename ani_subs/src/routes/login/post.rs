@@ -1,5 +1,6 @@
 use crate::dao::get_user_by_username;
-use actix_web::{HttpResponse, Responder, web};
+use actix_web::cookie::Cookie;
+use actix_web::{HttpResponse, Responder, post, web};
 use bcrypt::verify;
 use chrono::Utc;
 use jsonwebtoken::{EncodingKey, Header, encode};
@@ -47,4 +48,16 @@ pub async fn login(
     };
 
     HttpResponse::Ok().json(serde_json::json!({ "token": token }))
+}
+
+#[post("/logout")]
+async fn logout() -> impl Responder {
+    // 设置一个同名 cookie，立即过期
+    let cookie = Cookie::build("access_token", "")
+        .path("/")
+        .http_only(true)
+        .max_age(time::Duration::seconds(0)) // 设置立即过期
+        .finish();
+
+    HttpResponse::Ok().cookie(cookie).body("logged out")
 }
