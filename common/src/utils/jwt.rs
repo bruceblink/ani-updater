@@ -59,9 +59,9 @@ pub fn generate_jwt(user: &GithubUser, exp_minutes: i64) -> String {
 // 生成 Refresh Token（JWT 也可以用 JWT，但加随机字符串更安全）
 pub fn generate_refresh_token() -> String {
     use rand::Rng;
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let token: String = (0..64)
-        .map(|_| rng.sample(rand::distributions::Alphanumeric) as char)
+        .map(|_| rng.sample(rand::distr::Alphanumeric) as char)
         .collect();
     token
 }

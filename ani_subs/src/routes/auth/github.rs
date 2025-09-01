@@ -37,7 +37,7 @@ async fn github_login(data: web::Data<BasicClient>) -> impl Responder {
     let state: String = (0..32)
         .map(|_| {
             let chars = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-            chars[rand::thread_rng().gen_range(0..chars.len())] as char
+            chars[rand::rng().random_range(0..chars.len())] as char
         })
         .collect();
 
