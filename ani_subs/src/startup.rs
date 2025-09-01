@@ -13,7 +13,7 @@ use oauth2::basic::BasicClient;
 use sqlx::PgPool;
 use std::net::TcpListener;
 use std::sync::Arc;
-use tracing::{info};
+use tracing::info;
 use tracing_actix_web::TracingLogger;
 
 pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Error> {
