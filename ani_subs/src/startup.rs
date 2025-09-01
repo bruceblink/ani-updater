@@ -36,7 +36,6 @@ pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Er
             .service(github_callback)
             .route("/login", web::post().to(login))
             .route("/health_check", web::get().to(health_check))
-            // 获取连接的副本绑定到应用程序
             .service(
                 web::scope("/api")
                     .wrap(AuthMiddleware) // 在这里添加需要认证的路由
