@@ -21,10 +21,10 @@ async fn index() -> impl Responder {
 
 #[get("/me")]
 async fn me(req: HttpRequest) -> impl Responder {
-    if let Some(cookie) = req.cookie("access_token") {
-        if let Some(claims) = verify_jwt(cookie.value()) {
-            return HttpResponse::Ok().json(claims);
-        }
+    if let Some(cookie) = req.cookie("access_token")
+        && let Some(claims) = verify_jwt(cookie.value())
+    {
+        return HttpResponse::Ok().json(claims);
     }
     HttpResponse::Unauthorized().body("未携带或非法的 JWT")
 }
@@ -102,23 +102,20 @@ async fn github_callback(
     };
 
     // 补充邮箱
-    if user.email.is_none() {
-        if let Ok(resp) = HTTP
+    if user.email.is_none()
+        && let Ok(resp) = HTTP
             .get("https://api.github.com/user/emails")
             .bearer_auth(token.access_token().secret())
             .header("User-Agent", "actix-github-oauth-demo")
             .send()
             .await
-        {
-            if let Ok(emails) = resp.json::<Vec<serde_json::Value>>().await {
-                if let Some(email) = emails.first() {
-                    user.email = email
-                        .get("email")
-                        .and_then(|e| e.as_str())
-                        .map(String::from);
-                }
-            }
-        }
+        && let Ok(emails) = resp.json::<Vec<serde_json::Value>>().await
+        && let Some(email) = emails.first()
+    {
+        user.email = email
+            .get("email")
+            .and_then(|e| e.as_str())
+            .map(String::from);
     }
 
     // 生成 JWT 并设置 HttpOnly Cookie
@@ -142,27 +139,27 @@ async fn github_callback(
 /// 刷新 token 接口
 #[get("/auth/refresh")]
 async fn refresh_token(req: HttpRequest) -> impl Responder {
-    if let Some(cookie) = req.cookie("access_token") {
-        if let Some(claims) = verify_jwt(cookie.value()) {
-            // 生成新的 JWT
-            let user = GithubUser {
-                login: claims.sub,
-                id: claims.uid,
-                avatar_url: None,
-                name: claims.name,
-                email: claims.email,
-            };
-            let new_jwt = generate_jwt(&user, 2);
+    if let Some(cookie) = req.cookie("access_token")
+        && let Some(claims) = verify_jwt(cookie.value())
+    {
+        // 生成新的 JWT
+        let user = GithubUser {
+            login: claims.sub,
+            id: claims.uid,
+            avatar_url: None,
+            name: claims.name,
+            email: claims.email,
+        };
+        let new_jwt = generate_jwt(&user, 2);
 
-            let new_cookie = Cookie::build("access_token", new_jwt)
-                .http_only(true)
-                .secure(true)
-                .path("/")
-                .same_site(actix_web::cookie::SameSite::Lax)
-                .finish();
+        let new_cookie = Cookie::build("access_token", new_jwt)
+            .http_only(true)
+            .secure(true)
+            .path("/")
+            .same_site(actix_web::cookie::SameSite::Lax)
+            .finish();
 
-            return HttpResponse::Ok().cookie(new_cookie).body("刷新成功");
-        }
+        return HttpResponse::Ok().cookie(new_cookie).body("刷新成功");
     }
     HttpResponse::Unauthorized().body("无效 token")
 }
