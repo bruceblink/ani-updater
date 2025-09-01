@@ -13,6 +13,7 @@ use oauth2::basic::BasicClient;
 use sqlx::PgPool;
 use std::net::TcpListener;
 use std::sync::Arc;
+use tracing::{info};
 use tracing_actix_web::TracingLogger;
 
 pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Error> {
@@ -34,6 +35,7 @@ pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Er
         .split(';')
         .map(|s| s.to_string())
         .collect();
+    info!("允许的跨域请求的前端域名白名单列表: {allowed_origins:?}");
     let allowed_origins = Arc::new(allowed_origins);
 
     let server = HttpServer::new(move || {
