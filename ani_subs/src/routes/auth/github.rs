@@ -1,5 +1,5 @@
 use actix_web::{HttpRequest, HttpResponse, Responder, cookie::Cookie, get, web};
-use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use common::utils::{GhUser, generate_jwt, verify_jwt};
 use oauth2::{
     AuthorizationCode, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, Scope, TokenResponse,
     basic::BasicClient,
@@ -7,64 +7,12 @@ use oauth2::{
 use once_cell::sync::Lazy;
 use rand::Rng;
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, env, sync::Mutex};
 
 static HTTP: Lazy<Client> = Lazy::new(Client::new);
 // 全局内存存储 state -> pkce_verifier
 static STATE_PKCE_MAP: Lazy<Mutex<HashMap<String, String>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
-
-#[derive(Debug, Serialize, Deserialize)]
-struct Claims {
-    sub: String, // GitHub login
-    uid: u64,    // GitHub ID
-    exp: usize,  // 过期时间戳
-    name: Option<String>,
-    email: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct GhUser {
-    login: String,
-    id: u64,
-    avatar_url: Option<String>,
-    name: Option<String>,
-    email: Option<String>,
-}
-
-/// 生成 JWT
-fn generate_jwt(user: &GhUser, exp_hours: i64) -> String {
-    let secret = env::var("JWT_SECRET").expect("JWT_SECRET 未设置");
-    let exp = chrono::Utc::now() + chrono::Duration::hours(exp_hours);
-
-    let claims = Claims {
-        sub: user.login.clone(),
-        uid: user.id,
-        exp: exp.timestamp() as usize,
-        name: user.name.clone(),
-        email: user.email.clone(),
-    };
-
-    encode(
-        &Header::default(),
-        &claims,
-        &EncodingKey::from_secret(secret.as_ref()),
-    )
-    .unwrap()
-}
-
-/// 校验 JWT
-fn verify_jwt(token: &str) -> Option<Claims> {
-    let secret = env::var("JWT_SECRET").ok()?;
-    let decoded = decode::<Claims>(
-        token,
-        &DecodingKey::from_secret(secret.as_ref()),
-        &Validation::default(),
-    )
-    .ok()?;
-    Some(decoded.claims)
-}
 
 #[get("/")]
 async fn index() -> impl Responder {
