@@ -53,10 +53,7 @@ pub fn run(
                     .any(|o| origin.as_bytes() == o.as_bytes())
             })
             .allowed_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS"])
-            .allowed_headers(vec![
-                header::HeaderName::from_static("authorization"),
-                header::HeaderName::from_static("content-type"),
-            ])
+            .allowed_headers(vec![header::AUTHORIZATION, header::CONTENT_TYPE])
             .supports_credentials(); // 允许发送 cookie
 
         App::new()
