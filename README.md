@@ -38,7 +38,7 @@ ani-updater/
 
 编辑 `configuration/base.yaml`、`local.yaml` 等文件，配置数据库、服务端口等参数。
 
-### 3. 数据库初始化(可选)
+### 3. 数据库初始化(可选，现在仅仅CI测试时需要)
 
 ```bash
 # 使用脚本初始化数据库
