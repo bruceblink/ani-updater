@@ -31,7 +31,7 @@ ani-updater/
 ### 1. 环境准备
 
 - Rust 1.86+
-- PostgreSQL 15+
+- PostgreSQL 17+
 - Docker（可选，推荐用于本地开发）
 
 ### 2. 配置
@@ -71,6 +71,7 @@ docker-compose -f docker/docker-compose.yml -p ani-updater up -d
 
 - 订阅服务 API 入口见 `ani_subs/src/startup.rs`
 - 具体接口文档可参考代码注释或后续补充的 OpenAPI 文档
+- 关于如何使用 GitHub 第三方登录请参考[GitHub第三方登录使用说明](docs/github_oauth2.md)
 
 ## 依赖说明
 
