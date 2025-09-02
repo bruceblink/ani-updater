@@ -1,6 +1,6 @@
 use crate::service::github_user_register;
 use actix_web::{HttpRequest, HttpResponse, Responder, cookie::Cookie, get, web};
-use common::utils::{GithubUser, generate_jwt, verify_jwt};
+use common::utils::{GithubUser, generate_jwt, generate_refresh_token, verify_jwt};
 use oauth2::{
     AuthorizationCode, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, Scope, TokenResponse,
     basic::BasicClient,
@@ -19,6 +19,7 @@ static STATE_PKCE_MAP: Lazy<Mutex<HashMap<String, String>>> =
 static USER_AGENT: &str = "ani-updater/0.1 (+https://github.com/likanug/ani-updater)";
 
 static ACCESS_TOKEN: &str = "access_token";
+static REFRESH_TOKEN: &str = "refresh_token";
 
 #[get("/")]
 async fn index() -> impl Responder {
@@ -125,27 +126,43 @@ async fn github_callback(
             .map(String::from);
     }
 
-    // 生成 JWT 并设置 HttpOnly Cookie
+    // 生成 assess_token
     let jwt_access = match generate_jwt(&user, 20) {
         Ok(token) => token,
-        Err(_) => return HttpResponse::InternalServerError().body("JWT 生成失败"),
+        Err(_) => return HttpResponse::InternalServerError().body("assess_token 生成失败"),
     };
-    // github 用户注册到当前系统
-    let _ = github_user_register(pool, user, Option::from(jwt_access.clone())).await;
+
+    // 生成 refresh_token
+    let jwt_refresh = match generate_refresh_token(15) {
+        Ok(token) => token,
+        Err(_) => return HttpResponse::InternalServerError().body("refresh_token 生成失败"),
+    };
 
     let frontend_url =
         env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:8000".to_string());
 
-    let access_cookie = Cookie::build("access_token", jwt_access)
+    // 生成 access_token的cookie
+    let access_cookie = Cookie::build(ACCESS_TOKEN, jwt_access.clone())
         .http_only(true)
         .secure(true) // 生产环境必须 https
         .path("/")
         .same_site(actix_web::cookie::SameSite::None) // 为None时可以跨站点请求携带 Cookie
         .finish();
+    // 生成 refresh_token的cookie
+    let refresh_cookie = Cookie::build(REFRESH_TOKEN, jwt_refresh.clone().token)
+        .http_only(true)
+        .secure(true) // 生产环境必须 https
+        .path("/")
+        .same_site(actix_web::cookie::SameSite::None) // 为None时可以跨站点请求携带 Cookie
+        .finish();
+    // github 用户注册到当前系统
+    let _ = github_user_register(pool, user, Option::from(jwt_access), jwt_refresh).await;
 
+    //设置 HttpOnly Cookie
     HttpResponse::Found()
         .append_header(("Location", frontend_url))
         .cookie(access_cookie)
+        .cookie(refresh_cookie)
         .finish()
 }
 
