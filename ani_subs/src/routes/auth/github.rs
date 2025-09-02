@@ -22,7 +22,7 @@ async fn index() -> impl Responder {
 #[get("/me")]
 async fn me(req: HttpRequest) -> impl Responder {
     if let Some(cookie) = req.cookie("access_token")
-        && let Some(claims) = verify_jwt(cookie.value())
+        && let Ok(claims) = verify_jwt(cookie.value())
     {
         return HttpResponse::Ok().json(claims);
     }
@@ -119,7 +119,10 @@ async fn github_callback(
     }
 
     // 生成 JWT 并设置 HttpOnly Cookie
-    let jwt = generate_jwt(&user, 20); // 20分钟过期
+    let jwt = match generate_jwt(&user, 20) {
+        Ok(token) => token,
+        Err(_) => return HttpResponse::InternalServerError().body("JWT 生成失败"),
+    };
     let frontend_url =
         env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:8000".to_string());
 
@@ -140,7 +143,7 @@ async fn github_callback(
 #[get("/auth/refresh")]
 async fn refresh_token(req: HttpRequest) -> impl Responder {
     if let Some(cookie) = req.cookie("access_token")
-        && let Some(claims) = verify_jwt(cookie.value())
+        && let Ok(claims) = verify_jwt(cookie.value())
     {
         // 生成新的 JWT
         let user = GithubUser {
@@ -150,7 +153,10 @@ async fn refresh_token(req: HttpRequest) -> impl Responder {
             name: claims.name,
             email: claims.email,
         };
-        let new_jwt = generate_jwt(&user, 2);
+        let new_jwt = match generate_jwt(&user, 20) {
+            Ok(token) => token,
+            Err(_) => return HttpResponse::InternalServerError().body("JWT 生成失败"),
+        };
 
         let new_cookie = Cookie::build("access_token", new_jwt)
             .http_only(true)
