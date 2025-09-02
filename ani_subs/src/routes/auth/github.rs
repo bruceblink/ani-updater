@@ -1,3 +1,4 @@
+use crate::service::github_user_register;
 use actix_web::{HttpRequest, HttpResponse, Responder, cookie::Cookie, get, web};
 use common::utils::{GithubUser, generate_jwt, verify_jwt};
 use oauth2::{
@@ -7,6 +8,7 @@ use oauth2::{
 use once_cell::sync::Lazy;
 use rand::Rng;
 use reqwest::Client;
+use sqlx::PgPool;
 use std::{collections::HashMap, env, sync::Mutex};
 
 static HTTP: Lazy<Client> = Lazy::new(Client::new);
@@ -68,6 +70,7 @@ async fn github_login(data: web::Data<BasicClient>) -> impl Responder {
 async fn github_callback(
     data: web::Data<BasicClient>,
     query: web::Query<HashMap<String, String>>,
+    pool: web::Data<PgPool>,
 ) -> impl Responder {
     let code = query.get("code").cloned().unwrap_or_default();
     let state = query.get("state").cloned().unwrap_or_default();
@@ -127,6 +130,9 @@ async fn github_callback(
         Ok(token) => token,
         Err(_) => return HttpResponse::InternalServerError().body("JWT 生成失败"),
     };
+    // github 用户注册到当前系统
+    let _ = github_user_register(pool, user, Option::from(jwt.clone())).await;
+
     let frontend_url =
         env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:8000".to_string());
 

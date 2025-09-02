@@ -1,6 +1,7 @@
-use crate::domain::dto::{NewUser, UserDto};
+use crate::domain::dto::{NewUser, UserDto, UserIdentityDto};
 use crate::domain::po::UserInfo;
 use chrono_tz::Asia::Shanghai;
+use futures::TryFutureExt;
 use sqlx::PgPool;
 
 /// 根据用户名查询用户信息
@@ -81,5 +82,44 @@ pub async fn insert_users(users: &[NewUser], pool: &PgPool) -> anyhow::Result<()
 
     // 4️⃣ 执行
     sql.execute(pool).await?;
+    Ok(())
+}
+
+/// 新增第三方登录用户
+pub async fn upsert_user_with_third_part(
+    user: &UserIdentityDto,
+    pool: &PgPool,
+) -> anyhow::Result<()> {
+    let _ = sqlx::query(
+        r#"
+            WITH ins_user AS (
+                INSERT INTO user_info (email, username, display_name, avatar_url)
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT (email) DO UPDATE
+                    SET username = EXCLUDED.username,
+                        display_name = EXCLUDED.display_name,
+                        avatar_url = EXCLUDED.avatar_url
+                RETURNING id
+            )
+            INSERT INTO user_identities (user_id, provider, provider_user_id, refresh_token, expires_at)
+            SELECT id, $5, $6, $7, now() + interval '20 min'
+            FROM ins_user
+            ON CONFLICT (provider, provider_user_id) DO NOTHING
+            RETURNING id
+        "#,
+        )
+        .bind(&user.email)
+        .bind(&user.username)
+        .bind(&user.display_name)
+        .bind(&user.avatar_url)
+        .bind(&user.provider)
+        .bind(&user.provider_user_id)
+        .bind(&user.refresh_token)
+        .fetch_one(pool)
+        .map_err(|e| {
+            tracing::error!("插入或更新 用户数据 {:?} 失败: {}", user, e);
+            anyhow::anyhow!(e)
+        }).await?;
+
     Ok(())
 }

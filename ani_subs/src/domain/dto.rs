@@ -33,3 +33,15 @@ pub struct NewUser {
     pub display_name: String,
     pub avatar_url: String,
 }
+
+/// 用户身份Dto,用于关联第三方登录认证的数据
+#[derive(Serialize, Debug, Clone)]
+pub struct UserIdentityDto {
+    pub provider_user_id: String,
+    pub provider: String,
+    pub email: Option<String>,
+    pub username: String,
+    pub display_name: Option<String>,
+    pub avatar_url: Option<String>,
+    pub refresh_token: Option<String>,
+}
