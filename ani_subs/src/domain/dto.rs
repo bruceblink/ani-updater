@@ -43,5 +43,5 @@ pub struct UserIdentityDto {
     pub username: String,
     pub display_name: Option<String>,
     pub avatar_url: Option<String>,
-    pub refresh_token: Option<String>,
+    pub access_token: Option<String>,
 }
