@@ -1,3 +1,5 @@
+use anyhow::{Context, Result};
+use chrono::Utc;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 use std::env;
@@ -20,25 +22,31 @@ pub struct GithubUser {
     pub email: Option<String>,
 }
 
+/// 获取 JWT_SECRET
+fn jwt_secret() -> Result<String> {
+    env::var("JWT_SECRET").context("环境变量 JWT_SECRET 未设置")
+}
+
 /// 校验 JWT
-pub fn verify_jwt(token: &str) -> Option<Claims> {
-    let secret = env::var("JWT_SECRET").expect("JWT_SECRET 未设置");
+pub fn verify_jwt(token: &str) -> Result<Claims> {
+    let secret = jwt_secret()?;
     let decoded = decode::<Claims>(
         token,
         &DecodingKey::from_secret(secret.as_ref()),
         &Validation::default(),
     )
-    .ok()?;
-    Some(decoded.claims)
+    .context("JWT 验证失败")?;
+
+    Ok(decoded.claims)
 }
 
 // 生成 Access Token
 /// 生成 JWT
 /// `exp_minutes` 过期时间，单位分钟
 /// 例如：60 * 2 表示 2 小时
-pub fn generate_jwt(user: &GithubUser, exp_minutes: i64) -> String {
-    let secret = env::var("JWT_SECRET").expect("JWT_SECRET 未设置");
-    let exp = chrono::Utc::now() + chrono::Duration::minutes(exp_minutes);
+pub fn generate_jwt(user: &GithubUser, exp_minutes: i64) -> Result<String> {
+    let secret = jwt_secret()?;
+    let exp = Utc::now() + chrono::Duration::minutes(exp_minutes);
 
     let claims = Claims {
         sub: user.login.clone(),
@@ -48,31 +56,34 @@ pub fn generate_jwt(user: &GithubUser, exp_minutes: i64) -> String {
         email: user.email.clone(),
     };
 
-    encode(
+    let token = encode(
         &Header::default(),
         &claims,
         &EncodingKey::from_secret(secret.as_ref()),
     )
-    .unwrap()
+    .context("JWT 生成失败")?;
+
+    Ok(token)
 }
 
 // 生成 Refresh Token（JWT 也可以用 JWT，但加随机字符串更安全）
 pub fn generate_refresh_token() -> String {
     use rand::Rng;
     let mut rng = rand::rng();
-    let token: String = (0..64)
+    (0..64)
         .map(|_| rng.sample(rand::distr::Alphanumeric) as char)
-        .collect();
-    token
+        .collect()
 }
 
 // 解析 Access Token
-pub fn decode_jwt(token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
-    let jwt_secret = env::var("JWT_SECRET").expect("JWT_SECRET 未设置");
+pub fn decode_jwt(token: &str) -> Result<Claims> {
+    let secret = jwt_secret()?;
     let token_data = decode::<Claims>(
         token,
-        &DecodingKey::from_secret(jwt_secret.as_ref()),
+        &DecodingKey::from_secret(secret.as_ref()),
         &Validation::default(),
-    )?;
+    )
+    .context("JWT 解析失败")?;
+
     Ok(token_data.claims)
 }

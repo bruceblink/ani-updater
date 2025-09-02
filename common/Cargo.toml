@@ -20,3 +20,4 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 jsonwebtoken.workspace = true
 rand.workspace = true
+anyhow.workspace = true
