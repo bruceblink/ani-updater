@@ -1,6 +1,8 @@
 use anyhow::{Context, Result};
-use chrono::Utc;
+use chrono::{Duration, Utc};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use rand::Rng;
+use rand::distr::Alphanumeric;
 use serde::{Deserialize, Serialize};
 use std::env;
 
@@ -20,6 +22,13 @@ pub struct GithubUser {
     pub avatar_url: Option<String>,
     pub name: Option<String>,
     pub email: Option<String>,
+}
+
+/// refresh_token的结构
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RefreshToken {
+    pub token: String,
+    pub expires_at: chrono::DateTime<Utc>,
 }
 
 /// 获取 JWT_SECRET
@@ -46,7 +55,7 @@ pub fn verify_jwt(token: &str) -> Result<Claims> {
 /// 例如：60 * 2 表示 2 小时
 pub fn generate_jwt(user: &GithubUser, exp_minutes: i64) -> Result<String> {
     let secret = jwt_secret()?;
-    let exp = Utc::now() + chrono::Duration::minutes(exp_minutes);
+    let exp = Utc::now() + Duration::minutes(exp_minutes);
 
     let claims = Claims {
         sub: user.login.clone(),
@@ -66,13 +75,20 @@ pub fn generate_jwt(user: &GithubUser, exp_minutes: i64) -> Result<String> {
     Ok(token)
 }
 
-// 生成 Refresh Token（JWT 也可以用 JWT，但加随机字符串更安全）
-pub fn generate_refresh_token() -> String {
-    use rand::Rng;
-    let mut rng = rand::rng();
-    (0..64)
-        .map(|_| rng.sample(rand::distr::Alphanumeric) as char)
-        .collect()
+/// 生成 Refresh Token（JWT 也可以用 JWT，但加随机字符串更安全）
+/// `exp_days`: token的有效期，单位天数
+pub fn generate_refresh_token(exp_days: i64) -> Result<RefreshToken> {
+    // 随机字符串 (64 字符，字母数字)
+    let token: String = rand::rng()
+        .sample_iter(&Alphanumeric)
+        .take(64)
+        .map(char::from)
+        .collect();
+
+    // 设置过期时间 (比如 30 天)
+    let expires_at = Utc::now() + Duration::days(exp_days);
+
+    Ok(RefreshToken { token, expires_at })
 }
 
 // 解析 Access Token
