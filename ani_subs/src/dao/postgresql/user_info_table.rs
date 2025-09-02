@@ -1,5 +1,5 @@
 use crate::domain::dto::{NewUser, UserDto};
-use crate::domain::po::User;
+use crate::domain::po::UserInfo;
 use chrono_tz::Asia::Shanghai;
 use sqlx::PgPool;
 
@@ -8,7 +8,7 @@ pub async fn get_user_by_username(
     username: String,
     db_pool: &PgPool,
 ) -> anyhow::Result<Option<UserDto>> {
-    let rec = sqlx::query_as::<_, User>(
+    let rec = sqlx::query_as::<_, UserInfo>(
         r#"
                 SELECT 
                     id,
@@ -19,7 +19,7 @@ pub async fn get_user_by_username(
                     avatar_url,
                     created_at,
                     updated_at
-                FROM users
+                FROM user_info
                 WHERE
                   username = $1
             ;"#,
@@ -64,7 +64,7 @@ pub async fn insert_users(users: &[NewUser], pool: &PgPool) -> anyhow::Result<()
 
     // 2️⃣ 拼接完整 SQL
     let query = format!(
-        "INSERT INTO users (email, username, password, display_name, avatar_url) VALUES {}",
+        "INSERT INTO user_info (email, username, password, display_name, avatar_url) VALUES {}",
         placeholders.join(", ")
     );
 

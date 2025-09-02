@@ -70,7 +70,7 @@ pub struct AniHistoryInfo {
 }
 
 #[derive(Serialize, Debug, Clone, FromRow)]
-pub struct User {
+pub struct UserInfo {
     pub id: i64,
     pub email: String,
     pub username: String,
