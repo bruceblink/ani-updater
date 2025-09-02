@@ -2,12 +2,14 @@ pub mod date_utils;
 pub mod http_client;
 mod jwt;
 pub use jwt::*;
+use once_cell::sync::Lazy;
+use regex::Regex;
+
+#[allow(clippy::expect_used)]
+static DIGIT_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\d+").expect("初始化 DIGIT_RE 失败：正则语法错误"));
 
 pub fn extract_number(text: &str) -> Option<i32> {
-    use once_cell::sync::Lazy;
-    use regex::Regex;
-
-    static DIGIT_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\d+").unwrap());
     DIGIT_RE
         .find(text)
         .and_then(|m| m.as_str().parse::<i32>().ok())

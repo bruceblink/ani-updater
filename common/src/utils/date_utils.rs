@@ -63,23 +63,42 @@ static TODAY_SLASH_CACHE: Lazy<RwLock<String>> = Lazy::new(|| {
 ///
 /// 多线程安全，读性能较好，跨天自动刷新缓存。
 pub fn get_today_slash() -> String {
-    let now_str = format_now(DateFormat::Slash).to_string();
+    let now_str = Local::now().format("%Y/%m/%d").to_string();
 
-    {
-        let read_cache = TODAY_SLASH_CACHE.read().unwrap();
-        if *read_cache == now_str {
-            // 缓存是最新，直接返回克隆
-            return read_cache.clone();
+    // 先尝试获取读锁
+    match TODAY_SLASH_CACHE.read() {
+        Ok(read_cache) => {
+            if *read_cache == now_str {
+                return read_cache.clone();
+            }
+            // 读锁过期，需要刷新
         }
-        // 读锁范围结束，准备升级为写锁
+        Err(poisoned) => {
+            // 如果锁被 Poisoned，依然返回锁里的内容
+            let read_cache = poisoned.into_inner();
+            if *read_cache == now_str {
+                return read_cache.clone();
+            }
+        }
     }
 
-    // 需要刷新缓存，写锁更新
-    let mut write_cache = TODAY_SLASH_CACHE.write().unwrap();
-    if *write_cache != now_str {
-        *write_cache = now_str.clone();
+    // 获取写锁，更新缓存
+    match TODAY_SLASH_CACHE.write() {
+        Ok(mut write_cache) => {
+            if *write_cache != now_str {
+                *write_cache = now_str.clone();
+            }
+            write_cache.clone()
+        }
+        Err(poisoned) => {
+            // 写锁被 Poisoned，仍然返回缓存中的内容
+            let mut write_cache = poisoned.into_inner();
+            if *write_cache != now_str {
+                *write_cache = now_str.clone();
+            }
+            write_cache.clone()
+        }
     }
-    write_cache.clone()
 }
 
 /// 当前时间戳（毫秒）
@@ -171,6 +190,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::unwrap_used)]
     fn test_parse_date_to_millis_utc() {
         let date = NaiveDate::parse_from_str("2025/06/17", "%Y/%m/%d").unwrap();
         let dt = date.and_hms_opt(0, 0, 0).unwrap();
@@ -180,6 +200,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::unwrap_used)]
     fn test_parse_date_to_millis_local() {
         let date = NaiveDate::parse_from_str("2025/06/17", "%Y/%m/%d").unwrap();
         let dt = date.and_hms_opt(0, 0, 0).unwrap();
@@ -208,7 +229,7 @@ mod tests {
             "星期六",
             "星期日",
         ];
-        let name_cn = WEEKDAY_CN[(weekday.num_days_from_monday()) as usize];
+        let name_cn = WEEKDAY_CN[weekday.num_days_from_monday() as usize];
         assert!(name_cn.starts_with("星期"));
     }
 
