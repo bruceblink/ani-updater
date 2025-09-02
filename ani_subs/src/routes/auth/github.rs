@@ -126,17 +126,17 @@ async fn github_callback(
     }
 
     // 生成 JWT 并设置 HttpOnly Cookie
-    let jwt = match generate_jwt(&user, 20) {
+    let jwt_access = match generate_jwt(&user, 20) {
         Ok(token) => token,
         Err(_) => return HttpResponse::InternalServerError().body("JWT 生成失败"),
     };
     // github 用户注册到当前系统
-    let _ = github_user_register(pool, user, Option::from(jwt.clone())).await;
+    let _ = github_user_register(pool, user, Option::from(jwt_access.clone())).await;
 
     let frontend_url =
         env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:8000".to_string());
 
-    let cookie = Cookie::build("access_token", jwt)
+    let access_cookie = Cookie::build("access_token", jwt_access)
         .http_only(true)
         .secure(true) // 生产环境必须 https
         .path("/")
@@ -145,7 +145,7 @@ async fn github_callback(
 
     HttpResponse::Found()
         .append_header(("Location", frontend_url))
-        .cookie(cookie)
+        .cookie(access_cookie)
         .finish()
 }
 
