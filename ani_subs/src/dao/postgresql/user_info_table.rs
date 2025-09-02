@@ -115,7 +115,7 @@ pub async fn upsert_user_with_third_part(
         .bind(&user.provider)
         .bind(&user.provider_user_id)
         .bind(&user.access_token)
-        .fetch_one(pool)
+        .fetch_optional(pool)
         .map_err(|e| {
             tracing::error!("插入或更新 用户数据 {:?} 失败: {}", user, e);
             anyhow::anyhow!(e)
