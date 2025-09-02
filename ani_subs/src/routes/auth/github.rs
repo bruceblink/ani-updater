@@ -14,6 +14,8 @@ static HTTP: Lazy<Client> = Lazy::new(Client::new);
 static STATE_PKCE_MAP: Lazy<Mutex<HashMap<String, String>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
+static USER_AGENT: &str = "ani-updater/0.1 (+https://github.com/likanug/ani-updater)";
+
 #[get("/")]
 async fn index() -> impl Responder {
     HttpResponse::Ok().body("访问 /auth/github/login 开始 GitHub 登录")
@@ -90,7 +92,7 @@ async fn github_callback(
     let user_res = HTTP
         .get("https://api.github.com/user")
         .bearer_auth(token.access_token().secret())
-        .header("User-Agent", "actix-github-oauth-demo")
+        .header("User-Agent", USER_AGENT)
         .send()
         .await;
 
@@ -106,7 +108,7 @@ async fn github_callback(
         && let Ok(resp) = HTTP
             .get("https://api.github.com/user/emails")
             .bearer_auth(token.access_token().secret())
-            .header("User-Agent", "actix-github-oauth-demo")
+            .header("User-Agent", USER_AGENT)
             .send()
             .await
         && let Ok(emails) = resp.json::<Vec<serde_json::Value>>().await
