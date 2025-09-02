@@ -16,6 +16,8 @@ static STATE_PKCE_MAP: Lazy<Mutex<HashMap<String, String>>> =
 
 static USER_AGENT: &str = "ani-updater/0.1 (+https://github.com/likanug/ani-updater)";
 
+static ACCESS_TOKEN: &str = "access_token";
+
 #[get("/")]
 async fn index() -> impl Responder {
     HttpResponse::Ok().body("访问 /auth/github/login 开始 GitHub 登录")
@@ -23,7 +25,7 @@ async fn index() -> impl Responder {
 
 #[get("/me")]
 async fn me(req: HttpRequest) -> impl Responder {
-    if let Some(cookie) = req.cookie("access_token")
+    if let Some(cookie) = req.cookie(ACCESS_TOKEN)
         && let Ok(claims) = verify_jwt(cookie.value())
     {
         return HttpResponse::Ok().json(claims);
@@ -85,7 +87,7 @@ async fn github_callback(
         .await;
 
     let Ok(token) = token_res else {
-        return HttpResponse::BadRequest().body("换取 access_token 失败");
+        return HttpResponse::BadRequest().body("换取 github 的 access_token 失败");
     };
 
     // 拉取 GitHub 用户
@@ -144,7 +146,7 @@ async fn github_callback(
 /// 刷新 token 接口
 #[get("/auth/refresh")]
 async fn refresh_token(req: HttpRequest) -> impl Responder {
-    if let Some(cookie) = req.cookie("access_token")
+    if let Some(cookie) = req.cookie(ACCESS_TOKEN)
         && let Ok(claims) = verify_jwt(cookie.value())
     {
         // 生成新的 JWT
@@ -160,7 +162,7 @@ async fn refresh_token(req: HttpRequest) -> impl Responder {
             Err(_) => return HttpResponse::InternalServerError().body("JWT 生成失败"),
         };
 
-        let new_cookie = Cookie::build("access_token", new_jwt)
+        let new_cookie = Cookie::build(ACCESS_TOKEN, new_jwt)
             .http_only(true)
             .secure(true)
             .path("/")
