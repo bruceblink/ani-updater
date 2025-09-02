@@ -50,6 +50,8 @@ sh scripts/init_db.sh
 
 ### 4. 构建与运行
 
+目前可以使用 [material-kit-react-lovat](https://github.com/bruceblink/material-kit-react)作为前端项目用于测试使用
+
 #### 方式一：本地构建
 
 ```bash
