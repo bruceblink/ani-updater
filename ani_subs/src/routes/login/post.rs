@@ -1,5 +1,5 @@
 use crate::dao::get_user_by_username;
-use actix_web::cookie::Cookie;
+use actix_web::cookie::{Cookie, SameSite};
 use actix_web::{HttpResponse, Responder, post, web};
 use bcrypt::verify;
 use chrono::Utc;
@@ -56,6 +56,8 @@ async fn logout() -> impl Responder {
     let cookie = Cookie::build("access_token", "")
         .path("/")
         .http_only(true)
+        .secure(true) // 之前 cookie 是 Secure
+        .same_site(SameSite::None)
         .max_age(time::Duration::seconds(0)) // 设置立即过期
         .finish();
 
