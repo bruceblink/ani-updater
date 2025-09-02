@@ -1,3 +1,4 @@
+use chrono::Utc;
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
@@ -44,4 +45,6 @@ pub struct UserIdentityDto {
     pub display_name: Option<String>,
     pub avatar_url: Option<String>,
     pub access_token: Option<String>,
+    pub refresh_token: Option<String>,
+    pub expires_at: Option<chrono::DateTime<Utc>>,
 }

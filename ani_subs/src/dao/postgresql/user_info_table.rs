@@ -101,8 +101,8 @@ pub async fn upsert_user_with_third_part(
                         avatar_url = EXCLUDED.avatar_url
                 RETURNING id
             )
-            INSERT INTO user_identities (user_id, provider, provider_user_id, access_token, expires_at)
-            SELECT id, $5, $6, $7, now() + interval '20 min'
+            INSERT INTO user_identities (user_id, provider, provider_user_id, access_token, refresh_token, expires_at)
+            SELECT id, $5, $6, $7, $8, $9
             FROM ins_user
             ON CONFLICT (provider, provider_user_id) DO NOTHING
             RETURNING id
@@ -115,6 +115,8 @@ pub async fn upsert_user_with_third_part(
         .bind(&user.provider)
         .bind(&user.provider_user_id)
         .bind(&user.access_token)
+        .bind(&user.refresh_token)
+        .bind(user.expires_at)
         .fetch_optional(pool)
         .map_err(|e| {
             tracing::error!("插入或更新 用户数据 {:?} 失败: {}", user, e);
