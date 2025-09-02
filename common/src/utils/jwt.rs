@@ -25,7 +25,7 @@ pub struct GithubUser {
 }
 
 /// refresh_token的结构
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RefreshToken {
     pub token: String,
     pub expires_at: chrono::DateTime<Utc>,
