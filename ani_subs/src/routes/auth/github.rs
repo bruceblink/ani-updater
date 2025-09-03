@@ -90,14 +90,14 @@ async fn github_callback(
         .request_async(oauth2::reqwest::async_http_client)
         .await;
 
-    let Ok(token) = token_res else {
+    let Ok(github_token_resp) = token_res else {
         return HttpResponse::BadRequest().body("换取 github 的 access_token 失败");
     };
 
     // 拉取 GitHub 用户
     let user_res = HTTP
         .get("https://api.github.com/user")
-        .bearer_auth(token.access_token().secret())
+        .bearer_auth(github_token_resp.access_token().secret())
         .header("User-Agent", USER_AGENT)
         .send()
         .await;
@@ -113,7 +113,7 @@ async fn github_callback(
     if user.email.is_none()
         && let Ok(resp) = HTTP
             .get("https://api.github.com/user/emails")
-            .bearer_auth(token.access_token().secret())
+            .bearer_auth(github_token_resp.access_token().secret())
             .header("User-Agent", USER_AGENT)
             .send()
             .await
@@ -141,23 +141,33 @@ async fn github_callback(
     let frontend_url =
         env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:8000".to_string());
 
+    // github 用户注册到当前系统
+    let github_access_token = github_token_resp.access_token().secret();
+    let refresh_token = match github_user_register(
+        pool,
+        user,
+        Option::from(github_access_token.to_string()),
+        jwt_refresh,
+    )
+    .await
+    {
+        Ok(token) => token,
+        Err(_) => return HttpResponse::InternalServerError().body("refresh_token 持久化失败"),
+    };
     // 生成 access_token的cookie
-    let access_cookie = Cookie::build(ACCESS_TOKEN, jwt_access.clone())
+    let access_cookie = Cookie::build(ACCESS_TOKEN, jwt_access)
         .http_only(true)
         .secure(true) // 生产环境必须 https
         .path("/")
         .same_site(actix_web::cookie::SameSite::None) // 为None时可以跨站点请求携带 Cookie
         .finish();
     // 生成 refresh_token的cookie
-    let refresh_cookie = Cookie::build(REFRESH_TOKEN, jwt_refresh.clone().token)
+    let refresh_cookie = Cookie::build(REFRESH_TOKEN, refresh_token)
         .http_only(true)
         .secure(true) // 生产环境必须 https
         .path("/")
         .same_site(actix_web::cookie::SameSite::None) // 为None时可以跨站点请求携带 Cookie
         .finish();
-    // github 用户注册到当前系统
-    let _ = github_user_register(pool, user, Option::from(jwt_access), jwt_refresh).await;
-
     //设置 HttpOnly Cookie
     HttpResponse::Found()
         .append_header(("Location", frontend_url))
@@ -165,34 +175,62 @@ async fn github_callback(
         .cookie(refresh_cookie)
         .finish()
 }
-
+/*
 /// 刷新 token 接口
-#[get("/auth/refresh")]
-async fn refresh_token(req: HttpRequest) -> impl Responder {
-    if let Some(cookie) = req.cookie(ACCESS_TOKEN)
-        && let Ok(claims) = verify_jwt(cookie.value())
-    {
-        // 生成新的 JWT
-        let user = GithubUser {
-            login: claims.sub,
-            id: claims.uid,
-            avatar_url: None,
-            name: claims.name,
-            email: claims.email,
-        };
-        let new_jwt = match generate_jwt(&user, 20) {
-            Ok(token) => token,
-            Err(_) => return HttpResponse::InternalServerError().body("JWT 生成失败"),
-        };
+#[post("/auth/refresh")]
+async fn refresh_token(req: HttpRequest, db: web::Data<PgPool>) -> impl Responder {
+    let refresh_cookie = match req.cookie(REFRESH_TOKEN) {
+        Some(c) => c,
+        None => return HttpResponse::Unauthorized().body("缺少 refresh token"),
+    };
 
-        let new_cookie = Cookie::build(ACCESS_TOKEN, new_jwt)
-            .http_only(true)
-            .secure(true)
-            .path("/")
-            .same_site(actix_web::cookie::SameSite::Lax)
-            .finish();
+    let rec = sqlx::query!(
+        "SELECT user_id, expires_at FROM user_identities WHERE refresh_token = $1",
+        refresh_cookie.value()
+        )
+        .fetch_optional(db.get_ref())
+        .await
+        .unwrap();
 
-        return HttpResponse::Ok().cookie(new_cookie).body("刷新成功");
+    let rec = match rec {
+        Some(r) => r,
+        None => return HttpResponse::Unauthorized().body("无效 refresh token"),
+    };
+
+    if rec.expires_at < Option::from(Utc::now()) {
+        return HttpResponse::Unauthorized().body("refresh token 已过期");
     }
-    HttpResponse::Unauthorized().body("无效 token")
-}
+
+    // 生成新的 access_token
+    let user = get_user_by_id(db.get_ref(), rec.user_id).await.unwrap();
+    let new_access_token = generate_jwt(&user, 20).unwrap();
+
+    // 可选：生成新的 refresh_token，删除旧 token
+    let new_refresh_token = create_refresh_token(db.get_ref(), rec.user_id, 30).await.unwrap();
+    sqlx::query!("DELETE FROM refresh_tokens WHERE token = $1", refresh_cookie.value())
+        .execute(db.get_ref())
+        .await
+        .unwrap();
+
+    let access_cookie = Cookie::build(ACCESS_TOKEN, new_access_token)
+        .http_only(true)
+        .secure(true)
+        .path("/")
+        .same_site(actix_web::cookie::SameSite::Lax)
+        .finish();
+
+    let refresh_cookie = Cookie::build(REFRESH_TOKEN, new_refresh_token.token)
+        .http_only(true)
+        .secure(true)
+        .path("/")
+        .same_site(actix_web::cookie::SameSite::Lax)
+        .finish();
+
+    HttpResponse::Ok()
+        .cookie(access_cookie)
+        .cookie(refresh_cookie)
+        .json(serde_json::json!({
+            "message": "刷新成功",
+            "access_token_exp": chrono::Utc::now().timestamp() + 20 * 60
+        }))
+}*/

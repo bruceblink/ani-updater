@@ -8,7 +8,7 @@ pub async fn github_user_register(
     credentials: GithubUser,
     access_token: Option<String>,
     refresh_token: RefreshToken,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<String> {
     let third_part_user = UserIdentityDto {
         provider_user_id: credentials.id.to_string(),
         provider: "github".to_string(),
@@ -20,6 +20,6 @@ pub async fn github_user_register(
         refresh_token: Option::from(refresh_token.token),
         expires_at: Option::from(refresh_token.expires_at),
     };
-    // 插入数据库
+    // 插入数据库,返回refresh_token
     upsert_user_with_third_part(&third_part_user, &pool).await
 }
