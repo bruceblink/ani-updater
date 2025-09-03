@@ -29,7 +29,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // 回退到原来的配置方式
         PgPoolOptions::new()
             .max_connections(DEFAULT_MAX_CONNECTIONS)
-            .connect_lazy_with(DatabaseSettings::from_env(configuration.database).connect_options())
+            .connect_lazy_with(
+                DatabaseSettings::from_env(configuration.clone().database).connect_options(),
+            )
     };
     // 运行数据库迁移
     sqlx::migrate!("../migrations")
@@ -37,15 +39,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .await
         .expect("Failed to migrate the database");
     // 启动异步定时任务
-    let task_config = configuration.task_config;
+    let task_config = configuration.clone().task_config;
     start_async_timer_task(task_config["anime"].clone(), connection_pool.clone()).await;
     let address = format!(
         "{}:{}",
-        configuration.application.host, configuration.application.port
+        configuration.clone().application.host,
+        configuration.clone().application.port
     );
     let listener = TcpListener::bind(address).expect("Failed to bind random port");
     // 启动 web 服务
-    let server = run(listener, connection_pool)?; // run 返回 Result<Server, Box<dyn Error>>
+    let server = run(listener, connection_pool, configuration)?; // run 返回 Result<Server, Box<dyn Error>>
     server.await?;
     Ok(())
 }

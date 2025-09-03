@@ -1,3 +1,4 @@
+use crate::configuration::Setting;
 use crate::middleware::{AuthMiddleware, CharsetMiddleware};
 use crate::routes::get_anis;
 use crate::routes::health_check;
@@ -20,6 +21,7 @@ use tracing_actix_web::TracingLogger;
 pub fn run(
     listener: TcpListener,
     db_pool: PgPool,
+    configuration: Setting,
 ) -> anyhow::Result<Server, Box<dyn Error + Send + Sync>> {
     dotenvy::dotenv().ok();
 
@@ -60,6 +62,7 @@ pub fn run(
             .wrap(TracingLogger::default())
             .wrap(cors) // 注册 CORS 中间件
             .wrap(CharsetMiddleware)
+            .app_data(web::Data::new(configuration.clone())) // 注入全局配置文件
             .app_data(web::Data::new(oauth.clone()))
             .app_data(db_pool.clone())
             .service(github_login)
