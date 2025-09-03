@@ -1,9 +1,9 @@
 use crate::middleware::{AuthMiddleware, CharsetMiddleware};
-use crate::routes::get_ani;
 use crate::routes::get_anis;
 use crate::routes::health_check;
 use crate::routes::login;
 use crate::routes::{OAuthConfig, logout};
+use crate::routes::{get_ani, refresh_token};
 use crate::routes::{github_callback, github_login, me};
 use actix_cors::Cors;
 use actix_web::dev::Server;
@@ -64,6 +64,7 @@ pub fn run(
             .app_data(db_pool.clone())
             .service(github_login)
             .service(github_callback)
+            .service(refresh_token)
             .service(logout)
             .route("/login", web::post().to(login))
             .route("/health_check", web::get().to(health_check))
