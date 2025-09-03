@@ -1,8 +1,7 @@
 use crate::domain::dto::{NewUser, UserDto, UserIdentityDto};
 use crate::domain::po::UserInfo;
 use chrono_tz::Asia::Shanghai;
-use futures::TryFutureExt;
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 
 /// 根据用户名查询用户信息
 pub async fn get_user_by_username(
@@ -89,10 +88,10 @@ pub async fn insert_users(users: &[NewUser], pool: &PgPool) -> anyhow::Result<()
 pub async fn upsert_user_with_third_part(
     user: &UserIdentityDto,
     pool: &PgPool,
-) -> anyhow::Result<()> {
-    let _ = sqlx::query(
+) -> anyhow::Result<String> {
+    let row = sqlx::query(
         r#"
-            WITH ins_user AS (
+            WITH upsert_user AS (
                 INSERT INTO user_info (email, username, display_name, avatar_url)
                 VALUES ($1, $2, $3, $4)
                 ON CONFLICT (email) DO UPDATE
@@ -100,13 +99,19 @@ pub async fn upsert_user_with_third_part(
                         display_name = EXCLUDED.display_name,
                         avatar_url = EXCLUDED.avatar_url
                 RETURNING id
+            ),
+            ins_identity AS (
+                INSERT INTO user_identities (user_id, provider, provider_uid, access_token, token_expires_at)
+                SELECT id, $5, $6, $7, now() + interval '30 days'
+                FROM upsert_user
+                ON CONFLICT (provider, provider_uid) DO NOTHING
+                RETURNING user_id
             )
-            INSERT INTO user_identities (user_id, provider, provider_user_id, access_token, refresh_token, expires_at)
-            SELECT id, $5, $6, $7, $8, $9
-            FROM ins_user
-            ON CONFLICT (provider, provider_user_id) DO NOTHING
-            RETURNING id
-        "#,
+            INSERT INTO refresh_tokens (user_id, token, expires_at)
+            SELECT id, $8, $9
+            FROM upsert_user
+            RETURNING token;
+            "#
         )
         .bind(&user.email)
         .bind(&user.username)
@@ -114,14 +119,16 @@ pub async fn upsert_user_with_third_part(
         .bind(&user.avatar_url)
         .bind(&user.provider)
         .bind(&user.provider_user_id)
-        .bind(&user.access_token)
+        .bind(user.access_token.as_deref())
         .bind(&user.refresh_token)
         .bind(user.expires_at)
-        .fetch_optional(pool)
+        .fetch_one(pool)
+        .await
         .map_err(|e| {
-            tracing::error!("插入或更新 用户数据 {:?} 失败: {}", user, e);
+            tracing::error!("插入或更新用户 {:?} 失败: {}", user, e);
             anyhow::anyhow!(e)
-        }).await?;
+        })?;
 
-    Ok(())
+    let refresh_token: String = row.get("token");
+    Ok(refresh_token)
 }
