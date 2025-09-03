@@ -5,16 +5,18 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use timer_tasker::task::TaskMeta;
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Clone)]
 pub struct Setting {
     pub database: DatabaseSettings,
     pub application: ApplicationSettings,
     // email_client
     pub email_client: EmailClientSettings,
     pub task_config: TaskConfig,
+    // token
+    pub token: TokenConfig,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Clone)]
 pub struct EmailClientSettings {
     pub base_url: String,
     pub sender_email: String,
@@ -22,7 +24,7 @@ pub struct EmailClientSettings {
     pub authorization_token: Secret<String>,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Clone)]
 pub struct ApplicationSettings {
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub port: u16,
@@ -87,6 +89,7 @@ impl DatabaseSettings {
 }
 
 pub type TaskConfig = HashMap<String, Vec<TaskMeta>>;
+pub type TokenConfig = HashMap<String, i16>;
 
 /// ------------------------ 环境 ------------------------
 pub enum Environment {
@@ -188,5 +191,15 @@ mod tests {
             .try_into()
             .expect("Failed to parse APP_ENVIRONMENT.");
         assert!(matches!(environment, Environment::Production)); // 
+    }
+    #[test]
+    fn test_token_exp() {
+        use crate::configuration::get_configuration;
+        use std::path::PathBuf;
+
+        let config = get_configuration(Option::from(PathBuf::from("../configuration"))).unwrap();
+        assert_eq!(config.token.len(), 2);
+        assert_eq!(config.token["access_token"], 20);
+        assert_eq!(config.token["refresh_token"], 15);
     }
 }

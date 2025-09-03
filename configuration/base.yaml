@@ -57,3 +57,6 @@ task_config:
       cmd: "tencent_parser"
       cron_expr: "0 17 10,11,12,17,18,19,20,21,22,23 * * * *"
       retry_times: 0
+token:
+  access_token: 2 # mins
+  refresh_token: 15 # days
