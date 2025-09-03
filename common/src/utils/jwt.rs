@@ -40,6 +40,7 @@ fn jwt_secret() -> Result<String> {
 pub fn verify_jwt(token: &str) -> Result<Claims> {
     let secret = jwt_secret()?;
     let decoded = decode::<Claims>(
+        // decode函数里有具体的validation实现包含用户信息，过期时间等的校验，
         token,
         &DecodingKey::from_secret(secret.as_ref()),
         &Validation::default(),
