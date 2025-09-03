@@ -31,6 +31,12 @@ pub struct RefreshToken {
     pub expires_at: chrono::DateTime<Utc>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AccessToken {
+    pub token: String,
+    pub expires_at: chrono::DateTime<Utc>,
+}
+
 /// 获取 JWT_SECRET
 fn jwt_secret() -> Result<String> {
     env::var("JWT_SECRET").context("环境变量 JWT_SECRET 未设置")
@@ -54,7 +60,7 @@ pub fn verify_jwt(token: &str) -> Result<Claims> {
 /// 生成 JWT
 /// `exp_minutes` 过期时间，单位分钟
 /// 例如：60 * 2 表示 2 小时
-pub fn generate_jwt(user: &GithubUser, exp_minutes: i64) -> Result<String> {
+pub fn generate_jwt(user: &GithubUser, exp_minutes: i64) -> Result<AccessToken> {
     let secret = jwt_secret()?;
     let exp = Utc::now() + Duration::minutes(exp_minutes);
 
@@ -73,7 +79,10 @@ pub fn generate_jwt(user: &GithubUser, exp_minutes: i64) -> Result<String> {
     )
     .context("JWT 生成失败")?;
 
-    Ok(token)
+    Ok(AccessToken {
+        token,
+        expires_at: exp,
+    })
 }
 
 /// 生成 Refresh Token（JWT 也可以用 JWT，但加随机字符串更安全）
