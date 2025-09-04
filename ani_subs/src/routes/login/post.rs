@@ -1,6 +1,7 @@
+use crate::common::ExtractToken;
 use crate::dao::get_user_by_username;
 use actix_web::cookie::{Cookie, SameSite};
-use actix_web::{HttpResponse, Responder, post, web};
+use actix_web::{HttpRequest, HttpResponse, Responder, post, web};
 use bcrypt::verify;
 use chrono::Utc;
 use jsonwebtoken::{EncodingKey, Header, encode};
@@ -51,15 +52,40 @@ pub async fn login(
 }
 
 #[post("/logout")]
-async fn logout() -> impl Responder {
-    // 设置一个同名 cookie，立即过期
-    let cookie = Cookie::build("access_token", "")
+async fn logout(db_pool: web::Data<sqlx::PgPool>, req: HttpRequest) -> impl Responder {
+    if let Some(token) = req.get_refresh_token() {
+        let _ = sqlx::query(
+            r#"
+            UPDATE refresh_tokens SET revoked = true WHERE token = $1;
+            "#,
+        )
+        .bind(token.clone())
+        .execute(db_pool.get_ref())
+        .await
+        .map_err(|e| tracing::error!("token {token:?} 注销失败: {e}"));
+    } else {
+        tracing::warn!("用户登出时没有携带 access_token");
+    }
+
+    // 设置一个同名 cookie，立即过期， 浏览器会自动删除该cookie
+    let access_cookie = Cookie::build("access_token", "")
         .path("/")
         .http_only(true)
-        .secure(true) // 之前 cookie 是 Secure
+        .secure(true)
         .same_site(SameSite::None)
-        .max_age(time::Duration::seconds(0)) // 设置立即过期
+        .max_age(time::Duration::seconds(0))
         .finish();
 
-    HttpResponse::Ok().cookie(cookie).body("logged out")
+    let refresh_cookie = Cookie::build("refresh_token", "")
+        .path("/")
+        .http_only(true)
+        .secure(true)
+        .same_site(SameSite::None)
+        .max_age(time::Duration::seconds(0))
+        .finish();
+
+    HttpResponse::Ok()
+        .cookie(access_cookie)
+        .cookie(refresh_cookie)
+        .body("logged out")
 }
