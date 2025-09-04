@@ -160,7 +160,7 @@ async fn github_callback(
         Err(_) => return HttpResponse::InternalServerError().body("refresh_token 持久化失败"),
     };
     // 生成 access_token的cookie
-    let access_cookie = Cookie::build(ACCESS_TOKEN, jwt_access.token)
+    let access_cookie = Cookie::build(ACCESS_TOKEN, jwt_access.clone().token)
         .http_only(true)
         .secure(true) // 生产环境必须 https
         .path("/")
@@ -173,9 +173,12 @@ async fn github_callback(
         .path("/")
         .same_site(actix_web::cookie::SameSite::None) // 为None时可以跨站点请求携带 Cookie
         .finish();
+    // 为了保险，防止浏览器(例如firefox的权限就比较严格，不一定会携带access_cookie)不携带access_cookie，
+    // 使用地址栏传递token
+    let final_redirect_url = format!("{frontend_url}/auth/callback?token={}", jwt_access.token);
     //设置 HttpOnly Cookie
     HttpResponse::Found()
-        .append_header(("Location", frontend_url))
+        .append_header(("Location", final_redirect_url))
         .cookie(access_cookie)
         .cookie(refresh_cookie)
         .finish()
