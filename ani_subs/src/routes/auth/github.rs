@@ -1,3 +1,4 @@
+use crate::common::{ACCESS_TOKEN, ExtractToken, GITHUB_USER_AGENT, REFRESH_TOKEN};
 use crate::configuration::Setting;
 use crate::service::github_user_register;
 use actix_web::{HttpRequest, HttpResponse, Responder, cookie::Cookie, get, post, web};
@@ -18,11 +19,6 @@ static HTTP: Lazy<Client> = Lazy::new(Client::new);
 static STATE_PKCE_MAP: Lazy<Mutex<HashMap<String, String>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
-static USER_AGENT: &str = "ani-updater/0.1 (+https://github.com/likanug/ani-updater)";
-
-static ACCESS_TOKEN: &str = "access_token";
-static REFRESH_TOKEN: &str = "refresh_token";
-
 #[get("/")]
 async fn index() -> impl Responder {
     HttpResponse::Ok().body("访问 /auth/github/login 开始 GitHub 登录")
@@ -30,8 +26,8 @@ async fn index() -> impl Responder {
 
 #[get("/me")]
 async fn me(req: HttpRequest) -> impl Responder {
-    if let Some(cookie) = req.cookie(ACCESS_TOKEN)
-        && let Ok(claims) = verify_jwt(cookie.value())
+    if let Some(token) = req.get_access_token()
+        && let Ok(claims) = verify_jwt(&token)
     {
         return HttpResponse::Ok().json(claims);
     }
@@ -101,7 +97,7 @@ async fn github_callback(
     let user_res = HTTP
         .get("https://api.github.com/user")
         .bearer_auth(github_token_resp.access_token().secret())
-        .header("User-Agent", USER_AGENT)
+        .header("User-Agent", GITHUB_USER_AGENT)
         .send()
         .await;
 
@@ -117,7 +113,7 @@ async fn github_callback(
         && let Ok(resp) = HTTP
             .get("https://api.github.com/user/emails")
             .bearer_auth(github_token_resp.access_token().secret())
-            .header("User-Agent", USER_AGENT)
+            .header("User-Agent", GITHUB_USER_AGENT)
             .send()
             .await
         && let Ok(emails) = resp.json::<Vec<serde_json::Value>>().await
