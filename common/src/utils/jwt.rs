@@ -15,7 +15,7 @@ pub struct Claims {
     pub email: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GithubUser {
     pub login: String,
     pub id: u64,

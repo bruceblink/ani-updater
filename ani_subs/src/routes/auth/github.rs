@@ -2,6 +2,7 @@ use crate::common::{ACCESS_TOKEN, ExtractToken, GITHUB_USER_AGENT, REFRESH_TOKEN
 use crate::configuration::Setting;
 use crate::service::github_user_register;
 use actix_web::{HttpRequest, HttpResponse, Responder, cookie::Cookie, get, post, web};
+use common::api::{ApiError, ApiResponse, ApiResult};
 use common::utils::{GithubUser, generate_jwt, generate_refresh_token, verify_jwt};
 use oauth2::{
     AuthorizationCode, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, Scope, TokenResponse,
@@ -20,18 +21,18 @@ static STATE_PKCE_MAP: Lazy<Mutex<HashMap<String, String>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
 #[get("/")]
-async fn index() -> impl Responder {
-    HttpResponse::Ok().body("访问 /auth/github/login 开始 GitHub 登录")
+async fn index() -> ApiResult {
+    Ok(HttpResponse::Ok().json(ApiResponse::ok("使用 GitHub 进行第三方登录")))
 }
 
 #[get("/me")]
-async fn me(req: HttpRequest) -> impl Responder {
+async fn me(req: HttpRequest) -> ApiResult {
     if let Some(token) = req.get_access_token()
         && let Ok(claims) = verify_jwt(&token)
     {
-        return HttpResponse::Ok().json(claims);
+        return Ok(HttpResponse::Ok().json(ApiResponse::ok(claims)));
     }
-    HttpResponse::Unauthorized().body("未携带或非法的 JWT")
+    Err(ApiError::Unauthorized("未携带或非法的 JWT".into()))
 }
 
 #[get("/auth/github/login")]
@@ -71,7 +72,7 @@ async fn github_callback(
     query: web::Query<HashMap<String, String>>,
     pool: web::Data<PgPool>,
     config: web::Data<Setting>,
-) -> impl Responder {
+) -> ApiResult {
     let code = query.get("code").cloned().unwrap_or_default();
     let state = query.get("state").cloned().unwrap_or_default();
 
@@ -81,34 +82,25 @@ async fn github_callback(
     };
     let pkce_verifier = PkceCodeVerifier::new(pkce);
 
-    // 换 token
-    let token_res = data
+    let github_token_resp = data
         .get_ref()
         .exchange_code(AuthorizationCode::new(code))
         .set_pkce_verifier(pkce_verifier)
         .request_async(oauth2::reqwest::async_http_client)
-        .await;
+        .await
+        .map_err(|_| ApiError::Internal("换取 github 的 access_token 失败".into()))?;
 
-    let Ok(github_token_resp) = token_res else {
-        return HttpResponse::BadRequest().body("换取 github 的 access_token 失败");
-    };
-
-    // 拉取 GitHub 用户
-    let user_res = HTTP
+    let mut user: GithubUser = HTTP
         .get("https://api.github.com/user")
         .bearer_auth(github_token_resp.access_token().secret())
         .header("User-Agent", GITHUB_USER_AGENT)
         .send()
-        .await;
+        .await
+        .map_err(|_| ApiError::OAuth("获取GitHub用户信息失败".into()))?
+        .json()
+        .await
+        .map_err(|_| ApiError::Internal("GitHub 用户信息解析失败".into()))?;
 
-    let Ok(resp) = user_res else {
-        return HttpResponse::BadGateway().body("GitHub /user 请求失败");
-    };
-    let Ok(mut user): Result<GithubUser, _> = resp.json().await else {
-        return HttpResponse::BadGateway().body("GitHub 用户信息解析失败");
-    };
-
-    // 补充邮箱
     if user.email.is_none()
         && let Ok(resp) = HTTP
             .get("https://api.github.com/user/emails")
@@ -125,36 +117,24 @@ async fn github_callback(
             .map(String::from);
     }
 
-    // 生成 assess_token
-    let jwt_access = match generate_jwt(&user, config.token[ACCESS_TOKEN] as i64) {
-        // access_token 有效期20分钟
-        Ok(token) => token,
-        Err(_) => return HttpResponse::InternalServerError().body("assess_token 生成失败"),
-    };
+    let jwt_access = generate_jwt(&user, config.token[ACCESS_TOKEN] as i64)
+        .map_err(|_| ApiError::Internal("access_token 生成失败".into()))?;
 
-    // 生成 refresh_token
-    let jwt_refresh = match generate_refresh_token(config.token[REFRESH_TOKEN] as i64) {
-        // refresh token有效期15天
-        Ok(token) => token,
-        Err(_) => return HttpResponse::InternalServerError().body("refresh_token 生成失败"),
-    };
+    let jwt_refresh = generate_refresh_token(config.token[REFRESH_TOKEN] as i64)
+        .map_err(|_| ApiError::Internal("refresh_token 生成失败".into()))?;
 
     let frontend_url =
         env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:8000".to_string());
 
-    // github 用户注册到当前系统
-    let github_access_token = github_token_resp.access_token().secret();
-    let refresh_token_string = match github_user_register(
+    let refresh_token_string = github_user_register(
         pool,
-        user,
-        Option::from(github_access_token.to_string()),
+        user.clone(),
+        Some(github_token_resp.access_token().secret().to_string()),
         jwt_refresh,
     )
     .await
-    {
-        Ok(token) => token,
-        Err(_) => return HttpResponse::InternalServerError().body("refresh_token 持久化失败"),
-    };
+    .map_err(|_| ApiError::Internal("refresh_token 持久化失败".into()))?;
+
     // 生成 access_token的cookie
     let access_cookie = Cookie::build(ACCESS_TOKEN, jwt_access.clone().token)
         .http_only(true)
@@ -172,12 +152,12 @@ async fn github_callback(
     // 为了保险，防止浏览器(例如firefox的权限就比较严格，不一定会携带access_cookie)不携带access_cookie，
     // 使用地址栏传递token
     let final_redirect_url = format!("{frontend_url}/auth/callback?token={}", jwt_access.token);
-    //设置 HttpOnly Cookie
-    HttpResponse::Found()
+
+    Ok(HttpResponse::Found()
         .append_header(("Location", final_redirect_url))
         .cookie(access_cookie)
         .cookie(refresh_cookie)
-        .finish()
+        .json(ApiResponse::ok("登录成功")))
 }
 
 #[derive(Debug, Serialize, FromRow)]
@@ -196,21 +176,15 @@ async fn refresh_token(
     req: HttpRequest,
     db: web::Data<PgPool>,
     config: web::Data<Setting>,
-) -> HttpResponse {
-    // 获取 refresh token
-    let old_refresh_cookie = match req.cookie(REFRESH_TOKEN) {
-        Some(c) => c,
-        None => return HttpResponse::Unauthorized().body("缺少 refresh token"),
-    };
+) -> ApiResult {
+    let old_refresh_cookie = req
+        .cookie(REFRESH_TOKEN)
+        .ok_or_else(|| ApiError::Unauthorized("缺少 refresh token".into()))?;
     let old_refresh_token = old_refresh_cookie.value();
 
-    // 生成新的 refresh token
-    let new_refresh_token = match generate_refresh_token(config.token[REFRESH_TOKEN] as i64) {
-        Ok(token) => token,
-        Err(_) => return HttpResponse::InternalServerError().body("refresh_token 生成失败"),
-    };
+    let new_refresh_token = generate_refresh_token(config.token[REFRESH_TOKEN] as i64)
+        .map_err(|_| ApiError::Internal("refresh_token 生成失败".into()))?;
 
-    // 查询用户并刷新 token
     let rec = sqlx::query_as::<_, UserWithIdentity>(
         r#"
             WITH valid_token AS (
@@ -239,58 +213,46 @@ async fn refresh_token(
     .bind(old_refresh_token)
     .bind(&new_refresh_token.token)
     .fetch_optional(db.get_ref())
-    .await;
+    .await
+    .map_err(|e| {
+        tracing::error!("刷新 token 查询失败: {e}");
+        ApiError::Internal("服务器错误".into())
+    })?;
 
     let github_user = match rec {
-        Ok(Some(u)) => {
-            // 从查询结果构建 GithubUser
-            GithubUser {
-                login: u.username.clone().unwrap_or_default(),
-                id: u
-                    .provider_uid
-                    .clone()
-                    .unwrap_or_default()
-                    .parse::<u64>()
-                    .unwrap_or(0),
-                avatar_url: u.avatar_url.clone(),
-                name: u.display_name.clone(),
-                email: u.email.clone(),
-            }
-        }
-        Ok(None) => return HttpResponse::Unauthorized().body("refresh token 无效或已过期"),
-        Err(e) => {
-            tracing::error!("刷新 token 查询失败: {e}");
-            return HttpResponse::InternalServerError().body("服务器错误");
-        }
+        Some(u) => GithubUser {
+            login: u.username.unwrap_or_default(),
+            id: u.provider_uid.unwrap_or_default().parse().unwrap_or(0),
+            avatar_url: u.avatar_url,
+            name: u.display_name,
+            email: u.email,
+        },
+        None => return Err(ApiError::Unauthorized("refresh token 无效或已过期".into())),
     };
 
-    // 生成新的 access token
-    let new_access_token = match generate_jwt(&github_user, config.token[ACCESS_TOKEN] as i64) {
-        Ok(access_token) => access_token,
-        Err(_) => return HttpResponse::Unauthorized().body("refresh token 无效或已过期"),
-    };
+    let new_access_token = generate_jwt(&github_user, config.token[ACCESS_TOKEN] as i64)
+        .map_err(|_| ApiError::Unauthorized("refresh token 无效或已过期".into()))?;
 
-    // 设置 cookie
-    let access_cookie = Cookie::build(ACCESS_TOKEN, new_access_token.token)
+    let access_cookie = Cookie::build(ACCESS_TOKEN, new_access_token.token.clone())
         .http_only(true)
         .secure(true)
         .path("/")
         .same_site(actix_web::cookie::SameSite::None)
         .finish();
 
-    let refresh_cookie = Cookie::build(REFRESH_TOKEN, new_refresh_token.token)
+    let refresh_cookie = Cookie::build(REFRESH_TOKEN, new_refresh_token.token.clone())
         .http_only(true)
         .secure(true)
         .path("/")
         .same_site(actix_web::cookie::SameSite::None)
         .finish();
 
-    HttpResponse::Ok()
+    Ok(HttpResponse::Ok()
         .cookie(access_cookie)
         .cookie(refresh_cookie)
-        .json(serde_json::json!({
+        .json(ApiResponse::ok(serde_json::json!({
             "message": "刷新成功",
-            "access_token_exp": new_access_token.expires_at,
+            "access_token_exp": new_access_token.expires_at.timestamp() as usize,
             "user": github_user
-        }))
+        }))))
 }
