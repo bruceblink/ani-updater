@@ -1,10 +1,9 @@
 use crate::configuration::Setting;
 use crate::middleware::{AuthMiddleware, CharsetMiddleware};
-use crate::routes::get_anis;
-use crate::routes::health_check;
 use crate::routes::login;
+use crate::routes::refresh_token;
 use crate::routes::{OAuthConfig, logout};
-use crate::routes::{get_ani, refresh_token};
+use crate::routes::{get_ani, get_anis, health_check};
 use crate::routes::{github_callback, github_login, me};
 use actix_cors::Cors;
 use actix_web::dev::Server;
