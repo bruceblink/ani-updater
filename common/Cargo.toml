@@ -21,3 +21,4 @@ serde_json = { workspace = true }
 jsonwebtoken.workspace = true
 rand.workspace = true
 anyhow.workspace = true
+actix-web.workspace = true
