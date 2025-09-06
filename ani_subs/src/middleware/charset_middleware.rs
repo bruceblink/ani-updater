@@ -53,7 +53,7 @@ where
             let mut res = srv.call(req).await?;
             res.response_mut().headers_mut().insert(
                 CONTENT_TYPE,
-                HeaderValue::from_static("text/plain; charset=utf-8"),
+                HeaderValue::from_static("application/json; charset=utf-8"),
             );
             Ok(res)
         })
