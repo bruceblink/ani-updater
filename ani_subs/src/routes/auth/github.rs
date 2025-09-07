@@ -252,6 +252,7 @@ async fn refresh_token(
         .cookie(refresh_cookie)
         .json(ApiResponse::ok(serde_json::json!({
             "message": "刷新成功",
+            "access_token": new_access_token.token,
             "access_token_exp": new_access_token.expires_at.timestamp() as usize,
             "user": github_user
         }))))
