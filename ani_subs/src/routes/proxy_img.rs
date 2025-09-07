@@ -3,21 +3,34 @@ use common::utils::http_client::http_client;
 use futures_util::StreamExt;
 use once_cell::sync::Lazy;
 use reqwest::Client;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::io::Error as IoError;
 use std::str::FromStr;
 
 // 全局 reqwest client（可复用）
 static HTTP: Lazy<Client> = Lazy::new(|| http_client().unwrap());
 
-// 可选的域名白名单，防止 SSRF。只允许代理列出的 host
-static ALLOWED_HOSTS: Lazy<HashSet<&'static str>> = Lazy::new(|| {
-    let mut s = HashSet::new();
-    s.insert("i0.hdslb.com"); // B站图片 CDN
-    s.insert("pic0.iqiyipic.com"); // 爱奇艺图床示例
-    s.insert("i2.hdslb.com");
-    // 根据需要添加更多 host
-    s
+/// 定义图片源信息
+struct ImageSource {
+    host: &'static str,
+    referer: &'static str,
+    user_agent: &'static str,
+}
+
+/// 静态图片源配置
+static IMAGE_SOURCES: Lazy<Vec<ImageSource>> = Lazy::new(|| {
+    vec![
+        ImageSource {
+            host: "hdslb.com",
+            referer: "https://www.bilibili.com/",
+            user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Gecko/20100101 Firefox/142.0",
+        },
+        ImageSource {
+            host: "iqiyipic.com",
+            referer: "https://www.iqiyi.com/",
+            user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Gecko/20100101 Firefox/142.0",
+        },
+    ]
 });
 
 #[get("/proxy/image")]
@@ -41,17 +54,22 @@ async fn image_proxy(
         _ => return Ok(HttpResponse::BadRequest().body("url scheme must be http or https")),
     }
 
-    // 白名单检查：只允许代理可信的图片域名
-    if let Some(host) = parsed.host_str() {
-        if !ALLOWED_HOSTS.contains(host) {
-            return Ok(HttpResponse::Forbidden().body("host not allowed"));
-        }
-    } else {
-        return Ok(HttpResponse::BadRequest().body("url missing host"));
-    }
+    // 严格检查 host
+    let source = match parsed.host_str() {
+        Some(host) => IMAGE_SOURCES.iter().find(|s| host.contains(s.host)),
+        None => None,
+    };
 
+    let source = match source {
+        Some(s) => s,
+        None => return Ok(HttpResponse::Forbidden().body("host 不允许")),
+    };
+
+    // 发起上游请求，带 Referer 和 User-Agent
     let upstream_resp = HTTP
         .get(url)
+        .header("Referer", source.referer)
+        .header("User-Agent", source.user_agent)
         .send()
         .await
         .map_err(|e| actix_web::error::ErrorBadGateway(format!("请求图片失败: {e}")))?;
@@ -76,7 +94,7 @@ async fn image_proxy(
         }
     }
 
-    // 设置 Cache-Control 头（优先使用上游的，否则使用默认值）
+    // Cache-Control 优先使用上游，否则默认 1 天
     if let Some(cc) = upstream_resp.headers().get(reqwest::header::CACHE_CONTROL) {
         if let Ok(cc_str) = cc.to_str() {
             resp_builder.append_header((header::CACHE_CONTROL, cc_str));
