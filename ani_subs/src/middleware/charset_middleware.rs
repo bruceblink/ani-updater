@@ -15,22 +15,22 @@ where
 {
     type Response = ServiceResponse<B>;
     type Error = Error;
-    type Transform = CharsetMiddlewareMiddleware<S>;
+    type Transform = CharsetMiddlewareService<S>;
     type InitError = ();
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
-        ok(CharsetMiddlewareMiddleware {
+        ok(CharsetMiddlewareService {
             service: Rc::new(service),
         })
     }
 }
 
-pub struct CharsetMiddlewareMiddleware<S> {
+pub struct CharsetMiddlewareService<S> {
     service: Rc<S>,
 }
 
-impl<S, B> Service<ServiceRequest> for CharsetMiddlewareMiddleware<S>
+impl<S, B> Service<ServiceRequest> for CharsetMiddlewareService<S>
 where
     S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
     B: 'static,
@@ -51,10 +51,17 @@ where
 
         Box::pin(async move {
             let mut res = srv.call(req).await?;
-            res.response_mut().headers_mut().insert(
-                CONTENT_TYPE,
-                HeaderValue::from_static("application/json; charset=utf-8"),
-            );
+            if let Some(_ct) = res
+                .headers()
+                .get(CONTENT_TYPE)
+                .and_then(|v| v.to_str().ok())
+                .filter(|s| s.starts_with("application/json"))
+            {
+                res.headers_mut().insert(
+                    CONTENT_TYPE,
+                    HeaderValue::from_static("application/json; charset=utf-8"),
+                );
+            }
             Ok(res)
         })
     }
