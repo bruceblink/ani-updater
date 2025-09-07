@@ -157,7 +157,7 @@ async fn github_callback(
         .append_header(("Location", final_redirect_url))
         .cookie(access_cookie)
         .cookie(refresh_cookie)
-        .json(ApiResponse::ok("登录成功")))
+        .finish())
 }
 
 #[derive(Debug, Serialize, FromRow)]
