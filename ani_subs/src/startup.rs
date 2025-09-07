@@ -1,10 +1,10 @@
 use crate::configuration::Setting;
 use crate::middleware::{AuthMiddleware, CharsetMiddleware};
-use crate::routes::login;
 use crate::routes::refresh_token;
 use crate::routes::{OAuthConfig, logout};
 use crate::routes::{get_ani, get_anis, health_check};
 use crate::routes::{github_callback, github_login, me};
+use crate::routes::{image_proxy, login};
 use actix_cors::Cors;
 use actix_web::dev::Server;
 use actix_web::http::header;
@@ -74,6 +74,7 @@ pub fn run(
                 web::scope("/api")
                     .wrap(AuthMiddleware) // 在这里添加需要认证的路由
                     .service(me)
+                    .service(image_proxy)
                     .route("/anis", web::get().to(get_anis))
                     .route("/anis/{id}", web::get().to(get_ani)),
             )
