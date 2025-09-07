@@ -12,7 +12,7 @@ static HTTP: Lazy<Client> = Lazy::new(|| http_client().unwrap());
 
 /// 定义图片源信息
 struct ImageSource {
-    host: &'static str,
+    domain: &'static str,
     referer: &'static str,
     user_agent: &'static str,
 }
@@ -21,12 +21,12 @@ struct ImageSource {
 static IMAGE_SOURCES: Lazy<Vec<ImageSource>> = Lazy::new(|| {
     vec![
         ImageSource {
-            host: "hdslb.com",
+            domain: "hdslb.com",
             referer: "https://www.bilibili.com/",
             user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Gecko/20100101 Firefox/142.0",
         },
         ImageSource {
-            host: "iqiyipic.com",
+            domain: "iqiyipic.com",
             referer: "https://www.iqiyi.com/",
             user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Gecko/20100101 Firefox/142.0",
         },
@@ -37,35 +37,29 @@ static IMAGE_SOURCES: Lazy<Vec<ImageSource>> = Lazy::new(|| {
 async fn image_proxy(
     web::Query(params): web::Query<HashMap<String, String>>,
 ) -> Result<HttpResponse> {
-    let url = match params.get("url") {
-        Some(u) => u,
-        None => return Ok(HttpResponse::BadRequest().body("缺少 url 参数")),
-    };
+    let url = params
+        .get("url")
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("缺少 url 参数"))?;
 
-    // 简单校验 URL scheme + host（防 SSRF）
-    let parsed = match reqwest::Url::from_str(url) {
-        Ok(u) => u,
-        Err(_) => return Ok(HttpResponse::BadRequest().body("invalid url")),
-    };
+    let parsed =
+        reqwest::Url::from_str(url).map_err(|_| actix_web::error::ErrorBadRequest("无效的 url"))?;
 
     // 只允许 http/https
     match parsed.scheme() {
         "http" | "https" => {}
-        _ => return Ok(HttpResponse::BadRequest().body("url scheme must be http or https")),
+        _ => return Ok(HttpResponse::BadRequest().body("url scheme 必须是 http 或 https")),
     }
 
-    // 严格检查 host
-    let source = match parsed.host_str() {
-        Some(host) => IMAGE_SOURCES.iter().find(|s| host.contains(s.host)),
-        None => None,
-    };
+    let host = parsed
+        .host_str()
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("url 缺少 host"))?;
 
-    let source = match source {
-        Some(s) => s,
-        None => return Ok(HttpResponse::Forbidden().body("host 不允许")),
-    };
+    let source = IMAGE_SOURCES
+        .iter()
+        .find(|s| host == s.domain || host.ends_with(&format!(".{}", s.domain)))
+        .ok_or_else(|| actix_web::error::ErrorForbidden("host 不允许"))?;
 
-    // 发起上游请求，带 Referer 和 User-Agent
+    // 发起上游请求
     let upstream_resp = HTTP
         .get(url)
         .header("Referer", source.referer)
@@ -83,38 +77,28 @@ async fn image_proxy(
     // 复制 Content-Type 头
     if let Some(ct) = upstream_resp.headers().get(reqwest::header::CONTENT_TYPE) {
         if let Ok(ct_str) = ct.to_str() {
-            resp_builder.append_header((header::CONTENT_TYPE, ct_str));
-        }
-    }
-
-    // 复制 Content-Length 头
-    if let Some(cl) = upstream_resp.headers().get(reqwest::header::CONTENT_LENGTH) {
-        if let Ok(cl_str) = cl.to_str() {
-            resp_builder.append_header((header::CONTENT_LENGTH, cl_str));
-        }
-    }
-
-    // Cache-Control 优先使用上游，否则默认 1 天
-    if let Some(cc) = upstream_resp.headers().get(reqwest::header::CACHE_CONTROL) {
-        if let Ok(cc_str) = cc.to_str() {
-            resp_builder.append_header((header::CACHE_CONTROL, cc_str));
+            resp_builder.insert_header((header::CONTENT_TYPE, ct_str));
         }
     } else {
-        resp_builder.append_header((header::CACHE_CONTROL, "public, max-age=86400"));
+        resp_builder.insert_header((header::CONTENT_TYPE, "image/jpeg")); // 默认兜底
     }
 
-    // 设置跨域头:cite[5]
-    resp_builder.append_header((header::ACCESS_CONTROL_ALLOW_ORIGIN, "*"));
-    resp_builder.append_header((header::ACCESS_CONTROL_ALLOW_METHODS, "GET, OPTIONS"));
-    resp_builder.append_header((header::ACCESS_CONTROL_ALLOW_HEADERS, "Content-Type"));
+    // Cache-Control
+    if let Some(cc) = upstream_resp.headers().get(reqwest::header::CACHE_CONTROL) {
+        if let Ok(cc_str) = cc.to_str() {
+            resp_builder.insert_header((header::CACHE_CONTROL, cc_str));
+        }
+    } else {
+        resp_builder.insert_header((header::CACHE_CONTROL, "public, max-age=86400"));
+    }
 
-    // 流式返回图片
+    // 跨域头（<img> 一般不需要，但加上更保险）
+    resp_builder.insert_header((header::ACCESS_CONTROL_ALLOW_ORIGIN, "*"));
+
+    // 正确的 stream 转换，直接返回 Bytes
     let stream = upstream_resp
         .bytes_stream()
-        .map(|chunk_res| match chunk_res {
-            Ok(bytes) => Ok::<_, IoError>(bytes),
-            Err(e) => Err(std::io::Error::other(format!("{e}"))),
-        });
+        .map(|chunk_res| chunk_res.map_err(|e| IoError::other(format!("{e}"))));
 
     Ok(resp_builder.streaming(stream))
 }
