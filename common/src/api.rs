@@ -95,10 +95,11 @@ pub type ApiResult = Result<HttpResponse, ApiError>;
 /// 分页数据结构
 #[derive(Serialize, Debug)]
 pub struct PageData<T> {
-    pub items: Vec<T>,  // 当前页的数据
-    pub total: usize,   // 总条数
-    pub page: i64,      // 当前页码（1开始）
-    pub page_size: i64, // 每页数量
+    pub items: Vec<T>,      // 当前页的数据
+    pub total_count: usize, // 总条数
+    pub page: u32,          // 当前页码（1开始）
+    pub page_size: u32,     // 每页数量
+    pub total_pages: u32,   // 总页数
 }
 
 pub type AniItemResult = HashMap<String, Vec<AniItem>>;
