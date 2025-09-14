@@ -2,7 +2,7 @@ use crate::configuration::Setting;
 use crate::middleware::{AuthMiddleware, CharsetMiddleware};
 use crate::routes::refresh_token;
 use crate::routes::{OAuthConfig, logout};
-use crate::routes::{get_ani, get_anis, health_check};
+use crate::routes::{get_ani, get_anis};
 use crate::routes::{github_callback, github_login, me};
 use crate::routes::{image_proxy, login};
 use actix_cors::Cors;
@@ -69,7 +69,6 @@ pub fn run(
             .service(refresh_token)
             .service(logout)
             .route("/login", web::post().to(login))
-            .route("/health_check", web::get().to(health_check))
             .service(
                 web::scope("/api")
                     .wrap(AuthMiddleware) // 在这里添加需要认证的路由
