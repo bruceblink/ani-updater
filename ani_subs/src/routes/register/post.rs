@@ -1,5 +1,5 @@
 use actix_web::{HttpResponse, Responder, web};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 #[derive(Deserialize)]
 pub struct RegisterRequest {
@@ -11,12 +11,6 @@ pub struct RegisterRequest {
     password2: String, // 确认密码
     #[allow(dead_code)]
     email: String, // 邮箱
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct Claims {
-    sub: i64,   // 用户 ID
-    exp: usize, // 过期时间
 }
 
 #[allow(dead_code)]
