@@ -1,9 +1,9 @@
 use base64::{Engine as _, engine::general_purpose};
 use common::api::{ApiResponse, ItemResult, TaskItem, VideoItem};
 use common::utils::date_utils::get_today_weekday;
-use serde_json::Value;
+use serde_json::{Value, from_value};
 use std::collections::HashMap;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 pub async fn fetch_douban_image(url: String) -> Result<String, String> {
     // 新建异步 Reqwest 客户端
@@ -62,29 +62,19 @@ fn process_json_value(json_value: &Value) -> ItemResult {
     let mut videos: Vec<TaskItem> = Vec::new();
 
     for item in items {
-        let item = parse_item_to_video_item(item);
-        info!("识别到更新：{} {:?}", item.title, item.card_subtitle);
-        videos.push(TaskItem::Video(item));
+        match from_value::<VideoItem>(item.clone()) {
+            Ok(it) => {
+                videos.push(TaskItem::Video(it.clone()));
+                info!("识别到更新：{} {:?}", it.title, it.card_subtitle);
+            }
+            Err(e) => warn!("解析失败: {e}"),
+        };
     }
     info!("成功提取到 {} 部今日更新的动漫", videos.len());
     let mut result = HashMap::new();
     result.insert(weekday, videos);
 
     result
-}
-
-fn parse_item_to_video_item(item: &Value) -> VideoItem {
-    VideoItem {
-        id: item.get("id").unwrap().to_string(),
-        title: item.get("title").unwrap().to_string(),
-        rating: item.get("rating").cloned(),
-        pic: item.get("pic").cloned(),
-        is_new: item.get("is_new").unwrap().as_bool(),
-        uri: item.get("pic").unwrap().to_string(),
-        episodes_info: Option::from(item.get("episodes_info").unwrap().to_string()),
-        card_subtitle: item.get("card_subtitle").unwrap().to_string(),
-        r#type: item.get("pic").unwrap().to_string(),
-    }
 }
 
 #[cfg(test)]
