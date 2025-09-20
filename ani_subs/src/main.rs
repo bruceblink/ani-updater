@@ -38,9 +38,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .run(&connection_pool)
         .await
         .expect("Failed to migrate the database");
-    // 启动异步定时任务
+    // 获取异步任务配置
     let task_config = configuration.clone().task_config;
-    start_async_timer_task(task_config["anime"].clone(), connection_pool.clone()).await;
+    let mut task_conf = task_config["anime"].clone();
+    task_conf.extend(task_config["movie"].iter().cloned());
+    // 启动异步定时任务
+    start_async_timer_task(task_conf, connection_pool.clone()).await;
     let address = format!(
         "{}:{}",
         configuration.clone().application.host,

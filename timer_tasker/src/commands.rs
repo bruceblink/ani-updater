@@ -1,5 +1,6 @@
 use ani_spiders::agedm::fetch_agedm_ani_data;
 use ani_spiders::bilibili::fetch_bilibili_ani_data;
+use ani_spiders::douban::fetch_douban_movie_data;
 use ani_spiders::iqiyi::fetch_iqiyi_ani_data;
 use ani_spiders::mikanani::fetch_mikanani_ani_data;
 use ani_spiders::tencent::fetch_qq_ani_data;
@@ -47,6 +48,11 @@ pub fn build_cmd_map() -> HashMap<String, CmdFn> {
     map.insert(
         "fetch_agedm_ani_data".to_string(),
         Arc::new(|url| Box::pin(fetch_agedm_ani_data(url))),
+    );
+
+    map.insert(
+        "fetch_douban_movie_data".to_string(),
+        Arc::new(|url| Box::pin(fetch_douban_movie_data(url))),
     );
 
     map
