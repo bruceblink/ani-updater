@@ -10,7 +10,7 @@ repository.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
-serde = { workspace = true }
+tokio.workspace = true
 chrono = { workspace = true }
 tracing = { workspace = true }
 reqwest = { workspace = true }

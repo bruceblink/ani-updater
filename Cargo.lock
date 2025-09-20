@@ -283,8 +283,8 @@ dependencies = [
  "common",
  "reqwest 0.12.23",
  "scraper",
- "serde",
  "serde_json",
+ "tokio",
  "tracing",
 ]
 
