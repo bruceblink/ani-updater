@@ -1,6 +1,8 @@
 use base64::{Engine as _, engine::general_purpose};
-use common::api::{ApiResponse, VideoItem};
+use common::api::{ApiResponse, ItemResult, TaskItem, VideoItem};
+use common::utils::date_utils::get_today_weekday;
 use serde_json::Value;
+use std::collections::HashMap;
 use tracing::{error, info};
 
 pub async fn fetch_douban_image(url: String) -> Result<String, String> {
@@ -30,7 +32,7 @@ pub async fn fetch_douban_image(url: String) -> Result<String, String> {
 }
 
 /// 获取豆瓣热门电影的数据
-pub async fn fetch_douban_movie_data(url: String) -> Result<ApiResponse<Vec<VideoItem>>, String> {
+pub async fn fetch_douban_movie_data(url: String) -> Result<ApiResponse<ItemResult>, String> {
     let client = reqwest::Client::new();
     let response = client
         .get(&url)
@@ -41,32 +43,34 @@ pub async fn fetch_douban_movie_data(url: String) -> Result<ApiResponse<Vec<Vide
 
     let json_value: Value = response.json().await.map_err(|e| e.to_string())?;
 
-    let result = process_json_value(&json_value);
+    let result: ItemResult = process_json_value(&json_value);
     Ok(ApiResponse::ok(result))
 }
 
-fn process_json_value(json_value: &Value) -> Vec<VideoItem> {
+fn process_json_value(json_value: &Value) -> ItemResult {
+    let weekday = get_today_weekday().name_cn.to_string();
     // 获取响应报文中名称为 items的 JSON数组
     let items = match json_value["items"].as_array() {
         Some(arr) => arr,
         None => {
             error!("items 字段不是数组: {}", json_value);
-            return Vec::new();
+            return HashMap::new();
         }
     };
     info!("成功获取豆瓣今日热门电影数据");
 
-    let mut videos: Vec<VideoItem> = Vec::new();
+    let mut videos: Vec<TaskItem> = Vec::new();
 
     for item in items {
         let item = parse_item_to_video_item(item);
         info!("识别到更新：{} {:?}", item.title, item.card_subtitle);
-        videos.push(item);
+        videos.push(TaskItem::Video(item));
     }
-
     info!("成功提取到 {} 部今日更新的动漫", videos.len());
+    let mut result = HashMap::new();
+    result.insert(weekday, videos);
 
-    videos
+    result
 }
 
 fn parse_item_to_video_item(item: &Value) -> VideoItem {
