@@ -1,7 +1,7 @@
 use base64::{Engine as _, engine::general_purpose};
-use common::api::AniItem;
-use common::api::AniItemResult;
 use common::api::ApiResponse;
+use common::api::ItemResult;
+use common::api::{AniItem, TaskItem};
 use common::utils::date_utils::{get_today_slash, get_today_weekday};
 use common::utils::{clean_text, extract_number};
 use serde_json::Value;
@@ -34,7 +34,7 @@ pub async fn fetch_bilibili_image(url: String) -> Result<String, String> {
     Ok(format!("data:{ct};base64,{b64}"))
 }
 
-pub async fn fetch_bilibili_ani_data(url: String) -> Result<ApiResponse<AniItemResult>, String> {
+pub async fn fetch_bilibili_ani_data(url: String) -> Result<ApiResponse<ItemResult>, String> {
     let client = reqwest::Client::new();
     let response = client
         .get(&url)
@@ -45,12 +45,12 @@ pub async fn fetch_bilibili_ani_data(url: String) -> Result<ApiResponse<AniItemR
 
     let json_value: Value = response.json().await.map_err(|e| e.to_string())?;
 
-    let result: AniItemResult = process_json_value(&json_value);
+    let result: ItemResult = process_json_value(&json_value);
     Ok(ApiResponse::ok(result))
 }
 
 /// 解析原始 JSON，往 `result` 中填充当天已发布的番剧更新
-fn process_json_value(json_value: &Value) -> AniItemResult {
+fn process_json_value(json_value: &Value) -> ItemResult {
     // 1. 验证响应状态和数据结构
     let code = json_value.get("code").and_then(Value::as_i64).unwrap_or(-1);
     if code != 0 || !json_value.get("result").is_some_and(Value::is_array) {
@@ -83,7 +83,7 @@ fn process_json_value(json_value: &Value) -> AniItemResult {
 
     // 4. 处理剧集数据
     let weekday = get_today_weekday().name_cn.to_string();
-    let mut comics: Vec<AniItem> = Vec::new();
+    let mut comics: Vec<TaskItem> = Vec::new();
 
     if let Some(eps) = today.get("episodes").and_then(Value::as_array) {
         for ep in eps
@@ -92,7 +92,7 @@ fn process_json_value(json_value: &Value) -> AniItemResult {
         {
             let item = parse_item(ep);
             info!("识别到更新：{} {}", item.title, item.update_info);
-            comics.push(item);
+            comics.push(TaskItem::Ani(item));
         }
     }
 
@@ -105,7 +105,7 @@ fn process_json_value(json_value: &Value) -> AniItemResult {
 }
 
 // 辅助函数：创建空结果
-fn create_empty_result() -> AniItemResult {
+fn create_empty_result() -> ItemResult {
     let weekday = get_today_weekday().name_cn.to_string();
     let mut result = HashMap::new();
     result.insert(weekday, Vec::new());

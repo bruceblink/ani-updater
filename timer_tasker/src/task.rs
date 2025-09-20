@@ -1,6 +1,6 @@
 use async_trait::async_trait;
-use common::api::AniItemResult;
 use common::api::ApiResponse;
+use common::api::ItemResult;
 use cron::Schedule;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -26,16 +26,16 @@ pub struct TaskMeta {
 /// -----------------
 #[async_trait]
 pub trait TaskAction: Send + Sync {
-    async fn run(&self) -> Result<ApiResponse<AniItemResult>, String>;
+    async fn run(&self) -> Result<ApiResponse<ItemResult>, String>;
 }
 
 #[async_trait]
 impl<F, Fut> TaskAction for F
 where
     F: Fn() -> Fut + Send + Sync + 'static,
-    Fut: Future<Output = Result<ApiResponse<AniItemResult>, String>> + Send,
+    Fut: Future<Output = Result<ApiResponse<ItemResult>, String>> + Send,
 {
-    async fn run(&self) -> Result<ApiResponse<AniItemResult>, String> {
+    async fn run(&self) -> Result<ApiResponse<ItemResult>, String> {
         self().await
     }
 }
@@ -55,7 +55,7 @@ impl Task {
     pub fn new<F, Fut>(meta: &TaskMeta, action: F) -> Self
     where
         F: Fn() -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<ApiResponse<AniItemResult>, String>> + Send + 'static,
+        Fut: Future<Output = Result<ApiResponse<ItemResult>, String>> + Send + 'static,
     {
         Self {
             name: meta.name.clone(),
@@ -72,10 +72,7 @@ impl Task {
 
 /// CmdFn 类型（和你之前约定一致）
 pub type CmdFn = Arc<
-    dyn Fn(
-            String,
-        )
-            -> Pin<Box<dyn Future<Output = Result<ApiResponse<AniItemResult>, String>> + Send>>
+    dyn Fn(String) -> Pin<Box<dyn Future<Output = Result<ApiResponse<ItemResult>, String>> + Send>>
         + Send
         + Sync,
 >;
@@ -147,5 +144,5 @@ pub fn build_tasks_from_meta(metas: &Vec<TaskMeta>, cmd_map: &HashMap<String, Cm
 #[derive(Clone, Debug)]
 pub struct TaskResult {
     pub name: String,
-    pub result: Option<AniItemResult>,
+    pub result: Option<ItemResult>,
 }

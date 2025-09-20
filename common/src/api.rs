@@ -102,7 +102,13 @@ pub struct PageData<T> {
     pub total_pages: u32,   // 总页数
 }
 
-pub type AniItemResult = HashMap<String, Vec<AniItem>>;
+pub type ItemResult = HashMap<String, Vec<TaskItem>>;
+
+#[derive(Debug, Clone)]
+pub enum TaskItem {
+    Ani(AniItem),
+    Video(VideoItem),
+}
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AniItem {
@@ -115,7 +121,7 @@ pub struct AniItem {
     pub platform: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BaseVideo {
     pub id: String,                        // id
     pub title: String,                     // 标题
@@ -129,37 +135,3 @@ pub struct BaseVideo {
 }
 
 pub type VideoItem = BaseVideo;
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct VideoInfo {
-    #[serde(flatten)]
-    pub base: BaseVideo, // 继承 BaseVideo
-    pub original_title: String,
-    pub intro: String,
-    pub director: serde_json::Value,
-    pub screenwriter: Option<serde_json::Value>,
-    pub actors: Option<serde_json::Value>,
-    pub category: Option<serde_json::Value>, // 分类
-    pub genres: Option<serde_json::Value>,
-    pub production_country: Option<serde_json::Value>,
-    pub language: Option<String>,
-    pub release_year: Option<i32>,
-    pub release_date: Option<serde_json::Value>,
-    pub duration: serde_json::Value,
-    pub aka: Option<serde_json::Value>,
-    pub imdb: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Rating {
-    pub value: f64,               // 分数值
-    pub count: Option<u32>,       // 评分人数
-    pub max: Option<u32>,         // 最高分
-    pub start_count: Option<u32>, // 起始评分人数
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Pic {
-    pub normal: String,        // 正常尺寸
-    pub large: Option<String>, // 大图
-}

@@ -1,6 +1,6 @@
-use crate::dao::upsert_ani_info;
-use common::api::AniItemResult;
+use crate::dao::{upsert_ani_info, upsert_video_info};
 use common::api::ApiResponse;
+use common::api::{ItemResult, TaskItem};
 use common::utils::date_utils::get_today_weekday;
 use serde_json::json;
 use sqlx::PgPool;
@@ -52,7 +52,7 @@ pub async fn start_async_timer_task(task_metas: Vec<TaskMeta>, connect_pool: PgP
 }
 
 pub async fn run_task_service(
-    ani_item_result: AniItemResult,
+    ani_item_result: ItemResult,
     pool: Arc<PgPool>,
 ) -> anyhow::Result<ApiResponse, String> {
     // 启动定时任务服务
@@ -65,9 +65,21 @@ pub async fn run_task_service(
     };
 
     for item in items {
-        if let Err(e) = upsert_ani_info(item, &pool).await {
-            return Ok(ApiResponse::err(format!("插入失败：{e}")));
+        if let Err(e) = handle_item(item, &pool).await {
+            return Ok(ApiResponse::err(format!("插入或更新失败：{e}")));
         }
     }
     Ok(ApiResponse::ok(json!({ "message": "save success" })))
+}
+
+async fn handle_item(item: &TaskItem, pool: &PgPool) -> anyhow::Result<()> {
+    match item {
+        TaskItem::Ani(ani) => {
+            upsert_ani_info(ani, pool).await?;
+        }
+        TaskItem::Video(video) => {
+            upsert_video_info(video, pool).await?;
+        }
+    }
+    Ok(())
 }

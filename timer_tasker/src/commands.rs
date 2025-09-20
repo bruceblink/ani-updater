@@ -4,8 +4,8 @@ use ani_spiders::iqiyi::fetch_iqiyi_ani_data;
 use ani_spiders::mikanani::fetch_mikanani_ani_data;
 use ani_spiders::tencent::fetch_qq_ani_data;
 use ani_spiders::youku::fetch_youku_ani_data;
-use common::api::AniItemResult;
 use common::api::ApiResponse;
+use common::api::ItemResult;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
@@ -13,10 +13,7 @@ use std::sync::Arc;
 
 /// CmdFn 表示：接收 String 参数（arg/url），返回一个 boxed future，输出为 Result<ApiResponse<AniItemResult>, String>
 pub type CmdFn = Arc<
-    dyn Fn(
-            String,
-        )
-            -> Pin<Box<dyn Future<Output = Result<ApiResponse<AniItemResult>, String>> + Send>>
+    dyn Fn(String) -> Pin<Box<dyn Future<Output = Result<ApiResponse<ItemResult>, String>> + Send>>
         + Send
         + Sync,
 >;

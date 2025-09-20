@@ -1,8 +1,8 @@
 use base64::{Engine as _, engine::general_purpose};
 use chrono::{Datelike, Local};
-use common::api::AniItem;
-use common::api::AniItemResult;
 use common::api::ApiResponse;
+use common::api::ItemResult;
+use common::api::{AniItem, TaskItem};
 use common::utils::date_utils::{get_today_slash, get_today_weekday};
 use common::utils::{clean_text, extract_number};
 use serde_json::Value;
@@ -35,7 +35,7 @@ pub async fn fetch_iqiyi_image(url: String) -> Result<String, String> {
     Ok(format!("data:{ct};base64,{b64}"))
 }
 
-pub async fn fetch_iqiyi_ani_data(url: String) -> Result<ApiResponse<AniItemResult>, String> {
+pub async fn fetch_iqiyi_ani_data(url: String) -> Result<ApiResponse<ItemResult>, String> {
     // 1. 发请求拿 JSON
     let client = reqwest::Client::new();
     let response = client
@@ -49,13 +49,13 @@ pub async fn fetch_iqiyi_ani_data(url: String) -> Result<ApiResponse<AniItemResu
     let json_value: Value = response.json().await.map_err(|e| e.to_string())?;
 
     // 3. 处理解析成 AniItemResult
-    let result: AniItemResult = process_json_value(&json_value);
+    let result: ItemResult = process_json_value(&json_value);
 
     // 4. 返回统一包装
     Ok(ApiResponse::ok(result))
 }
 
-fn process_json_value(json_value: &Value) -> AniItemResult {
+fn process_json_value(json_value: &Value) -> ItemResult {
     // 验证响应格式
     if json_value.get("code") != Some(&Value::from(0)) {
         error!("接口返回错误状态: {}", json_value);
@@ -91,12 +91,13 @@ fn process_json_value(json_value: &Value) -> AniItemResult {
 
     match today_data {
         Some(list) if !list.is_empty() => {
-            let items: Vec<AniItem> = list
+            let items: Vec<TaskItem> = list
                 .iter()
                 .filter_map(parse_item)
                 .inspect(|res| {
                     info!("识别到更新：{} {}", res.title, res.update_info);
                 })
+                .map(TaskItem::Ani) // AniItem 包一层 TaskItem::Ani
                 .collect();
             info!("成功提取到 {} 部今日更新的动漫", items.len());
             result.insert(weekday_str, items);

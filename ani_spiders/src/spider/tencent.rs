@@ -1,8 +1,8 @@
 use base64::Engine;
 use base64::engine::general_purpose;
-use common::api::AniItem;
-use common::api::AniItemResult;
 use common::api::ApiResponse;
+use common::api::ItemResult;
+use common::api::{AniItem, TaskItem};
 use common::utils::date_utils::{get_today_slash, get_today_weekday};
 use common::utils::extract_number;
 use common::utils::http_client::http_client;
@@ -40,7 +40,7 @@ pub async fn fetch_qq_image(url: String) -> Result<String, String> {
 }
 
 /// 获取腾讯视频动漫频道今日更新数据
-pub async fn fetch_qq_ani_data(url: String) -> Result<ApiResponse<AniItemResult>, String> {
+pub async fn fetch_qq_ani_data(url: String) -> Result<ApiResponse<ItemResult>, String> {
     let client = Client::new();
     let resp = client
         .get(&url)
@@ -65,7 +65,7 @@ pub async fn fetch_qq_ani_data(url: String) -> Result<ApiResponse<AniItemResult>
     let daily = find_daily_card(&pinia);
     if daily.is_none() {
         warn!("未找到“每日更新”模块，返回空结果。");
-        let empty: AniItemResult = HashMap::new();
+        let empty: ItemResult = HashMap::new();
         return Ok(ApiResponse::ok(empty));
     }
     info!("成功获取腾讯视频动漫追番表数据");
@@ -87,16 +87,16 @@ pub async fn fetch_qq_ani_data(url: String) -> Result<ApiResponse<AniItemResult>
         .unwrap_or_default();
 
     // 4. 构建结果并记录日志
-    let mut comics: Vec<AniItem> = Vec::new();
+    let mut comics: Vec<TaskItem> = Vec::new();
     for item in today_videos.iter().filter_map(build_aniitem) {
         info!("识别到更新：{}, {}", item.title, item.update_info);
-        comics.push(item);
+        comics.push(TaskItem::Ani(item));
     }
 
     // 5. 存储并返回
     let weekday = get_today_weekday().name_cn.to_string();
     info!("成功提取到 {} 部今日更新的动漫", comics.len());
-    let mut result: AniItemResult = HashMap::new();
+    let mut result: ItemResult = HashMap::new();
     result.insert(weekday, comics);
     Ok(ApiResponse::ok(result))
 }

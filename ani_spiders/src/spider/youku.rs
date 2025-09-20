@@ -1,8 +1,8 @@
 use anyhow::{Context, Result, anyhow};
 use base64::{Engine as _, engine::general_purpose};
-use common::api::AniItem;
-use common::api::AniItemResult;
 use common::api::ApiResponse;
+use common::api::ItemResult;
+use common::api::{AniItem, TaskItem};
 use common::utils::date_utils::{get_today_slash, get_today_weekday};
 use common::utils::extract_number;
 use common::utils::http_client::http_client;
@@ -43,7 +43,7 @@ pub async fn fetch_youku_image(url: String) -> Result<String, String> {
         .map_err(|e| e.to_string())
 }
 
-pub async fn fetch_youku_ani_data(url: String) -> Result<ApiResponse<AniItemResult>, String> {
+pub async fn fetch_youku_ani_data(url: String) -> Result<ApiResponse<ItemResult>, String> {
     // 1. 获取 HTTP 客户端
     let client = client().map_err(|e| e.to_string())?;
     // 2. 请求页面并读取 HTML
@@ -72,7 +72,7 @@ pub async fn fetch_youku_ani_data(url: String) -> Result<ApiResponse<AniItemResu
         Some(arr) => arr,
         None => {
             // 没有找到模块，返回空结果
-            let empty: AniItemResult = AniItemResult::new();
+            let empty: ItemResult = ItemResult::new();
             return Ok(ApiResponse::ok(empty));
         }
     };
@@ -89,7 +89,7 @@ pub async fn fetch_youku_ani_data(url: String) -> Result<ApiResponse<AniItemResu
     info!("提取到 {} 部今日更新动漫", comics.len());
 
     // 6. 构造并返回成功结果
-    let mut result = AniItemResult::new();
+    let mut result = ItemResult::new();
     result.insert(get_today_weekday().name_cn.to_string(), comics);
     Ok(ApiResponse::ok(result))
 }
@@ -118,7 +118,7 @@ fn extract_initial_data(html: &str) -> Result<Value> {
 }
 
 /// 处理模块列表，提取 "每日更新" 项
-fn process_module_list(modules: &[Value]) -> Result<Vec<AniItem>> {
+fn process_module_list(modules: &[Value]) -> Result<Vec<TaskItem>> {
     let mut found = Vec::new();
     let mut seen = HashMap::new();
 
@@ -142,7 +142,7 @@ fn process_module_list(modules: &[Value]) -> Result<Vec<AniItem>> {
                     let ani = build_aniitem(map);
                     if seen.insert(ani.title.clone(), ()).is_none() {
                         info!("识别到更新: {} {}", ani.title, ani.update_info);
-                        found.push(ani);
+                        found.push(TaskItem::Ani(ani));
                     }
                 }
             }

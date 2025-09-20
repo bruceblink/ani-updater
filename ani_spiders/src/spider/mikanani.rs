@@ -1,7 +1,7 @@
 use base64::{Engine as _, engine::general_purpose};
-use common::api::AniItem;
-use common::api::AniItemResult;
 use common::api::ApiResponse;
+use common::api::ItemResult;
+use common::api::{AniItem, TaskItem};
 use common::utils::date_utils::{get_today_slash, get_today_weekday};
 use reqwest::Url;
 use scraper::{Html, Selector};
@@ -34,7 +34,7 @@ pub async fn fetch_mikanani_image(url: String) -> Result<String, String> {
     Ok(format!("data:{ct};base64,{b64}"))
 }
 
-pub async fn fetch_mikanani_ani_data(url: String) -> Result<ApiResponse<AniItemResult>, String> {
+pub async fn fetch_mikanani_ani_data(url: String) -> Result<ApiResponse<ItemResult>, String> {
     // 1. 发请求拿响应
     let client = reqwest::Client::new();
     let response = client
@@ -59,12 +59,12 @@ pub async fn fetch_mikanani_ani_data(url: String) -> Result<ApiResponse<AniItemR
     let base_url = Url::parse(&url).map_err(|e| e.to_string())?;
 
     // 3. 初始化一个空的 result
-    let mut result: AniItemResult = HashMap::new();
+    let mut result: ItemResult = HashMap::new();
     let weekday_str = get_today_weekday().name_cn.to_string();
     // 今天的日期，比如 "2025/07/13"
     let today_date = get_today_slash();
     // 动漫aniitem的列表
-    let mut comics: Vec<AniItem> = Vec::new();
+    let mut comics: Vec<TaskItem> = Vec::new();
     // 过滤出符合条件的 <li>
     for li in document.select(&li_sel) {
         // 必须有 <div class="num-node text-center">
@@ -88,7 +88,7 @@ pub async fn fetch_mikanani_ani_data(url: String) -> Result<ApiResponse<AniItemR
         // 构建 Ani 并加入结果
         if let Some(item) = build_mikanani_item(&base_url, &li) {
             info!("识别到更新：{} {}", item.title, item.update_info);
-            comics.push(item);
+            comics.push(TaskItem::Ani(item));
         }
     }
     info!("成功提取到 {} 部今日更新的动漫", comics.len());
