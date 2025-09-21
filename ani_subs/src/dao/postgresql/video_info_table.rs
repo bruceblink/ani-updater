@@ -29,7 +29,7 @@ pub async fn upsert_video_info(item: &VideoItem, db_pool: &PgPool) -> Result<()>
     .bind(&item.rating)
     .bind(&item.pic)
     .bind(item.is_new)
-    .bind(&item.uri)
+    .bind(&item.id) // 入库时 用原API获取的豆瓣ID替换 URI字段
     .bind(&item.episodes_info)
     .bind(&item.card_subtitle)
     .bind(&item.r#type)
