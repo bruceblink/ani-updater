@@ -57,7 +57,7 @@ fn process_json_value(json_value: &Value) -> ItemResult {
             return HashMap::new();
         }
     };
-    info!("成功获取豆瓣今日热门电影数据");
+    info!("成功获取电影数据");
 
     let mut videos: Vec<TaskItem> = Vec::new();
 
@@ -70,7 +70,7 @@ fn process_json_value(json_value: &Value) -> ItemResult {
             Err(e) => warn!("解析失败: {e}"),
         };
     }
-    info!("成功提取到 {} 部今日更新的动漫", videos.len());
+    info!("成功提取到 {} 部电影", videos.len());
     let mut result = HashMap::new();
     result.insert(weekday, videos);
 

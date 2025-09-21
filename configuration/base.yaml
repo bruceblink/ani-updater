@@ -50,8 +50,14 @@ task_config:
       cron_expr: "0 17 10,11,12,17,18,19,20,21,22,23 * * * *"
       retry_times: 0
   movie:
-    - name: "豆瓣电影"
-      arg: "https://m.douban.com/rexxar/api/v2/subject/recent_hot/movie"
+    - name: "豆瓣电影-热门"
+      arg: "https://m.douban.com/rexxar/api/v2/subject/recent_hot/movie?limit=10000&category=%E7%83%AD%E9%97%A8&type=%E5%85%A8%E9%83%A8&ck=sLqV"
+      cmd: "fetch_douban_movie_data"
+      cron_expr: "0 17 10,11,12,17,18,19,20,21,22,23 * * * *"
+      retry_times: 0
+
+    - name: "豆瓣电影-最新"
+      arg: "https://m.douban.com/rexxar/api/v2/subject/recent_hot/movie?limit=10000&category=%E6%9C%80%E6%96%B0&type=%E5%85%A8%E9%83%A8&ck=sLqV"
       cmd: "fetch_douban_movie_data"
       cron_expr: "0 17 10,11,12,17,18,19,20,21,22,23 * * * *"
       retry_times: 0
