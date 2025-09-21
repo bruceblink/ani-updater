@@ -1,7 +1,7 @@
 -- =====================================
 -- 视频信息表 video_info
 -- =====================================
-
+DROP TABLE IF EXISTS video_info;
 CREATE TABLE IF NOT EXISTS video_info
 (
     id                 UUID         NOT NULL DEFAULT gen_random_uuid(),
