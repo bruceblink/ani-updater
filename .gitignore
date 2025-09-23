@@ -4,3 +4,4 @@
 /postgresql
 /postgresql/data
 /postgresql/logs
+.env
