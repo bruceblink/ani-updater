@@ -4,21 +4,37 @@ use crate::service::github_user_register;
 use actix_web::{HttpRequest, HttpResponse, Responder, cookie::Cookie, get, post, web};
 use common::api::{ApiError, ApiResponse, ApiResult};
 use common::utils::{GithubUser, generate_jwt, generate_refresh_token, verify_jwt};
+use lazy_static::lazy_static;
 use oauth2::{
     AuthorizationCode, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, Scope, TokenResponse,
     basic::BasicClient,
 };
 use once_cell::sync::Lazy;
-use rand::Rng;
 use reqwest::Client;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, PgPool};
-use std::{collections::HashMap, env, sync::Mutex};
+use std::{collections::HashMap, env};
 
 static HTTP: Lazy<Client> = Lazy::new(Client::new);
-// 全局内存存储 state -> pkce_verifier
-static STATE_PKCE_MAP: Lazy<Mutex<HashMap<String, String>>> =
-    Lazy::new(|| Mutex::new(HashMap::new()));
+
+lazy_static! {
+    static ref SECRET: String = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+}
+
+lazy_static! {
+    static ref ALLOWED_REDIRECT_URIS: Vec<&'static str> = vec![
+        "http://localhost:5173",
+        "http://localhost:3039",
+        "https://app.example.com",
+    ];
+}
+
+#[derive(Serialize, Deserialize)]
+struct StateClaims {
+    redirect_uri: String,
+    pkce_verifier: String,
+    exp: usize, // UNIX timestamp
+}
 
 #[get("/")]
 async fn index() -> ApiResult {
@@ -36,26 +52,40 @@ async fn me(req: HttpRequest) -> ApiResult {
 }
 
 #[get("/auth/github/login")]
-async fn github_login(data: web::Data<BasicClient>) -> impl Responder {
+async fn github_login(
+    data: web::Data<BasicClient>,
+    query: web::Query<HashMap<String, String>>,
+) -> impl Responder {
+    // 获取前端重定向的URL
+    let redirect_uri = match query.get("redirect_uri")
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        //.filter(|s| ALLOWED_REDIRECT_URIS.contains(s)) // 可选白名单
+    {
+        Some(uri) => uri,
+        None => return HttpResponse::BadRequest().body("Invalid redirect_uri"),
+    };
+
     let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
 
-    // 生成随机状态
-    let state: String = (0..32)
-        .map(|_| {
-            let chars = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-            chars[rand::rng().random_range(0..chars.len())] as char
-        })
-        .collect();
+    // 生成 JWT state
+    let exp = chrono::Utc::now().timestamp() as usize + 300; // 5分钟过期
+    let claims = StateClaims {
+        redirect_uri: redirect_uri.to_string(),
+        pkce_verifier: pkce_verifier.secret().to_string(),
+        exp,
+    };
 
-    // 保存 state -> pkce_verifier
-    STATE_PKCE_MAP
-        .lock()
-        .unwrap()
-        .insert(state.clone(), pkce_verifier.secret().to_string());
+    let state_jwt = jsonwebtoken::encode(
+        &jsonwebtoken::Header::default(),
+        &claims,
+        &jsonwebtoken::EncodingKey::from_secret(SECRET.as_ref()),
+    )
+    .unwrap();
 
     let (auth_url, _csrf_token) = data
         .get_ref()
-        .authorize_url(move || CsrfToken::new(state.clone()))
+        .authorize_url(move || CsrfToken::new(state_jwt))
         .add_scope(Scope::new("read:user".into()))
         .add_scope(Scope::new("user:email".into()))
         .set_pkce_challenge(pkce_challenge)
@@ -74,13 +104,18 @@ async fn github_callback(
     config: web::Data<Setting>,
 ) -> ApiResult {
     let code = query.get("code").cloned().unwrap_or_default();
-    let state = query.get("state").cloned().unwrap_or_default();
+    let state_jwt = query.get("state").cloned().unwrap_or_default();
 
-    let pkce = {
-        let mut map = STATE_PKCE_MAP.lock().unwrap();
-        map.remove(&state).unwrap_or_default()
-    };
-    let pkce_verifier = PkceCodeVerifier::new(pkce);
+    // 解码 state JWT
+    let token_data = jsonwebtoken::decode::<StateClaims>(
+        &state_jwt,
+        &jsonwebtoken::DecodingKey::from_secret(SECRET.as_ref()),
+        &jsonwebtoken::Validation::default(),
+    )
+    .map_err(|_| ApiError::Internal("Invalid state".into()))?;
+
+    let redirect_uri = token_data.claims.redirect_uri;
+    let pkce_verifier = PkceCodeVerifier::new(token_data.claims.pkce_verifier);
 
     let github_token_resp = data
         .get_ref()
@@ -123,9 +158,6 @@ async fn github_callback(
     let jwt_refresh = generate_refresh_token(config.token[REFRESH_TOKEN] as i64)
         .map_err(|_| ApiError::Internal("refresh_token 生成失败".into()))?;
 
-    let frontend_url =
-        env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:8000".to_string());
-
     let refresh_token_string = github_user_register(
         pool,
         user.clone(),
@@ -150,8 +182,8 @@ async fn github_callback(
         .same_site(actix_web::cookie::SameSite::None) // 为None时可以跨站点请求携带 Cookie
         .finish();
     // 为了保险，防止浏览器(例如firefox的权限就比较严格，不一定会携带access_cookie)不携带access_cookie，
-    // 使用地址栏传递token
-    let final_redirect_url = format!("{frontend_url}/auth/callback?token={}", jwt_access.token);
+    // 最终重定向到前端传来的 redirect_uri
+    let final_redirect_url = format!("{redirect_uri}?token={}", jwt_access.token);
 
     Ok(HttpResponse::Found()
         .append_header(("Location", final_redirect_url))

@@ -54,6 +54,10 @@ pub enum ApiError {
     #[error("Unauthorized")]
     Unauthorized(String),
 
+    // 客户端请求参数问题
+    #[error("Bad Request")]
+    BadRequest(String),
+
     // 未找到资源
     #[error("Not Found")]
     NotFound(String),
@@ -82,6 +86,9 @@ impl ResponseError for ApiError {
             }
             ApiError::NotFound(msg) => {
                 HttpResponse::NotFound().json(ApiResponse::<()>::err(format!("资源未找到: {msg}")))
+            }
+            ApiError::BadRequest(msg) => {
+                HttpResponse::BadRequest().json(ApiResponse::<()>::err(format!("请求错误: {msg}")))
             }
             ApiError::Internal(msg) => HttpResponse::InternalServerError()
                 .json(ApiResponse::<()>::err(format!("服务器内部错误: {msg}"))),
