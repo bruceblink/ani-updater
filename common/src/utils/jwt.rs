@@ -8,11 +8,13 @@ use std::env;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    pub sub: String, // GitHub login
-    pub uid: u64,    // GitHub ID
-    pub exp: usize,  // 过期时间戳
-    pub name: Option<String>,
-    pub email: Option<String>,
+    pub sub: String,            // GitHub login
+    pub uid: u64,               // GitHub ID
+    pub exp: usize,             // 过期时间戳
+    pub r#type: String,         //登录类型
+    pub name: Option<String>,   // 用户名
+    pub email: Option<String>,  // 邮箱
+    pub avatar: Option<String>, // 图像
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -68,8 +70,10 @@ pub fn generate_jwt(user: &GithubUser, exp_minutes: i64) -> Result<AccessToken> 
         sub: user.login.clone(),
         uid: user.id,
         exp: exp.timestamp() as usize,
+        r#type: "github".to_string(),
         name: user.name.clone(),
         email: user.email.clone(),
+        avatar: user.avatar_url.clone(),
     };
 
     let token = encode(
