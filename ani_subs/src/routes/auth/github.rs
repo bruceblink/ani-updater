@@ -36,8 +36,13 @@ struct StateClaims {
     exp: usize, // UNIX timestamp
 }
 
+/**
+    GitHub 第三方登录的 API <br>
+    /auth/github/login Get 请求 <br>
+    url请求参数:  redirect_uri=xxxx
+*/
 #[get("/auth/github/login")]
-async fn github_login(
+async fn auth_github_login(
     data: web::Data<BasicClient>,
     query: web::Query<HashMap<String, String>>,
 ) -> impl Responder {
@@ -81,8 +86,13 @@ async fn github_login(
         .finish()
 }
 
+/**
+    GitHub 第三方登录的回调 API <br>
+    /auth/github/callback Get 请求 <br>
+    url请求参数:  code=xxxx&state=xxxx
+*/
 #[get("/auth/github/callback")]
-async fn github_callback(
+async fn auth_github_callback(
     data: web::Data<BasicClient>,
     query: web::Query<HashMap<String, String>>,
     pool: web::Data<PgPool>,

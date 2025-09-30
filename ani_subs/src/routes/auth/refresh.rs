@@ -18,8 +18,12 @@ struct UserWithIdentity {
     provider_uid: Option<String>,
 }
 
+/**
+    access_token刷新的API，cookie中携带refresh token获取access_token <br>
+    /auth/refresh  POST请求
+*/
 #[post("/auth/refresh")]
-async fn refresh_token(
+async fn auth_refresh(
     req: HttpRequest,
     db: web::Data<PgPool>,
     config: web::Data<Setting>,

@@ -1,11 +1,11 @@
 use crate::configuration::Setting;
 use crate::middleware::{AuthMiddleware, CharsetMiddleware};
+use crate::routes::auth_refresh;
 use crate::routes::login;
 use crate::routes::me::me;
-use crate::routes::refresh_token;
 use crate::routes::{OAuthConfig, logout, proxy_image, sync_task_source};
+use crate::routes::{auth_github_callback, auth_github_login};
 use crate::routes::{get_ani, get_anis};
-use crate::routes::{github_callback, github_login};
 use actix_cors::Cors;
 use actix_web::dev::Server;
 use actix_web::http::header;
@@ -65,9 +65,9 @@ pub fn run(
             .app_data(web::Data::new(configuration.clone())) // 注入全局配置文件
             .app_data(web::Data::new(oauth.clone()))
             .app_data(db_pool.clone())
-            .service(github_login)
-            .service(github_callback)
-            .service(refresh_token)
+            .service(auth_github_login)
+            .service(auth_github_callback)
+            .service(auth_refresh)
             .service(logout)
             .route("/login", web::post().to(login))
             .service(
