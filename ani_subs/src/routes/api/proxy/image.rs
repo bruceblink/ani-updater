@@ -34,7 +34,7 @@ static IMAGE_SOURCES: Lazy<Vec<ImageSource>> = Lazy::new(|| {
 });
 
 #[get("/proxy/image")]
-async fn image_proxy(
+async fn proxy_image(
     web::Query(params): web::Query<HashMap<String, String>>,
 ) -> Result<HttpResponse> {
     let url = params

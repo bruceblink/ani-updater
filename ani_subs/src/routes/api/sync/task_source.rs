@@ -13,7 +13,7 @@ pub struct TaskReq {
 }
 
 // 同步news数据源的 API
-#[post("/sync/source")]
+#[post("/sync/task_source")]
 async fn sync_task_source(
     db_pool: web::Data<PgPool>,
     req: web::Json<TaskReq>, // 接收任意 JSON

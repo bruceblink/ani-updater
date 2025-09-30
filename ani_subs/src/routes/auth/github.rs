@@ -1,9 +1,9 @@
-use crate::common::{ACCESS_TOKEN, ExtractToken, GITHUB_USER_AGENT, REFRESH_TOKEN};
+use crate::common::{ACCESS_TOKEN, GITHUB_USER_AGENT, REFRESH_TOKEN};
 use crate::configuration::Setting;
 use crate::service::github_user_register;
-use actix_web::{HttpRequest, HttpResponse, Responder, cookie::Cookie, get, web};
-use common::api::{ApiError, ApiResponse, ApiResult};
-use common::utils::{GithubUser, generate_jwt, generate_refresh_token, verify_jwt};
+use actix_web::{HttpResponse, Responder, cookie::Cookie, get, web};
+use common::api::{ApiError, ApiResult};
+use common::utils::{GithubUser, generate_jwt, generate_refresh_token};
 use lazy_static::lazy_static;
 use oauth2::{
     AuthorizationCode, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, Scope, TokenResponse,
@@ -34,21 +34,6 @@ struct StateClaims {
     redirect_uri: String,
     pkce_verifier: String,
     exp: usize, // UNIX timestamp
-}
-
-#[get("/")]
-async fn index() -> ApiResult {
-    Ok(HttpResponse::Ok().json(ApiResponse::ok("使用 GitHub 进行第三方登录")))
-}
-
-#[get("/me")]
-async fn me(req: HttpRequest) -> ApiResult {
-    if let Some(token) = req.get_access_token()
-        && let Ok(claims) = verify_jwt(&token)
-    {
-        return Ok(HttpResponse::Ok().json(ApiResponse::ok(claims)));
-    }
-    Err(ApiError::Unauthorized("未携带或非法的 JWT".into()))
 }
 
 #[get("/auth/github/login")]
