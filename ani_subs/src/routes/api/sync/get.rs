@@ -1,7 +1,7 @@
 use crate::common::ExtractToken;
 use actix_web::{HttpRequest, HttpResponse, get, web};
 use chrono::Utc;
-use common::api::{ApiError, ApiResponse, ApiResult};
+use common::api::{ApiError, ApiResult};
 use common::utils::verify_jwt;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, PgPool};
@@ -13,6 +13,13 @@ struct UserSettings {
     setting_type: String,
     data: Option<serde_json::Value>,
     updated_at: chrono::DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct UserSettingsDTO {
+    data: Option<serde_json::Value>,
+    updated_time: u64,
 }
 
 #[derive(Deserialize)]
@@ -48,7 +55,12 @@ async fn sync_me_get(
             tracing::error!("同步用户配置失败: {e}");
             ApiError::Internal("服务器内部错误".into())
         })?;
-        return Ok(HttpResponse::Ok().json(ApiResponse::ok(rec)));
+        // 转换时间字段到上海时区
+        let user_settings_dto = rec.map(|setting| UserSettingsDTO {
+            data: setting.data,
+            updated_time: setting.updated_at.timestamp() as u64,
+        });
+        return Ok(HttpResponse::Ok().json(user_settings_dto));
     }
     Err(ApiError::Unauthorized("请求参数不正确".into()))
 }
