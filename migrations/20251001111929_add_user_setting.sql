@@ -1,16 +1,16 @@
 -- Add migration script here
-CREATE TABLE favorites   -- 收藏表
+----------
+CREATE TABLE IF NOT EXISTS favorites   -- 收藏表
 (
     id           BIGSERIAL PRIMARY KEY,
     user_id      BIGINT      NOT NULL,
-    content_id   BIGINT      NOT NULL,
     content_type VARCHAR(50) NOT NULL,               -- video / article / url / audio
     added_at     TIMESTAMP   NOT NULL DEFAULT NOW(), -- 记录收藏时间
     note         TEXT,                               -- 可选：收藏备注
     tags         TEXT[],                             -- 可选：标签
-    created_at   TIMESTAMP   NOT NULL DEFAULT NOW(),
-    updated_at   TIMESTAMP   NOT NULL DEFAULT NOW(),
-    CONSTRAINT uniq_user_favorite UNIQUE (user_id, content_type, content_id)
+    created_at  TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uniq_user_favorite UNIQUE (user_id, content_type)
 );
 
 -- UPSERT 示例：重复收藏时更新备注和标签
@@ -22,7 +22,7 @@ ON CONFLICT (user_id, content_type, content_id)
                   tags = EXCLUDED.tags,
                   updated_at = NOW();*/
 
-CREATE TABLE watch_history  -- 观看历史表
+CREATE TABLE IF NOT EXISTS watch_history  -- 观看历史表
 (
     id               BIGSERIAL PRIMARY KEY,
     user_id          BIGINT      NOT NULL,
@@ -33,8 +33,8 @@ CREATE TABLE watch_history  -- 观看历史表
     duration_seconds INT                  DEFAULT 0,     -- 对视频有效
     is_finished      BOOLEAN              DEFAULT FALSE, -- 对视频有效
     extra            JSONB,                              -- 存储类型特定数据
-    created_at       TIMESTAMP   NOT NULL DEFAULT NOW(),
-    updated_at       TIMESTAMP   NOT NULL DEFAULT NOW(),
+    created_at  TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uniq_user_content UNIQUE (user_id, content_type, content_id)
 );
 
@@ -49,6 +49,18 @@ ON CONFLICT (user_id, content_type, content_id)
                   is_finished = EXCLUDED.is_finished,
                   extra = EXCLUDED.extra,
                   updated_at = NOW();*/
+
+
+CREATE TABLE IF NOT EXISTS user_setting  -- 用户设置表
+(
+    id               BIGSERIAL PRIMARY KEY,   -- id
+    user_id          BIGINT      NOT NULL,    -- 用户id
+    setting_type     VARCHAR(50) NOT NULL,    -- 设置类型
+    data             JSONB,                   -- 存储类型特定数据
+    created_at  TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uniq_user_setting UNIQUE (user_id, setting_type)
+);
 
 -- 1. 创建/替换触发器函数（所有表共用）
 CREATE OR REPLACE FUNCTION update_updated_at()
@@ -66,7 +78,7 @@ $$
     DECLARE
         tbl_name  text;
         trig_name text;
-        tables    text[] := ARRAY ['favorites', 'watch_history']; -- 这里列出所有目标表
+        tables    text[] := ARRAY ['favorites', 'watch_history', 'user_setting']; -- 这里列出所有目标表
     BEGIN
         FOREACH tbl_name IN ARRAY tables
             LOOP
