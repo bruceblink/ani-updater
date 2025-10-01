@@ -8,6 +8,7 @@ use std::env;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
+    pub id: i64,                // 系统用户id
     pub sub: String,            // GitHub login
     pub uid: u64,               // GitHub ID
     pub exp: usize,             // 过期时间戳
@@ -24,6 +25,17 @@ pub struct GithubUser {
     pub avatar_url: Option<String>,
     pub name: Option<String>,
     pub email: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CommonUser {
+    pub id: i64,                // 系统用户id
+    pub sub: String,            // 第三方登录用户名
+    pub uid: u64,               // 第三方登录 ID
+    pub r#type: String,         // 登录类型
+    pub name: Option<String>,   // 用户名
+    pub email: Option<String>,  // 邮箱
+    pub avatar: Option<String>, // 图像
 }
 
 /// refresh_token的结构
@@ -62,18 +74,19 @@ pub fn verify_jwt(token: &str) -> Result<Claims> {
 /// 生成 JWT
 /// `exp_minutes` 过期时间，单位分钟
 /// 例如：60 * 2 表示 2 小时
-pub fn generate_jwt(user: &GithubUser, exp_minutes: i64) -> Result<AccessToken> {
+pub fn generate_jwt(user: &CommonUser, exp_minutes: i64) -> Result<AccessToken> {
     let secret = jwt_secret()?;
     let exp = Utc::now() + Duration::minutes(exp_minutes);
 
     let claims = Claims {
-        sub: user.login.clone(),
-        uid: user.id,
+        id: user.id,
+        sub: user.sub.clone(),
+        uid: user.uid,
         exp: exp.timestamp() as usize,
-        r#type: "github".to_string(),
+        r#type: user.r#type.to_string(),
         name: user.name.clone(),
         email: user.email.clone(),
-        avatar: user.avatar_url.clone(),
+        avatar: user.avatar.clone(),
     };
 
     let token = encode(

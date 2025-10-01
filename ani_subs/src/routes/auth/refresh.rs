@@ -3,7 +3,7 @@ use crate::configuration::Setting;
 use actix_web::cookie::Cookie;
 use actix_web::{HttpRequest, HttpResponse, post, web};
 use common::api::{ApiError, ApiResponse, ApiResult};
-use common::utils::{GithubUser, generate_jwt, generate_refresh_token};
+use common::utils::{CommonUser, generate_jwt, generate_refresh_token};
 use serde::Serialize;
 use sqlx::{FromRow, PgPool};
 
@@ -70,18 +70,20 @@ async fn auth_refresh(
         ApiError::Internal("服务器错误".into())
     })?;
 
-    let github_user = match rec {
-        Some(u) => GithubUser {
-            login: u.username.unwrap_or_default(),
-            id: u.provider_uid.unwrap_or_default().parse().unwrap_or(0),
-            avatar_url: u.avatar_url,
+    let common_user = match rec {
+        Some(u) => CommonUser {
+            id: u.id,
+            sub: u.username.unwrap_or_default(),
+            uid: u.provider_uid.unwrap_or_default().parse().unwrap_or(0),
+            avatar: u.avatar_url,
             name: u.display_name,
             email: u.email,
+            r#type: u.provider.unwrap(),
         },
         None => return Err(ApiError::Unauthorized("refresh token 无效或已过期".into())),
     };
 
-    let new_access_token = generate_jwt(&github_user, config.token[ACCESS_TOKEN] as i64)
+    let new_access_token = generate_jwt(&common_user, config.token[ACCESS_TOKEN] as i64)
         .map_err(|_| ApiError::Unauthorized("refresh token 无效或已过期".into()))?;
 
     let access_cookie = Cookie::build(ACCESS_TOKEN, new_access_token.token.clone())
@@ -105,6 +107,6 @@ async fn auth_refresh(
             "message": "刷新成功",
             "access_token": new_access_token.token,
             "access_token_exp": new_access_token.expires_at.timestamp() as usize,
-            "user": github_user
+            "user": common_user
         }))))
 }

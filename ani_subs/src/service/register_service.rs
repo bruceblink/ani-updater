@@ -3,12 +3,16 @@ use crate::domain::dto::UserIdentityDto;
 use actix_web::web;
 use common::utils::{GithubUser, RefreshToken};
 
+/**
+  Githu登录的用户注册<br>
+  返回refresh_token
+*/
 pub async fn github_user_register(
     pool: web::Data<sqlx::PgPool>,
     credentials: GithubUser,
     access_token: Option<String>,
     refresh_token: RefreshToken,
-) -> anyhow::Result<String> {
+) -> anyhow::Result<(i64, String)> {
     let third_part_user = UserIdentityDto {
         provider_user_id: credentials.id.to_string(),
         provider: "github".to_string(),

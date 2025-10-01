@@ -84,11 +84,13 @@ pub async fn insert_users(users: &[NewUser], pool: &PgPool) -> anyhow::Result<()
     Ok(())
 }
 
-/// 新增第三方登录用户
+/// 新增第三方登录用户 <br>
+/// 返回 <br>
+/// (user_id, refresh_token)
 pub async fn upsert_user_with_third_part(
     user: &UserIdentityDto,
     pool: &PgPool,
-) -> anyhow::Result<String> {
+) -> anyhow::Result<(i64, String)> {
     let row = sqlx::query(
         r#"
             WITH upsert_user AS (
@@ -110,7 +112,7 @@ pub async fn upsert_user_with_third_part(
             INSERT INTO refresh_tokens (user_id, token, expires_at)
             SELECT id, $8, $9
             FROM upsert_user
-            RETURNING token;
+            RETURNING user_id, token;
             "#
         )
         .bind(&user.email)
@@ -129,6 +131,7 @@ pub async fn upsert_user_with_third_part(
             anyhow::anyhow!(e)
         })?;
 
+    let user_id: i64 = row.get("user_id");
     let refresh_token: String = row.get("token");
-    Ok(refresh_token)
+    Ok((user_id, refresh_token))
 }

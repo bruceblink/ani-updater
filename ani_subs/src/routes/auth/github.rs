@@ -3,7 +3,7 @@ use crate::configuration::Setting;
 use crate::service::github_user_register;
 use actix_web::{HttpResponse, Responder, cookie::Cookie, get, web};
 use common::api::{ApiError, ApiResult};
-use common::utils::{GithubUser, generate_jwt, generate_refresh_token};
+use common::utils::{CommonUser, GithubUser, generate_jwt, generate_refresh_token};
 use lazy_static::lazy_static;
 use oauth2::{
     AuthorizationCode, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, Scope, TokenResponse,
@@ -147,12 +147,10 @@ async fn auth_github_callback(
             .map(String::from);
     }
 
-    let jwt_access = generate_jwt(&user, config.token[ACCESS_TOKEN] as i64)
-        .map_err(|_| ApiError::Internal("access_token 生成失败".into()))?;
-
+    // 生成系统的refresh_token
     let jwt_refresh = generate_refresh_token(config.token[REFRESH_TOKEN] as i64)
         .map_err(|_| ApiError::Internal("refresh_token 生成失败".into()))?;
-
+    // 注册“使用GitHub登录的用户”为系统用户
     let refresh_token_string = github_user_register(
         pool,
         user.clone(),
@@ -162,6 +160,20 @@ async fn auth_github_callback(
     .await
     .map_err(|_| ApiError::Internal("refresh_token 持久化失败".into()))?;
 
+    let new_user = CommonUser {
+        id: refresh_token_string.0,
+        sub: user.login.clone(),
+        uid: user.id,
+        r#type: "github".to_string(),
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar_url,
+    };
+
+    // 生成系统的jwt token
+    let jwt_access = generate_jwt(&new_user, config.token[ACCESS_TOKEN] as i64)
+        .map_err(|_| ApiError::Internal("access_token 生成失败".into()))?;
+
     // 生成 access_token的cookie
     let access_cookie = Cookie::build(ACCESS_TOKEN, jwt_access.clone().token)
         .http_only(true)
@@ -170,7 +182,7 @@ async fn auth_github_callback(
         .same_site(actix_web::cookie::SameSite::None) // 为None时可以跨站点请求携带 Cookie
         .finish();
     // 生成 refresh_token的cookie
-    let refresh_cookie = Cookie::build(REFRESH_TOKEN, refresh_token_string)
+    let refresh_cookie = Cookie::build(REFRESH_TOKEN, refresh_token_string.1)
         .http_only(true)
         .secure(true) // 生产环境必须 https
         .path("/")
