@@ -12,17 +12,17 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-/// CmdFn 表示：接收 String 参数（arg/url），返回一个 boxed future，输出为 Result<ApiResponse<AniItemResult>, String>
+// CmdFn 表示：接收 String 参数（arg/url），返回一个 boxed future，输出为 Result<ApiResponse<AniItemResult>, String>
 pub type CmdFn = Arc<
     dyn Fn(String) -> Pin<Box<dyn Future<Output = Result<ApiResponse<ItemResult>, String>> + Send>>
         + Send
         + Sync,
 >;
 
-/// 示例：构建命令表（把你的实际命令注册进来）
-/// 注意：把实际的异步命令包装为 `CmdFn`。例如你的 Tauri 命令 `fetch_agedm_ani_data`：
-///
-/// 在这里把它包装为 CmdFn：
+// 示例：构建命令表（把你的实际命令注册进来）
+// 注意：把实际的异步命令包装为 `CmdFn`。例如你的 Tauri 命令 `fetch_agedm_ani_data`：
+//
+// 在这里把它包装为 CmdFn：
 pub fn build_cmd_map() -> HashMap<String, CmdFn> {
     let mut map: HashMap<String, CmdFn> = HashMap::new();
     map.insert(
