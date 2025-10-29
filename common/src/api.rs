@@ -1,6 +1,7 @@
 use actix_web::{HttpResponse, Responder, ResponseError};
 use anyhow::Error as AnyError;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -115,6 +116,7 @@ pub type ItemResult = HashMap<String, Vec<TaskItem>>;
 pub enum TaskItem {
     Ani(AniItem),
     Video(VideoItem),
+    News(NewsItem),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -142,3 +144,9 @@ pub struct BaseVideo {
 }
 
 pub type VideoItem = BaseVideo;
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct NewsItem {
+    pub id: String,
+    pub items: Vec<Value>, // 不关心内部结构，直接用 Value 保存
+}

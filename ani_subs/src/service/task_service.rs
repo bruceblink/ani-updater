@@ -1,4 +1,4 @@
-use crate::dao::{upsert_ani_info, upsert_video_info};
+use crate::dao::{upsert_ani_info, upsert_news_info, upsert_video_info};
 use common::api::ApiResponse;
 use common::api::{ItemResult, TaskItem};
 use common::utils::date_utils::get_today_weekday;
@@ -52,16 +52,16 @@ pub async fn start_async_timer_task(task_metas: Vec<TaskMeta>, connect_pool: PgP
 }
 
 pub async fn run_task_service(
-    ani_item_result: ItemResult,
+    item_result: ItemResult,
     pool: Arc<PgPool>,
 ) -> anyhow::Result<ApiResponse, String> {
     // 启动定时任务服务
     let weekday = get_today_weekday().name_cn.to_string();
 
-    let items = match ani_item_result.get(&weekday) {
+    let items = match item_result.get(&weekday) {
         Some(v) if !v.is_empty() => v,
         Some(_) => return Ok(ApiResponse::ok(json!({ "message": "没有可插入的数据" }))),
-        None => return Ok(ApiResponse::err("获取今日动漫数据失败")),
+        None => return Ok(ApiResponse::err("获取更新数据失败")),
     };
 
     for item in items {
@@ -69,7 +69,7 @@ pub async fn run_task_service(
             return Ok(ApiResponse::err(format!("插入或更新失败：{e}")));
         }
     }
-    Ok(ApiResponse::ok(json!({ "message": "save success" })))
+    Ok(ApiResponse::ok(json!({ "message": "upsert success" })))
 }
 
 async fn handle_item(item: &TaskItem, pool: &PgPool) -> anyhow::Result<()> {
@@ -79,6 +79,9 @@ async fn handle_item(item: &TaskItem, pool: &PgPool) -> anyhow::Result<()> {
         }
         TaskItem::Video(video) => {
             upsert_video_info(video, pool).await?;
+        }
+        TaskItem::News(news) => {
+            upsert_news_info(news, pool).await?;
         }
     }
     Ok(())

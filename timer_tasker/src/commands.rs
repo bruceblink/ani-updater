@@ -3,6 +3,7 @@ use ani_spiders::bilibili::fetch_bilibili_ani_data;
 use ani_spiders::douban::fetch_douban_movie_data;
 use ani_spiders::iqiyi::fetch_iqiyi_ani_data;
 use ani_spiders::mikanani::fetch_mikanani_ani_data;
+use ani_spiders::news::fetch_latest_news_data;
 use ani_spiders::tencent::fetch_qq_ani_data;
 use ani_spiders::youku::fetch_youku_ani_data;
 use common::api::ApiResponse;
@@ -53,6 +54,11 @@ pub fn build_cmd_map() -> HashMap<String, CmdFn> {
     map.insert(
         "fetch_douban_movie_data".to_string(),
         Arc::new(|url| Box::pin(fetch_douban_movie_data(url))),
+    );
+
+    map.insert(
+        "fetch_latest_news_data".to_string(),
+        Arc::new(|args| Box::pin(fetch_latest_news_data(args))),
     );
 
     map

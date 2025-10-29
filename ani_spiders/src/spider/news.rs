@@ -6,7 +6,7 @@ use tokio::task::JoinSet;
 use tracing::error;
 
 /// 获取最新新闻的数据
-pub async fn fetch_latest_news_data(args: &str) -> Result<ApiResponse<ItemResult>, String> {
+pub async fn fetch_latest_news_data(args: String) -> Result<ApiResponse<ItemResult>, String> {
     let sources: Vec<&str> = args.split(',').map(|s| s.trim()).collect();
     let mut result: ItemResult = HashMap::new();
     let client = reqwest::Client::new();
@@ -64,7 +64,7 @@ mod test {
     #[tokio::test]
     async fn test_fetch_douban_image() {
         let args = "baidu,bilibili-hot-search,bilibili-hot-video,bilibili-ranking";
-        let result = fetch_latest_news_data(args).await.unwrap();
+        let result = fetch_latest_news_data(args.to_string()).await.unwrap();
         println!("{:?}", result.data)
     }
 }

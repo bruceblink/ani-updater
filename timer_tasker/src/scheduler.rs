@@ -16,6 +16,9 @@ pub struct Scheduler {
 }
 
 impl Scheduler {
+    /// 构建定时任务执行器 <br>
+    /// tasks 定时任务的任务Vec <br>
+    /// max_concurrent_tasks 默认并发为系统的CPU核心数
     pub fn new(tasks: Vec<Task>, max_concurrent_tasks: Option<usize>) -> Self {
         // 获取系统的 CPU 核心数
         let default_max_concurrent_tasks = num_cpus::get();

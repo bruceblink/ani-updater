@@ -42,6 +42,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let task_config = configuration.clone().task_config;
     let mut task_conf = task_config["anime"].clone();
     task_conf.extend(task_config["movie"].iter().cloned());
+    // 新增news定时任务的配置
+    task_conf.extend(task_config["news"].iter().cloned());
     // 启动异步定时任务
     start_async_timer_task(task_conf, connection_pool.clone()).await;
     let address = format!(
