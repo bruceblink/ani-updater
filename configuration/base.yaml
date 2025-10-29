@@ -71,7 +71,7 @@ task_config:
     - name: "最新新闻"
       arg: "baidu,bilibili-hot-search,bilibili-hot-video,bilibili-ranking,chongbuluo-hot,cls-hot,coolapk,douban,douyin,github-trending-today,hackernews,hupu,ifeng,juejin,kuaishou,nowcoder,producthunt,sspai,thepaper,tieba,toutiao,wallstreetcn-hot,weibo,xueqiu-hotstock,zhihu"
       cmd: "fetch_latest_news_data"
-      cron_expr: "0 */20 * * * * *"
+      cron_expr: "0 */20 6-23,0-1 * * * *"  #每天 06:00 开始到次日 02:00 之间，每 20 分钟执行一次。
       retry_times: 0
 token:
   access_token: 20 # mins
