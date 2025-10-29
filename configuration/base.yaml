@@ -69,7 +69,7 @@ task_config:
       retry_times: 0
   news:
     - name: "最新新闻"
-      arg: "baidu,bilibili-hot-search,bilibili-hot-video,bilibili-ranking,chongbuluo-hot,cls-hot,coolapk,douban,douyin,github-trending-today,hackernews,hupu,ifeng,juejin,kuaishou,nowcoder,producthunt,sspai,thepaper,tieba,toutiao,wallstreetcn-hot,weibo,xueqiu-hotstock,zhihu"
+      arg: "v2ex,v2ex-share,zhihu,weibo,zaobao,cls-hot,coolapk,mktnews,mktnews-flash,wallstreetcn,wallstreetcn-quick,wallstreetcn-news,wallstreetcn-hot,36kr,36kr-quick,douyin,hupu,tieba,toutiao,ithome,douban,thepaper,sputniknewscn,cankaoxiaoxi,pcbeta,pcbeta-windows11,cls,cls-telegraph,cls-depth,cls-hot,xueqiu,xueqiu-hotstock,gelonghui,fastbull,fastbull-express,fastbull-news,solidot,hackernews,producthunt,github,github-trending-today,bilibili,bilibili-hot-search,bilibili-hot-video,bilibili-ranking,kuaishou,kaopu,jin10,baidu,nowcoder,sspai,juejin,ifeng,chongbuluo,chongbuluo-latest,chongbuluo-hot,steam"
       cmd: "fetch_latest_news_data"
       cron_expr: "0 */20 6-23,0-1 * * * *"  #每天 06:00 开始到次日 02:00 之间，每 20 分钟执行一次。
       retry_times: 0
