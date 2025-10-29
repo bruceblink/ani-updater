@@ -275,7 +275,7 @@ dependencies = [
 
 [[package]]
 name = "ani_spiders"
-version = "0.0.6"
+version = "0.0.7"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -290,7 +290,7 @@ dependencies = [
 
 [[package]]
 name = "ani_subs"
-version = "0.0.6"
+version = "0.0.7"
 dependencies = [
  "actix-cors",
  "actix-web",
@@ -562,7 +562,7 @@ dependencies = [
 
 [[package]]
 name = "common"
-version = "0.0.6"
+version = "0.0.7"
 dependencies = [
  "actix-web",
  "anyhow",
@@ -3192,7 +3192,7 @@ dependencies = [
 
 [[package]]
 name = "timer_tasker"
-version = "0.0.6"
+version = "0.0.7"
 dependencies = [
  "ani_spiders",
  "async-trait",

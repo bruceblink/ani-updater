@@ -11,7 +11,7 @@ edition = "2024"
 rust-version = "1.88"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/bruceblink/ani-updater"
-version = "0.0.6"
+version = "0.0.7"
 categories = ["web-programming", "development-tools", "network-programming"]
 
 [workspace.dependencies]
