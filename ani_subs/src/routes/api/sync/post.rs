@@ -16,6 +16,7 @@ struct UserSettings {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct Setting {
     setting_type: String,
     data: Option<serde_json::Value>,

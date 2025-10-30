@@ -23,6 +23,7 @@ struct UserSettingsDTO {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct Setting {
     setting_type: String,
 }
