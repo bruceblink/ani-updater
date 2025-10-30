@@ -2,6 +2,7 @@ use chrono::Utc;
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AniInfoDto {
     pub id: i64,
     pub title: String,
@@ -37,6 +38,7 @@ pub struct NewUser {
 
 /// 用户身份Dto,用于关联第三方登录认证的数据
 #[derive(Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct UserIdentityDto {
     pub provider_user_id: String,
     pub provider: String,

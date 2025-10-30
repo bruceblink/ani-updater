@@ -6,6 +6,7 @@ use sqlx::FromRow;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, FromRow, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AniInfo {
     pub id: i64,
     pub title: String,

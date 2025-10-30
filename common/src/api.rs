@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use thiserror::Error;
 
 #[derive(Serialize, Debug, Clone)]
-pub struct ApiResponse<T = serde_json::Value> {
+pub struct ApiResponse<T = Value> {
     pub status: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
@@ -102,6 +102,7 @@ pub type ApiResult = Result<HttpResponse, ApiError>;
 
 /// 分页数据结构
 #[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct PageData<T> {
     pub items: Vec<T>,      // 当前页的数据
     pub total_count: usize, // 总条数
@@ -120,6 +121,7 @@ pub enum TaskItem {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AniItem {
     pub title: String,
     pub update_count: String,
@@ -131,21 +133,23 @@ pub struct AniItem {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct BaseVideo {
-    pub id: String,                        // id
-    pub title: String,                     // 标题
-    pub rating: Option<serde_json::Value>, // 评分
-    pub pic: Option<serde_json::Value>,    // 图片
-    pub is_new: Option<bool>,              // 是否新上映
-    pub uri: String,                       // 豆瓣地址
-    pub episodes_info: Option<String>,     // 更新集数信息
-    pub card_subtitle: String,             // 副标题
-    pub r#type: String,                    // 类型 tv/movie/等   type 是关键字，需加 r#
+    pub id: String,                    // id
+    pub title: String,                 // 标题
+    pub rating: Option<Value>,         // 评分
+    pub pic: Option<Value>,            // 图片
+    pub is_new: Option<bool>,          // 是否新上映
+    pub uri: String,                   // 豆瓣地址
+    pub episodes_info: Option<String>, // 更新集数信息
+    pub card_subtitle: String,         // 副标题
+    pub r#type: String,                // 类型 tv/movie/等   type 是关键字，需加 r#
 }
 
 pub type VideoItem = BaseVideo;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NewsItem {
     pub id: String,
     pub items: Vec<Value>, // 不关心内部结构，直接用 Value 保存
