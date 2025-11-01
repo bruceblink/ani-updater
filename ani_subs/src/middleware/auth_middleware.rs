@@ -4,6 +4,7 @@ use actix_web::{
     Error, HttpMessage, HttpResponse,
     dev::{Service, ServiceRequest, ServiceResponse, Transform},
 };
+use common::api::ApiResponse;
 use common::utils::decode_jwt;
 use futures::future::{LocalBoxFuture, Ready, ok};
 use std::rc::Rc;
@@ -61,13 +62,13 @@ where
                     }
                     Err(_) => Ok(req.into_response(
                         HttpResponse::Unauthorized()
-                            .body("Invalid token")
+                            .json(ApiResponse::<()>::err("Invalid token"))
                             .map_into_boxed_body(),
                     )),
                 },
                 None => Ok(req.into_response(
                     HttpResponse::Unauthorized()
-                        .body("Missing token")
+                        .json(ApiResponse::<()>::err("Missing token"))
                         .map_into_boxed_body(),
                 )),
             }
