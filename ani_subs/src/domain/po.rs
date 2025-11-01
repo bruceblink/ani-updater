@@ -116,3 +116,13 @@ pub struct Pic {
     pub normal: String,        // 正常尺寸
     pub large: Option<String>, // 大图
 }
+
+/// 分页查询的查询条件
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct QueryPage<T> {
+    pub filter: Option<T>,
+    //sort: Option<String>, // 例如 "price", "-price", "name,-price"
+    pub page: Option<u32>,
+    pub page_size: Option<u32>,
+}
