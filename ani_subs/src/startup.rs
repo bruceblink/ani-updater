@@ -1,6 +1,8 @@
 use crate::configuration::Setting;
 use crate::middleware::{AuthMiddleware, CharsetMiddleware};
-use crate::routes::{OAuthConfig, logout, news_get, proxy_image, sse_sensor};
+use crate::routes::{
+    OAuthConfig, SensorData, get_sensor_history, logout, news_get, proxy_image, sse_sensor,
+};
 use crate::routes::{auth_github_callback, auth_github_login, auth_refresh};
 use crate::routes::{get_ani, get_anis};
 use crate::routes::{login, me, sync_me_get, sync_me_post, sync_task_source};
@@ -10,11 +12,48 @@ use actix_web::http::header;
 use actix_web::{App, HttpServer, web};
 use oauth2::basic::BasicClient;
 use sqlx::PgPool;
+use std::collections::VecDeque;
 use std::error::Error;
 use std::net::TcpListener;
 use std::sync::Arc;
+use tokio::sync::RwLock;
 use tracing::info;
 use tracing_actix_web::TracingLogger;
+
+const MAX_HISTORY: usize = 1000;
+
+/// 初始化app的全局状态变量
+#[derive(Clone)]
+pub struct AppState {
+    history: Arc<RwLock<VecDeque<SensorData>>>,
+}
+
+impl AppState {
+    fn new() -> Self {
+        Self {
+            history: Arc::new(RwLock::new(VecDeque::with_capacity(MAX_HISTORY))),
+        }
+    }
+
+    pub async fn add_data(&self, data: SensorData) {
+        let mut history = self.history.write().await;
+        if history.len() >= MAX_HISTORY {
+            history.pop_front();
+        }
+        history.push_back(data);
+    }
+
+    pub async fn get_history(&self) -> Vec<SensorData> {
+        let history = self.history.read().await;
+        history.iter().cloned().collect()
+    }
+
+    pub async fn get_recent(&self, count: usize) -> Vec<SensorData> {
+        let history = self.history.read().await;
+        let start_idx = history.len().saturating_sub(count);
+        history.range(start_idx..).cloned().collect()
+    }
+}
 
 pub fn run(
     listener: TcpListener,
@@ -22,7 +61,8 @@ pub fn run(
     configuration: Setting,
 ) -> anyhow::Result<Server, Box<dyn Error + Send + Sync>> {
     dotenvy::dotenv().ok();
-
+    // 初始化全局状态变量
+    let app_state = web::Data::new(AppState::new());
     let config = OAuthConfig::from_env()?;
     let oauth = BasicClient::new(
         config.client_id,
@@ -55,11 +95,11 @@ pub fn run(
             .allowed_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS"])
             .allowed_headers(vec![header::AUTHORIZATION, header::CONTENT_TYPE])
             .supports_credentials(); // 允许发送 cookie
-
         App::new()
             .wrap(TracingLogger::default())
             .wrap(cors) // 注册 CORS 中间件
-            .wrap(CharsetMiddleware)
+            .wrap(CharsetMiddleware) // 注册字符集中间件
+            .app_data(app_state.clone()) // 注册全局状态变量
             .app_data(web::Data::new(configuration.clone())) // 注入全局配置文件
             .app_data(web::Data::new(oauth.clone()))
             .app_data(db_pool.clone())
@@ -68,6 +108,7 @@ pub fn run(
             .service(auth_refresh)
             .service(logout)
             .service(sse_sensor)
+            .service(get_sensor_history)
             .route("/login", web::post().to(login))
             .service(
                 web::scope("/api")
