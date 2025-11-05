@@ -44,3 +44,5 @@ futures.workspace = true
 time.workspace = true
 futures-util.workspace = true
 lazy_static.workspace = true
+rand.workspace = true
+mime.workspace = true

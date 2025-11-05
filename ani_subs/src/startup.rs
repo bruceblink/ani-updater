@@ -1,6 +1,6 @@
 use crate::configuration::Setting;
 use crate::middleware::{AuthMiddleware, CharsetMiddleware};
-use crate::routes::{OAuthConfig, logout, news_get, proxy_image};
+use crate::routes::{OAuthConfig, logout, news_get, proxy_image, sse_sensor};
 use crate::routes::{auth_github_callback, auth_github_login, auth_refresh};
 use crate::routes::{get_ani, get_anis};
 use crate::routes::{login, me, sync_me_get, sync_me_post, sync_task_source};
@@ -67,6 +67,7 @@ pub fn run(
             .service(auth_github_callback)
             .service(auth_refresh)
             .service(logout)
+            .service(sse_sensor)
             .route("/login", web::post().to(login))
             .service(
                 web::scope("/api")
