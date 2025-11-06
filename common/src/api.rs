@@ -63,6 +63,10 @@ pub enum ApiError {
     #[error("Not Found")]
     NotFound(String),
 
+    // 参数校验问题
+    #[error("Invalid params")]
+    InvalidData(String),
+
     // 未分类/内部错误
     #[error("Internal Server Error")]
     Internal(String),
@@ -91,6 +95,8 @@ impl ResponseError for ApiError {
             ApiError::BadRequest(msg) => {
                 HttpResponse::BadRequest().json(ApiResponse::<()>::err(format!("请求错误: {msg}")))
             }
+            ApiError::InvalidData(msg) => HttpResponse::BadRequest()
+                .json(ApiResponse::<()>::err(format!("参数校验错误: {msg}"))),
             ApiError::Internal(msg) => HttpResponse::InternalServerError()
                 .json(ApiResponse::<()>::err(format!("服务器内部错误: {msg}"))),
         }

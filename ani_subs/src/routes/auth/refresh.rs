@@ -71,15 +71,22 @@ async fn auth_refresh(
     })?;
 
     let common_user = match rec {
-        Some(u) => CommonUser {
-            id: u.id,
-            sub: u.username.unwrap_or_default(),
-            uid: u.provider_uid.unwrap_or_default().parse().unwrap_or(0),
-            avatar: u.avatar_url,
-            name: u.display_name,
-            email: u.email,
-            r#type: u.provider.unwrap(),
-        },
+        Some(u) => {
+            let uid = u
+                .provider_uid
+                .ok_or_else(|| ApiError::InvalidData("provider_uid is missing".into()))?
+                .parse()
+                .map_err(|_| ApiError::InvalidData("invalid provider_uid format".into()))?;
+            CommonUser {
+                id: u.id,
+                sub: u.username.unwrap_or_default(), // 用户名允许为空
+                uid,
+                avatar: u.avatar_url,
+                name: u.display_name,
+                email: u.email,
+                r#type: u.provider.unwrap_or_default(),
+            }
+        }
         None => return Err(ApiError::Unauthorized("refresh token 无效或已过期".into())),
     };
 
