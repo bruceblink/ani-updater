@@ -105,6 +105,7 @@ pub async fn list_all_news_info(
     let data: Vec<NewsInfoDTO> = rows
         .iter()
         .map(|news_info| NewsInfoDTO {
+            id: news_info.id,
             news_from: news_info.news_from.clone(),
             news_date: news_info.news_date,
             data: news_info.data.clone(),

@@ -9,6 +9,7 @@ use sqlx::{FromRow, PgPool};
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NewsInfoDTO {
+    pub id: i64,
     pub news_from: String,
     pub news_date: chrono::NaiveDate,
     pub data: serde_json::Value,
