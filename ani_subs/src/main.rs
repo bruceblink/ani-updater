@@ -1,11 +1,10 @@
-use ani_subs::service::task_service::start_async_timer_task;
+use ani_subs::configuration::{DatabaseSettings, get_configuration};
+use ani_subs::service::start_async_timer_task;
+use ani_subs::startup::run;
+use ani_subs::telemetry::{get_subscriber, init_subscriber};
 use sqlx::postgres::PgPoolOptions;
 use std::net::TcpListener;
 use std::path::PathBuf;
-
-use ani_subs::configuration::{DatabaseSettings, get_configuration};
-use ani_subs::startup::run;
-use ani_subs::telemetry::{get_subscriber, init_subscriber};
 
 // 设置默认最大连接数
 const DEFAULT_MAX_CONNECTIONS: u32 = 10;
@@ -38,14 +37,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .run(&connection_pool)
         .await
         .expect("Failed to migrate the database");
-    // 获取异步任务配置
-    let task_config = configuration.clone().task_config;
-    let mut task_conf = task_config["anime"].clone();
-    task_conf.extend(task_config["movie"].iter().cloned());
-    // 新增news定时任务的配置
-    task_conf.extend(task_config["news"].iter().cloned());
     // 启动异步定时任务
-    start_async_timer_task(task_conf, connection_pool.clone()).await;
+    start_async_timer_task(connection_pool.clone()).await;
     let address = format!(
         "{}:{}",
         configuration.clone().application.host,
