@@ -3,7 +3,6 @@ use serde_aux::field_attributes::deserialize_number_from_string;
 use sqlx::postgres::{PgConnectOptions, PgSslMode};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use timer_tasker::task::TaskMeta;
 
 #[derive(serde::Deserialize, Clone)]
 pub struct Setting {
@@ -11,7 +10,6 @@ pub struct Setting {
     pub application: ApplicationSettings,
     // email_client
     pub email_client: EmailClientSettings,
-    pub task_config: TaskConfig,
     // token
     pub token: TokenConfig,
 }
@@ -87,8 +85,6 @@ impl DatabaseSettings {
             .database(&self.database_name)
     }
 }
-
-pub type TaskConfig = HashMap<String, Vec<TaskMeta>>;
 pub type TokenConfig = HashMap<String, i16>;
 
 /// ------------------------ 环境 ------------------------

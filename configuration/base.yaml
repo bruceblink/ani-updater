@@ -12,67 +12,6 @@ email_client:
   base_url: "localhost"
   sender_email: "test@gmail.com"
   authorization_token: "my-secret-token"
-task_config:
-  anime:
-    - name: "哔哩哔哩国创"
-      arg: "https://api.bilibili.com/pgc/web/timeline?types=4&before=6&after=6"
-      cmd: "fetch_bilibili_ani_data"
-      cron_expr: "0 17 10,11,12,17,18,19,20,21,22,23 * * * *"
-      retry_times: 0
-
-    - name: "哔哩哔哩番剧"
-      arg: "https://api.bilibili.com/pgc/web/timeline?types=1&before=6&after=6"
-      cmd: "fetch_bilibili_ani_data"
-      cron_expr: "0 17 10,11,12,17,18,19,20,21,22,23 * * * *"
-      retry_times: 0
-
-    - name: "agedm"
-      arg: "https://www.agedm.io/update"
-      cmd: "fetch_agedm_ani_data"
-      cron_expr: "0 17 10,11,12,17,18,19,20,21,22,23 * * * *"
-      retry_times: 0
-
-    - name: "爱奇艺动漫"
-      arg: "https://mesh.if.iqiyi.com/portal/lw/v7/channel/cartoon"
-      cmd: "fetch_iqiyi_ani_data"
-      cron_expr: "0 17 10,11,12,17,18,19,20,21,22,23 * * * *"
-      retry_times: 0
-
-    - name: "腾讯动漫"
-      arg: "https://v.qq.com/channel/cartoon"
-      cmd: "fetch_qq_ani_data"
-      cron_expr: "0 17 10,11,12,17,18,19,20,21,22,23 * * * *"
-      retry_times: 0
-
-    - name: "优酷动漫"
-      arg: "https://www.youku.com/ku/webcomic"
-      cmd: "fetch_youku_ani_data"
-      cron_expr: "0 17 10,11,12,17,18,19,20,21,22,23 * * * *"
-      retry_times: 0
-  movie:
-    - name: "豆瓣电影-热门"
-      arg: "https://m.douban.com/rexxar/api/v2/subject/recent_hot/movie?category=%E7%83%AD%E9%97%A8&type=%E5%85%A8%E9%83%A8&ck=sLqV"
-      cmd: "fetch_douban_movie_data"
-      cron_expr: "0 17 10,11,12,17,18,19,20,21,22,23 * * * *"
-      retry_times: 0
-    - name: "豆瓣电影-最新"
-      arg: "https://m.douban.com/rexxar/api/v2/subject/recent_hot/movie?category=%E6%9C%80%E6%96%B0&type=%E5%85%A8%E9%83%A8&ck=sLqV"
-      cmd: "fetch_douban_movie_data"
-      cron_expr: "0 17 10,11,12,17,18,19,20,21,22,23 * * * *"
-      retry_times: 0
-  # 电视剧数据源
-  drama:
-    - name: "腾讯视频"
-      arg: "https://v.qq.com/channel/drama"
-      cmd: "tencent_parser"
-      cron_expr: "0 17 10,11,12,17,18,19,20,21,22,23 * * * *"
-      retry_times: 0
-  news:
-    - name: "最新新闻"
-      arg: "v2ex,v2ex-share,zhihu,weibo,zaobao,cls-hot,coolapk,mktnews,mktnews-flash,wallstreetcn,wallstreetcn-quick,wallstreetcn-news,wallstreetcn-hot,36kr,36kr-quick,douyin,hupu,tieba,toutiao,ithome,douban,thepaper,sputniknewscn,cankaoxiaoxi,pcbeta,pcbeta-windows11,cls,cls-telegraph,cls-depth,cls-hot,xueqiu,xueqiu-hotstock,gelonghui,fastbull,fastbull-express,fastbull-news,solidot,hackernews,producthunt,github,github-trending-today,bilibili,bilibili-hot-search,bilibili-hot-video,bilibili-ranking,kuaishou,kaopu,jin10,baidu,nowcoder,sspai,juejin,ifeng,chongbuluo,chongbuluo-latest,chongbuluo-hot,steam"
-      cmd: "fetch_latest_news_data"
-      cron_expr: "0 */20 6-23,0-1 * * * *"  #每天 06:00 开始到次日 02:00 之间，每 20 分钟执行一次。
-      retry_times: 0
 token:
   access_token: 20 # mins
   refresh_token: 15 # days
