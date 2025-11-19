@@ -1,4 +1,4 @@
-use crate::dao::list_all_news_info;
+use crate::dao::list_all_news_info_by_page;
 use crate::domain::po::QueryPage;
 use actix_web::{HttpRequest, HttpResponse, get, web};
 use chrono::Utc;
@@ -41,7 +41,7 @@ async fn news_get(
     query: web::Query<QueryPage<NewsFilter>>,
     db_pool: web::Data<PgPool>,
 ) -> ApiResult {
-    match list_all_news_info(query, &db_pool).await {
+    match list_all_news_info_by_page(query, &db_pool).await {
         Ok(new) => Ok(HttpResponse::Ok().json(ApiResponse::ok(new))),
         Err(e) => {
             tracing::error!("数据库查询错误: {e:?}");

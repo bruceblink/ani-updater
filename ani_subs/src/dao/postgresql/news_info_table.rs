@@ -47,7 +47,7 @@ struct NewsInfoWithTotal {
     pub total_count: i64,
 }
 
-pub async fn list_all_news_info(
+pub async fn list_all_news_info_by_page(
     query: web::Query<QueryPage<NewsFilter>>,
     db_pool: &PgPool,
 ) -> Result<PageData<NewsInfoDTO>> {
@@ -62,7 +62,7 @@ pub async fn list_all_news_info(
 
     let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
         r#"
-            SELECT ni.id, ni.news_from, ni.news_date, ni.data, ni.created_at, ni.updated_at,COUNT(*) OVER() as total_count
+            SELECT ni.id, ni.news_from, ni.news_date, ni.data, ni.created_at, ni.updated_at, COUNT(*) OVER() as total_count
             FROM news_info ni
             WHERE 1 = 1
           "#,
