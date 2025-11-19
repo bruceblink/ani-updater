@@ -1,4 +1,10 @@
-use crate::dao::{list_all_scheduled_tasks, upsert_ani_info, upsert_news_info, upsert_video_info};
+use crate::dao::{
+    list_all_scheduled_tasks, list_all_scheduled_tasks_by_page, upsert_ani_info, upsert_news_info,
+    upsert_video_info,
+};
+use crate::domain::po::QueryPage;
+use crate::routes::TaskFilter;
+use actix_web::web;
 use common::api::ApiResponse;
 use common::api::{ItemResult, TaskItem};
 use common::utils::date_utils::get_today_weekday;
@@ -89,11 +95,31 @@ async fn handle_item(item: &TaskItem, pool: &PgPool) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// 创建空的分页查询条件
+fn create_empty_query() -> web::Query<QueryPage<TaskFilter>> {
+    let filter = TaskFilter {
+        name: None,
+        arg: None,
+        cmd: None,
+    };
+
+    let query_page = QueryPage {
+        page: None,
+        filter: Some(filter),
+        page_size: None,
+    };
+
+    web::Query(query_page)
+}
+
 /// 初始化定时任务配置
 pub async fn init_scheduled_tasks_config(db_pool: &PgPool) -> Vec<TaskMeta> {
-    match list_all_scheduled_tasks(db_pool).await {
+    // 创建空的分页查询条件，用于使用分页查询的函数查询所有数据
+    let query = create_empty_query();
+    match list_all_scheduled_tasks_by_page(query, db_pool).await {
         Ok(timer_tasker) => {
             timer_tasker
+                .items
                 .iter()
                 .map(|task| {
                     // 安全地提取字符串值
