@@ -1,6 +1,5 @@
 use crate::dao::{
-    list_all_scheduled_tasks, list_all_scheduled_tasks_by_page, upsert_ani_info, upsert_news_info,
-    upsert_video_info,
+    list_all_scheduled_tasks_by_page, upsert_ani_info, upsert_news_info, upsert_video_info,
 };
 use crate::domain::po::QueryPage;
 use crate::routes::TaskFilter;
