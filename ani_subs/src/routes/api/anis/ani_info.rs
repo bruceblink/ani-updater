@@ -1,4 +1,5 @@
 use crate::dao::{get_ani_info_by_id, list_all_ani_info};
+use crate::domain::po::QueryPage;
 use actix_web::{HttpResponse, web};
 use common::api::{ApiError, ApiResponse, ApiResult};
 use serde::Deserialize;
@@ -6,14 +7,14 @@ use sqlx::PgPool;
 
 // 定义嵌套的查询参数结构
 #[derive(Debug, Deserialize, Clone)]
-pub struct Filter {
+pub struct AniFilter {
     pub title: Option<String>,
     pub platform: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct AniQuery {
-    pub filter: Option<Filter>,
+    pub filter: Option<AniFilter>,
     //sort: Option<String>, // 例如 "price", "-price", "name,-price"
     pub page: Option<u32>,
     pub page_size: Option<u32>,
@@ -31,7 +32,10 @@ pub async fn get_ani(path: web::Path<(i64,)>, pool: web::Data<PgPool>) -> ApiRes
     }
 }
 
-pub async fn get_anis(query: web::Query<AniQuery>, pool: web::Data<PgPool>) -> ApiResult {
+pub async fn get_anis(
+    query: web::Query<QueryPage<AniFilter>>,
+    pool: web::Data<PgPool>,
+) -> ApiResult {
     match list_all_ani_info(query, &pool).await {
         Ok(page) => Ok(HttpResponse::Ok().json(ApiResponse::ok(page))),
         Err(e) => {

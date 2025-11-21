@@ -1,6 +1,6 @@
 use crate::domain::dto::AniInfoDto;
-use crate::domain::po::AniInfo;
-use crate::routes::AniQuery;
+use crate::domain::po::{AniInfo, QueryPage};
+use crate::routes::AniFilter;
 use actix_web::web;
 use anyhow::Result;
 use chrono::Utc;
@@ -92,7 +92,7 @@ struct AniInfoWithTotal {
 
 /// 查询所有动漫信息
 pub async fn list_all_ani_info(
-    query: web::Query<AniQuery>,
+    query: web::Query<QueryPage<AniFilter>>,
     db_pool: &PgPool,
 ) -> Result<PageData<AniInfoDto>> {
     // 构造带绑定参数的 QueryAs
