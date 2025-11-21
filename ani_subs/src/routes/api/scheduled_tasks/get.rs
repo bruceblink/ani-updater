@@ -14,8 +14,8 @@ pub struct TaskFilter {
     pub cmd: Option<String>,
 }
 
-#[get("/tasks")]
-async fn task_get(
+#[get("/scheduledTasks")]
+async fn scheduled_tasks_get(
     _: HttpRequest,
     query: web::Query<QueryPage<TaskFilter>>,
     db_pool: web::Data<PgPool>,
