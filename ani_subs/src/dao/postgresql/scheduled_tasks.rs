@@ -25,6 +25,7 @@ pub struct ScheduledTasks {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScheduledTasksDTO {
+    pub id: i64,
     pub name: String,
     pub cron: String,
     pub params: serde_json::Value,
@@ -73,6 +74,7 @@ pub async fn list_all_scheduled_tasks(db_pool: &PgPool) -> anyhow::Result<Vec<Sc
     let data: Vec<ScheduledTasksDTO> = rows
         .iter()
         .map(|task| ScheduledTasksDTO {
+            id: task.id,
             name: task.name.clone(),
             cron: task.cron.clone(),
             params: task.params.clone(),
@@ -150,6 +152,7 @@ pub async fn list_all_scheduled_tasks_by_page(
     let data: Vec<ScheduledTasksDTO> = rows
         .iter()
         .map(|task| ScheduledTasksDTO {
+            id: task.id,
             name: task.name.clone(),
             cron: task.cron.clone(),
             params: task.params.clone(),
