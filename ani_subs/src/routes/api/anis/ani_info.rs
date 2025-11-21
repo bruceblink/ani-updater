@@ -12,14 +12,6 @@ pub struct AniFilter {
     pub platform: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
-pub struct AniQuery {
-    pub filter: Option<AniFilter>,
-    //sort: Option<String>, // 例如 "price", "-price", "name,-price"
-    pub page: Option<u32>,
-    pub page_size: Option<u32>,
-}
-
 pub async fn get_ani(path: web::Path<(i64,)>, pool: web::Data<PgPool>) -> ApiResult {
     let ani_id = path.into_inner().0;
     match get_ani_info_by_id(ani_id, &pool).await {
