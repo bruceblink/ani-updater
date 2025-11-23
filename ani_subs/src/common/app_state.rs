@@ -1,6 +1,6 @@
 use crate::configuration::Setting;
 use crate::routes::{OAuthConfig, SensorData};
-use crate::service::TaskManager;
+use crate::service::{TaskManager, get_global_task_manager};
 use oauth2::basic::BasicClient;
 use sqlx::PgPool;
 use std::collections::VecDeque;
@@ -32,7 +32,9 @@ impl AppState {
         oauth_config: OAuthConfig,
         oauth_client: BasicClient,
     ) -> anyhow::Result<Self> {
-        let task_manager = Arc::new(TaskManager::new(db_pool.clone()));
+        // 从全局单例获取 TaskManager
+        let task_manager =
+            get_global_task_manager().ok_or_else(|| anyhow::anyhow!("TaskManager 尚未初始化"))?;
 
         Ok(Self {
             history: Arc::new(Default::default()),

@@ -1,5 +1,5 @@
 use ani_subs::configuration::{DatabaseSettings, get_configuration};
-use ani_subs::service::start_async_timer_task;
+use ani_subs::service::initialize_task_manager;
 use ani_subs::startup::run;
 use ani_subs::telemetry::{get_subscriber, init_subscriber};
 use sqlx::postgres::PgPoolOptions;
@@ -37,8 +37,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .run(&connection_pool)
         .await
         .expect("Failed to migrate the database");
-    // 启动异步定时任务
-    start_async_timer_task(connection_pool.clone()).await;
+    // 初始化定时任务
+    initialize_task_manager(connection_pool.clone()).await?;
     let address = format!(
         "{}:{}",
         configuration.clone().application.host,

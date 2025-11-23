@@ -4,14 +4,13 @@ use crate::dao::{
 use crate::domain::po::QueryPage;
 use crate::routes::TaskFilter;
 use actix_web::web;
-use chrono::{DateTime, Utc};
 use common::api::ApiResponse;
 use common::api::{ItemResult, TaskItem};
 use common::utils::date_utils::get_today_weekday;
 use serde_json::json;
 use sqlx::PgPool;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use timer_tasker::commands::build_cmd_map;
 use timer_tasker::scheduler::Scheduler;
 use timer_tasker::task::TaskResult;
@@ -20,31 +19,49 @@ use timer_tasker::task::{CmdFn, TaskMeta};
 use tokio::sync::{RwLock, mpsc};
 use tracing::{error, info, warn};
 
-// 添加配置缓存结构
-#[derive(Debug, Clone)]
-struct CachedTaskConfig {
-    task_metas: Vec<TaskMeta>,
-    last_updated: DateTime<Utc>,
-    #[allow(dead_code)]
-    version: u64,
-}
+// 全局单例
+static GLOBAL_TASK_MANAGER: OnceLock<Arc<TaskManager>> = OnceLock::new();
 
-// 全局任务管理器
+// 全局定时任务管理器
 pub struct TaskManager {
     db_pool: Arc<PgPool>,
-    // 配置缓存
-    config_cache: Arc<RwLock<Option<CachedTaskConfig>>>,
     // 当前运行的调度器（用于重启）
     current_scheduler: Arc<RwLock<Option<Arc<Scheduler>>>>,
     // 命令映射表
-    cmd_map: HashMap<String, CmdFn>, // 假设 CmdFn 是你的命令函数类型
+    cmd_map: HashMap<String, CmdFn>, // CmdFn 是你的命令函数类型
+}
+
+// 初始化并启动 TaskManager
+pub async fn initialize_task_manager(db_pool: PgPool) -> anyhow::Result<()> {
+    let task_manager = Arc::new(TaskManager::new(db_pool.clone()));
+
+    // 设置全局实例
+    GLOBAL_TASK_MANAGER
+        .set(task_manager.clone())
+        .map_err(|_| anyhow::anyhow!("TaskManager 已经初始化"))?;
+
+    // 启动定时任务
+    start_async_timer_task_with_manager(task_manager).await;
+
+    Ok(())
+}
+
+// 获取全局 TaskManager 实例
+pub fn get_global_task_manager() -> Option<Arc<TaskManager>> {
+    GLOBAL_TASK_MANAGER.get().cloned()
+}
+
+// 修改后的启动函数，接收 TaskManager 实例
+async fn start_async_timer_task_with_manager(task_manager: Arc<TaskManager>) {
+    if let Err(e) = task_manager.start_or_restart_tasks().await {
+        error!("定时任务启动失败: {e:?}");
+    }
 }
 
 impl TaskManager {
     pub fn new(db_pool: PgPool) -> Self {
         Self {
             db_pool: Arc::new(db_pool),
-            config_cache: Arc::new(RwLock::new(None)),
             current_scheduler: Arc::new(RwLock::new(None)),
             cmd_map: build_cmd_map(),
         }
@@ -76,36 +93,8 @@ impl TaskManager {
         Ok(())
     }
 
-    // 加载任务配置（带缓存）
+    // 加载任务配置
     pub async fn load_task_config(&self) -> anyhow::Result<Vec<TaskMeta>> {
-        // 检查缓存
-        {
-            let cache = self.config_cache.read().await;
-            if let Some(cached) = &*cache {
-                // 5分钟缓存
-                let cache_age = Utc::now() - cached.last_updated;
-                if cache_age < chrono::Duration::minutes(5) {
-                    return Ok(cached.task_metas.clone());
-                }
-            }
-        }
-
-        // 缓存未命中或过期，从数据库加载
-        let task_metas = self.load_config_from_db().await?;
-
-        // 更新缓存
-        let mut cache = self.config_cache.write().await;
-        *cache = Some(CachedTaskConfig {
-            task_metas: task_metas.clone(),
-            last_updated: Utc::now(),
-            version: 1, // 可以基于时间戳或版本号
-        });
-
-        Ok(task_metas)
-    }
-
-    // 从数据库加载配置
-    async fn load_config_from_db(&self) -> anyhow::Result<Vec<TaskMeta>> {
         let query = create_empty_query();
         let timer_tasker = list_all_scheduled_tasks_by_page(query, &self.db_pool).await?;
 
@@ -131,12 +120,6 @@ impl TaskManager {
 
     // 强制刷新配置
     pub async fn refresh_config(&self) -> anyhow::Result<()> {
-        // 清空缓存
-        {
-            let mut cache = self.config_cache.write().await;
-            *cache = None;
-        }
-
         // 重新启动任务
         self.start_or_restart_tasks().await
     }
@@ -144,9 +127,13 @@ impl TaskManager {
     // 停止当前调度器
     async fn stop_current_scheduler(&self) {
         let mut current = self.current_scheduler.write().await;
-        *current = None;
-        // 注意：这里需要根据你的 Scheduler 实现来正确停止
-        // 如果 Scheduler 有 stop/shutdown 方法，应该在这里调用
+        // 安全地停止调度器
+        if let Some(scheduler) = current.take() {
+            scheduler.stop();
+            info!("已停止当前调度器");
+        } else {
+            info!("没有正在运行的调度器需要停止");
+        }
     }
 
     // 启动调度器（包含通道创建）
@@ -180,60 +167,6 @@ impl TaskManager {
             }
         });
     }
-
-    pub async fn check_config_updated(&self) -> anyhow::Result<bool> {
-        // 这里可以实现更智能的检查逻辑
-        // 例如：查询数据库中的最大更新时间戳
-
-        let current_cache = self.config_cache.read().await;
-        if let Some(cached) = &*current_cache {
-            // 简单的基于时间的检查（5分钟缓存）
-            let cache_age = Utc::now() - cached.last_updated;
-            if cache_age > chrono::Duration::minutes(5) {
-                return Ok(true);
-            }
-        } else {
-            // 没有缓存，需要加载
-            return Ok(true);
-        }
-
-        Ok(false)
-    }
-}
-
-// 配置监听器
-async fn start_config_watcher(task_manager: Arc<TaskManager>) {
-    tokio::spawn(async move {
-        let mut interval = tokio::time::interval(std::time::Duration::from_secs(600)); // 10分钟检查一次
-
-        loop {
-            interval.tick().await;
-
-            // 检查配置是否有更新（基于版本号或时间戳）
-            if let Ok(should_reload) = task_manager.check_config_updated().await
-                && should_reload
-            {
-                info!("检测到配置变更，重新加载定时任务...");
-                if let Err(e) = task_manager.refresh_config().await {
-                    error!("配置重载失败: {}", e);
-                }
-            }
-        }
-    });
-}
-
-/// 启动异步定时任务
-pub async fn start_async_timer_task(connect_pool: PgPool) {
-    // 创建任务管理器
-    let task_manager = Arc::new(TaskManager::new(connect_pool));
-
-    // 首次启动任务
-    if let Err(e) = task_manager.start_or_restart_tasks().await {
-        error!("定时任务启动失败: {e:?}");
-        return;
-    }
-    // 启动配置监听
-    start_config_watcher(task_manager.clone()).await;
 }
 
 pub async fn run_task_service(
