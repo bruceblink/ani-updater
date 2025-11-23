@@ -1,10 +1,10 @@
-use crate::common::ExtractToken;
+use crate::common::{AppState, ExtractToken};
 use actix_web::{HttpRequest, HttpResponse, get, web};
 use chrono::Utc;
 use common::api::{ApiError, ApiResult};
 use common::utils::verify_jwt;
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, PgPool};
+use sqlx::FromRow;
 
 #[derive(Debug, Serialize, FromRow)]
 struct UserSettings {
@@ -32,7 +32,7 @@ struct Setting {
 async fn sync_me_get(
     req: HttpRequest,
     query: web::Query<Setting>,
-    db: web::Data<PgPool>,
+    app_state: web::Data<AppState>,
 ) -> ApiResult {
     // 获取请求参数
     let setting_type = &query.setting_type.trim();
@@ -50,7 +50,7 @@ async fn sync_me_get(
         )
         .bind(claims.id)
         .bind(setting_type)
-        .fetch_optional(db.get_ref())
+        .fetch_optional(&app_state.db_pool)
         .await
         .map_err(|e| {
             tracing::error!("同步用户配置失败: {e}");

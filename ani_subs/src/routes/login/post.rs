@@ -1,4 +1,4 @@
-use crate::common::ExtractToken;
+use crate::common::{AppState, ExtractToken};
 use crate::dao::get_user_by_username;
 use actix_web::cookie::{Cookie, SameSite};
 use actix_web::{HttpRequest, HttpResponse, Responder, post, web};
@@ -20,11 +20,11 @@ pub struct Claims {
 }
 
 pub async fn login(
-    db_pool: web::Data<sqlx::PgPool>,
+    app_state: web::Data<AppState>,
     credentials: web::Json<LoginRequest>,
 ) -> impl Responder {
     // 查询用户
-    let user = match get_user_by_username(credentials.username.clone(), &db_pool).await {
+    let user = match get_user_by_username(credentials.username.clone(), &app_state.db_pool).await {
         Ok(Some(u)) => u,
         _ => return HttpResponse::Unauthorized().finish(),
     };
@@ -52,7 +52,7 @@ pub async fn login(
 }
 
 #[post("/logout")]
-async fn logout(db_pool: web::Data<sqlx::PgPool>, req: HttpRequest) -> impl Responder {
+async fn logout(app_state: web::Data<AppState>, req: HttpRequest) -> impl Responder {
     if let Some(token) = req.get_refresh_token() {
         let _ = sqlx::query(
             r#"
@@ -60,7 +60,7 @@ async fn logout(db_pool: web::Data<sqlx::PgPool>, req: HttpRequest) -> impl Resp
             "#,
         )
         .bind(token.clone())
-        .execute(db_pool.get_ref())
+        .execute(&app_state.db_pool)
         .await
         .map_err(|e| tracing::error!("token {token:?} 注销失败: {e}"));
     } else {

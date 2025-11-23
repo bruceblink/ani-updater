@@ -1,11 +1,10 @@
-use crate::common::{ACCESS_TOKEN, REFRESH_TOKEN};
-use crate::configuration::Setting;
+use crate::common::{ACCESS_TOKEN, AppState, REFRESH_TOKEN};
 use actix_web::cookie::Cookie;
 use actix_web::{HttpRequest, HttpResponse, post, web};
 use common::api::{ApiError, ApiResponse, ApiResult};
 use common::utils::{CommonUser, generate_jwt, generate_refresh_token};
 use serde::Serialize;
-use sqlx::{FromRow, PgPool};
+use sqlx::FromRow;
 
 #[derive(Debug, Serialize, FromRow)]
 struct UserWithIdentity {
@@ -23,18 +22,15 @@ struct UserWithIdentity {
     /auth/refresh  POST请求
 */
 #[post("/auth/refresh")]
-async fn auth_refresh(
-    req: HttpRequest,
-    db: web::Data<PgPool>,
-    config: web::Data<Setting>,
-) -> ApiResult {
+async fn auth_refresh(req: HttpRequest, app_state: web::Data<AppState>) -> ApiResult {
     let old_refresh_cookie = req
         .cookie(REFRESH_TOKEN)
         .ok_or_else(|| ApiError::Unauthorized("缺少 refresh token".into()))?;
     let old_refresh_token = old_refresh_cookie.value();
 
-    let new_refresh_token = generate_refresh_token(config.token[REFRESH_TOKEN] as i64)
-        .map_err(|_| ApiError::Internal("refresh_token 生成失败".into()))?;
+    let new_refresh_token =
+        generate_refresh_token(app_state.configuration.token[REFRESH_TOKEN] as i64)
+            .map_err(|_| ApiError::Internal("refresh_token 生成失败".into()))?;
 
     let rec = sqlx::query_as::<_, UserWithIdentity>(
         r#"
@@ -63,7 +59,7 @@ async fn auth_refresh(
     )
     .bind(old_refresh_token)
     .bind(&new_refresh_token.token)
-    .fetch_optional(db.get_ref())
+    .fetch_optional(&app_state.db_pool)
     .await
     .map_err(|e| {
         tracing::error!("刷新 token 查询失败: {e}");
@@ -90,8 +86,11 @@ async fn auth_refresh(
         None => return Err(ApiError::Unauthorized("refresh token 无效或已过期".into())),
     };
 
-    let new_access_token = generate_jwt(&common_user, config.token[ACCESS_TOKEN] as i64)
-        .map_err(|_| ApiError::Unauthorized("refresh token 无效或已过期".into()))?;
+    let new_access_token = generate_jwt(
+        &common_user,
+        app_state.configuration.token[ACCESS_TOKEN] as i64,
+    )
+    .map_err(|_| ApiError::Unauthorized("refresh token 无效或已过期".into()))?;
 
     let access_cookie = Cookie::build(ACCESS_TOKEN, new_access_token.token.clone())
         .http_only(true)

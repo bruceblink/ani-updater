@@ -1,9 +1,9 @@
+use crate::common::AppState;
 use crate::dao::list_all_scheduled_tasks_by_page;
 use crate::domain::po::QueryPage;
 use actix_web::{HttpRequest, HttpResponse, get, web};
 use common::api::{ApiError, ApiResponse, ApiResult};
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
 
 /// 定义"News"的嵌套的查询参数结构
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -18,9 +18,9 @@ pub struct TaskFilter {
 async fn scheduled_tasks_get(
     _: HttpRequest,
     query: web::Query<QueryPage<TaskFilter>>,
-    db_pool: web::Data<PgPool>,
+    app_state: web::Data<AppState>,
 ) -> ApiResult {
-    match list_all_scheduled_tasks_by_page(query, &db_pool).await {
+    match list_all_scheduled_tasks_by_page(query, &app_state.db_pool).await {
         Ok(news) => Ok(HttpResponse::Ok().json(ApiResponse::ok(news))),
         Err(e) => {
             tracing::error!("数据库查询错误: {e:?}");

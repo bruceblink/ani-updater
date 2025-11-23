@@ -1,8 +1,8 @@
+use crate::common::AppState;
 use actix_web::{HttpResponse, post, web};
 use common::api::{ApiResponse, ApiResult};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::PgPool;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TaskReq {
@@ -15,8 +15,8 @@ pub struct TaskReq {
 // 同步news数据源的 API
 #[post("/sync/task_source")]
 async fn sync_task_source(
-    db_pool: web::Data<PgPool>,
     req: web::Json<TaskReq>, // 接收任意 JSON
+    app_state: web::Data<AppState>,
 ) -> ApiResult {
     let _ = sqlx::query(
         r#"
@@ -32,7 +32,7 @@ async fn sync_task_source(
     .bind(req.cron.clone())
     .bind(req.params.clone())
     .bind(req.retry_times)
-    .execute(db_pool.get_ref())
+    .execute(&app_state.db_pool)
     .await
     .map_err(|e| {
         tracing::error!("插入或更新 scheduled_tasks {:?} 失败: {}", req, e);

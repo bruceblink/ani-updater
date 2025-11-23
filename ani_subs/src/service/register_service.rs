@@ -1,14 +1,14 @@
 use crate::dao::upsert_user_with_third_part;
 use crate::domain::dto::UserIdentityDto;
-use actix_web::web;
 use common::utils::{GithubUser, RefreshToken};
+use sqlx::PgPool;
 
 /**
   Githu登录的用户注册<br>
   返回refresh_token
 */
 pub async fn github_user_register(
-    pool: web::Data<sqlx::PgPool>,
+    pool: PgPool,
     credentials: GithubUser,
     access_token: Option<String>,
     refresh_token: RefreshToken,

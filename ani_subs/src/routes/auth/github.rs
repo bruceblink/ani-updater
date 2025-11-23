@@ -1,5 +1,4 @@
-use crate::common::{ACCESS_TOKEN, GITHUB_USER_AGENT, REFRESH_TOKEN};
-use crate::configuration::Setting;
+use crate::common::{ACCESS_TOKEN, AppState, GITHUB_USER_AGENT, REFRESH_TOKEN};
 use crate::service::github_user_register;
 use actix_web::{HttpResponse, Responder, cookie::Cookie, get, web};
 use common::api::{ApiError, ApiResult};
@@ -7,12 +6,10 @@ use common::utils::{CommonUser, GithubUser, generate_jwt, generate_refresh_token
 use lazy_static::lazy_static;
 use oauth2::{
     AuthorizationCode, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, Scope, TokenResponse,
-    basic::BasicClient,
 };
 use once_cell::sync::Lazy;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
 use std::{collections::HashMap, env};
 
 static HTTP: Lazy<Client> = Lazy::new(Client::new);
@@ -43,7 +40,7 @@ struct StateClaims {
 */
 #[get("/auth/github/login")]
 async fn auth_github_login(
-    data: web::Data<BasicClient>,
+    app_state: web::Data<AppState>,
     query: web::Query<HashMap<String, String>>,
 ) -> impl Responder {
     // 获取前端重定向的URL
@@ -73,8 +70,8 @@ async fn auth_github_login(
     )
     .unwrap();
 
-    let (auth_url, _csrf_token) = data
-        .get_ref()
+    let (auth_url, _csrf_token) = app_state
+        .oauth_client
         .authorize_url(move || CsrfToken::new(state_jwt))
         .add_scope(Scope::new("read:user".into()))
         .add_scope(Scope::new("user:email".into()))
@@ -93,10 +90,8 @@ async fn auth_github_login(
 */
 #[get("/auth/github/callback")]
 async fn auth_github_callback(
-    data: web::Data<BasicClient>,
+    app_state: web::Data<AppState>,
     query: web::Query<HashMap<String, String>>,
-    pool: web::Data<PgPool>,
-    config: web::Data<Setting>,
 ) -> ApiResult {
     let code = query.get("code").cloned().unwrap_or_default();
     let state_jwt = query.get("state").cloned().unwrap_or_default();
@@ -112,8 +107,8 @@ async fn auth_github_callback(
     let redirect_uri = token_data.claims.redirect_uri;
     let pkce_verifier = PkceCodeVerifier::new(token_data.claims.pkce_verifier);
 
-    let github_token_resp = data
-        .get_ref()
+    let github_token_resp = app_state
+        .oauth_client
         .exchange_code(AuthorizationCode::new(code))
         .set_pkce_verifier(pkce_verifier)
         .request_async(oauth2::reqwest::async_http_client)
@@ -148,11 +143,11 @@ async fn auth_github_callback(
     }
 
     // 生成系统的refresh_token
-    let jwt_refresh = generate_refresh_token(config.token[REFRESH_TOKEN] as i64)
+    let jwt_refresh = generate_refresh_token(app_state.configuration.token[REFRESH_TOKEN] as i64)
         .map_err(|_| ApiError::Internal("refresh_token 生成失败".into()))?;
     // 注册“使用GitHub登录的用户”为系统用户
     let refresh_token_string = github_user_register(
-        pool,
+        app_state.db_pool.clone(),
         user.clone(),
         Some(github_token_resp.access_token().secret().to_string()),
         jwt_refresh,
@@ -171,8 +166,11 @@ async fn auth_github_callback(
     };
 
     // 生成系统的jwt token
-    let jwt_access = generate_jwt(&new_user, config.token[ACCESS_TOKEN] as i64)
-        .map_err(|_| ApiError::Internal("access_token 生成失败".into()))?;
+    let jwt_access = generate_jwt(
+        &new_user,
+        app_state.configuration.token[ACCESS_TOKEN] as i64,
+    )
+    .map_err(|_| ApiError::Internal("access_token 生成失败".into()))?;
 
     // 生成 access_token的cookie
     let access_cookie = Cookie::build(ACCESS_TOKEN, jwt_access.clone().token)
