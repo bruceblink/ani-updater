@@ -2,7 +2,8 @@ use crate::common::AppState;
 use crate::configuration::Setting;
 use crate::middleware::{AuthMiddleware, CharsetMiddleware};
 use crate::routes::{
-    OAuthConfig, get_sensor_history, logout, news_get, proxy_image, scheduled_tasks_get, sse_sensor,
+    OAuthConfig, get_sensor_history, logout, news_get, proxy_image, scheduled_tasks_get,
+    sse_sensor, task_reload,
 };
 use crate::routes::{auth_github_callback, auth_github_login, auth_refresh};
 use crate::routes::{get_ani, get_anis};
@@ -87,6 +88,12 @@ pub async fn run(
                     .service(scheduled_tasks_get)
                     .route("/anis", web::get().to(get_anis))
                     .route("/anis/{id}", web::get().to(get_ani)),
+            )
+            .service(
+                // 这里可以添加其他管理员路由
+                web::scope("/admin")
+                    .wrap(AuthMiddleware)
+                    .service(task_reload),
             )
     })
     .listen(listener)?
