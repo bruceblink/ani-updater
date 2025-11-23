@@ -1,4 +1,8 @@
-use crate::routes::SensorData;
+use crate::configuration::Setting;
+use crate::routes::{OAuthConfig, SensorData};
+use crate::service::TaskManager;
+use oauth2::basic::BasicClient;
+use sqlx::PgPool;
 use std::collections::VecDeque;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -9,19 +13,35 @@ const MAX_HISTORY: usize = 1000;
 #[derive(Clone)]
 pub struct AppState {
     history: Arc<RwLock<VecDeque<SensorData>>>,
-}
-
-impl Default for AppState {
-    fn default() -> Self {
-        Self::new()
-    }
+    // 定义 OAuth2 授权的相关配置
+    pub oauth_config: OAuthConfig,
+    pub oauth_client: BasicClient,
+    // 数据库连接
+    pub db_pool: PgPool,
+    // 任务管理器
+    pub task_manager: Arc<TaskManager>,
+    // 全局配置文件配置
+    pub configuration: Setting,
 }
 
 impl AppState {
-    pub fn new() -> Self {
-        Self {
-            history: Arc::new(RwLock::new(VecDeque::with_capacity(MAX_HISTORY))),
-        }
+    /// 初始化 AppState
+    pub async fn create_app_state(
+        db_pool: PgPool,
+        configuration: Setting,
+        oauth_config: OAuthConfig,
+        oauth_client: BasicClient,
+    ) -> anyhow::Result<Self> {
+        let task_manager = Arc::new(TaskManager::new(db_pool.clone()));
+
+        Ok(Self {
+            history: Arc::new(Default::default()),
+            oauth_config,
+            oauth_client,
+            db_pool,
+            task_manager,
+            configuration,
+        })
     }
 
     pub async fn add_data(&self, data: SensorData) {

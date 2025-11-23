@@ -46,7 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     );
     let listener = TcpListener::bind(address).expect("Failed to bind random port");
     // 启动 web 服务
-    let server = run(listener, connection_pool, configuration)?; // run 返回 Result<Server, Box<dyn Error>>
+    let server = run(listener, connection_pool, configuration).await?; // run 返回 Result<Server, Box<dyn Error>>
     server.await?;
     Ok(())
 }

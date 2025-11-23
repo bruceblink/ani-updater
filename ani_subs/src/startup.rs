@@ -19,24 +19,27 @@ use std::sync::Arc;
 use tracing::info;
 use tracing_actix_web::TracingLogger;
 
-pub fn run(
+pub async fn run(
     listener: TcpListener,
     db_pool: PgPool,
     configuration: Setting,
 ) -> anyhow::Result<Server, Box<dyn Error + Send + Sync>> {
     dotenvy::dotenv().ok();
-    // 初始化全局状态变量
-    let app_state = web::Data::new(AppState::new());
+
+    // 创建 OAuthConfig 和 BasicClient
     let config = OAuthConfig::from_env()?;
     let oauth = BasicClient::new(
-        config.client_id,
-        Some(config.client_secret),
-        config.auth_url,
-        Some(config.token_url),
+        config.client_id.clone(),
+        Some(config.client_secret.clone()),
+        config.auth_url.clone(),
+        Some(config.token_url.clone()),
     )
-    .set_redirect_uri(config.redirect_url);
-    // 智能指针包装一个连接
-    let db_pool = web::Data::new(db_pool);
+    .set_redirect_uri(config.redirect_url.clone());
+
+    // 初始化全局状态变量 - 现在通过 AppState 统一管理
+    let app_state =
+        web::Data::new(AppState::create_app_state(db_pool, configuration, config, oauth).await?);
+
     // 允许的跨域请求的 前端域名白名单列表 FRONTEND_DOMAINS: "http://localhost:3000;http://example.com"
     let allowed_origins: Vec<String> = std::env::var("FRONTEND_DOMAINS")
         .unwrap_or_default()
@@ -59,14 +62,12 @@ pub fn run(
             .allowed_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS"])
             .allowed_headers(vec![header::AUTHORIZATION, header::CONTENT_TYPE])
             .supports_credentials(); // 允许发送 cookie
+
         App::new()
             .wrap(TracingLogger::default())
             .wrap(cors) // 注册 CORS 中间件
             .wrap(CharsetMiddleware) // 注册字符集中间件
-            .app_data(app_state.clone()) // 注册全局状态变量
-            .app_data(web::Data::new(configuration.clone())) // 注入全局配置文件
-            .app_data(web::Data::new(oauth.clone()))
-            .app_data(db_pool.clone())
+            .app_data(app_state.clone()) // 现在只需要注册这一个全局状态
             .service(auth_github_login)
             .service(auth_github_callback)
             .service(auth_refresh)
@@ -90,5 +91,6 @@ pub fn run(
     })
     .listen(listener)?
     .run();
+
     Ok(server)
 }
