@@ -1,6 +1,8 @@
+use anyhow::{Context, Result};
 use oauth2::{AuthUrl, ClientId, ClientSecret, RedirectUrl, TokenUrl};
-use std::error::Error;
 
+/// 定义 OAuth2 授权的相关配置
+#[derive(Clone)]
 pub struct OAuthConfig {
     pub client_id: ClientId,
     pub client_secret: ClientSecret,
@@ -10,26 +12,25 @@ pub struct OAuthConfig {
 }
 
 impl OAuthConfig {
-    pub fn from_env() -> Result<Self, Box<dyn Error + Send + Sync>> {
-        let client_id = ClientId::new(
-            std::env::var("GITHUB_CLIENT_ID").map_err(|_| "GITHUB_CLIENT_ID 未设置")?,
-        );
+    pub fn from_env() -> Result<Self> {
+        let client_id =
+            ClientId::new(std::env::var("GITHUB_CLIENT_ID").context("GITHUB_CLIENT_ID 未设置")?);
 
         let client_secret = ClientSecret::new(
-            std::env::var("GITHUB_CLIENT_SECRET").map_err(|_| "GITHUB_CLIENT_SECRET 未设置")?,
+            std::env::var("GITHUB_CLIENT_SECRET").context("GITHUB_CLIENT_SECRET 未设置")?,
         );
 
         let base_url =
             std::env::var("OAUTH_BASE_URL").unwrap_or_else(|_| "http://localhost:8000".to_string());
 
         let auth_url = AuthUrl::new("https://github.com/login/oauth/authorize".to_string())
-            .map_err(|e| format!("Invalid auth URL: {e}"))?;
+            .context("Invalid auth URL")?;
 
         let token_url = TokenUrl::new("https://github.com/login/oauth/access_token".to_string())
-            .map_err(|e| format!("Invalid token URL: {e}"))?;
+            .context("Invalid token URL")?;
 
         let redirect_url = RedirectUrl::new(format!("{base_url}/auth/github/callback"))
-            .map_err(|e| format!("Invalid redirect URL: {e}"))?;
+            .context("Invalid redirect URL")?;
 
         Ok(Self {
             client_id,
