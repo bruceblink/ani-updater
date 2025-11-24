@@ -130,9 +130,9 @@ impl TaskManager {
         // 安全地停止调度器
         if let Some(scheduler) = current.take() {
             scheduler.stop();
-            info!("已停止当前调度器");
+            info!("已停止当前的定时任务调度器");
         } else {
-            info!("没有正在运行的调度器需要停止");
+            info!("没有正在运行的定时任务调度器需要停止");
         }
     }
 
