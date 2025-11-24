@@ -180,7 +180,7 @@ pub async fn create_database_pool(configuration: &Setting) -> Result<sqlx::PgPoo
     }
 
     // 只有在没有环境变量时，才需要克隆 configuration.database
-    let database_settings = DatabaseSettings::from_env(configuration.database.clone());
+    let database_settings = DatabaseSettings::from(configuration.database.clone());
     let connect_options = database_settings.connect_options();
 
     PgPoolOptions::new()

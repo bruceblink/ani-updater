@@ -4,7 +4,7 @@ use sqlx::postgres::{PgConnectOptions, PgSslMode};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-#[derive(serde::Deserialize, Clone)]
+#[derive(serde::Deserialize, Clone, Debug)]
 pub struct Setting {
     pub database: DatabaseSettings,
     pub application: ApplicationSettings,
@@ -14,7 +14,7 @@ pub struct Setting {
     pub token: TokenConfig,
 }
 
-#[derive(serde::Deserialize, Clone)]
+#[derive(serde::Deserialize, Clone, Debug)]
 pub struct EmailClientSettings {
     pub base_url: String,
     pub sender_email: String,
@@ -22,14 +22,14 @@ pub struct EmailClientSettings {
     pub authorization_token: Secret<String>,
 }
 
-#[derive(serde::Deserialize, Clone)]
+#[derive(serde::Deserialize, Clone, Debug)]
 pub struct ApplicationSettings {
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub port: u16,
     pub host: String,
 }
 
-#[derive(serde::Deserialize, Clone)]
+#[derive(serde::Deserialize, Clone, Debug)]
 pub struct DatabaseSettings {
     pub username: String,
     pub password: Secret<String>,
@@ -42,32 +42,35 @@ pub struct DatabaseSettings {
 
 impl DatabaseSettings {
     /// 从环境变量或默认值初始化
-    pub fn from_env(database: DatabaseSettings) -> Self {
-        let host = std::env::var("DB_HOST").unwrap_or_else(|_| database.host.clone());
-        let username = std::env::var("DB_USERNAME").unwrap_or_else(|_| database.username.clone());
-        let password = Secret::new(
-            std::env::var("POSTGRES_PASSWORD")
-                .unwrap_or_else(|_| database.password.expose_secret().clone()),
-        );
-        let port = std::env::var("DB_PORT")
-            .unwrap_or_else(|_| database.port.to_string())
-            .parse()
-            .unwrap();
-        let database_name =
-            std::env::var("DB_NAME").unwrap_or_else(|_| database.database_name.clone());
-        let require_ssl = std::env::var("DB_REQUIRE_SSL")
-            .ok()
-            .map(|v| v == "true")
-            .unwrap_or(database.require_ssl);
-
-        DatabaseSettings {
-            host,
-            username,
-            password,
-            port,
-            database_name,
-            require_ssl,
+    pub fn with_env_overrides(mut self) -> Self {
+        if let Ok(host) = std::env::var("DB_HOST") {
+            self.host = host;
         }
+
+        if let Ok(username) = std::env::var("DB_USERNAME") {
+            self.username = username;
+        }
+
+        if let Ok(password) = std::env::var("POSTGRES_PASSWORD") {
+            self.password = Secret::new(password);
+        }
+
+        if let Ok(port) = std::env::var("DB_PORT")
+            && let Ok(parsed_port) = port.parse()
+        {
+            self.port = parsed_port;
+            // 可以添加日志记录解析失败的情况
+        }
+
+        if let Ok(database_name) = std::env::var("DB_NAME") {
+            self.database_name = database_name;
+        }
+
+        if let Ok(require_ssl) = std::env::var("DB_REQUIRE_SSL") {
+            self.require_ssl = require_ssl == "true";
+        }
+
+        self
     }
 
     pub fn connect_options(&self) -> PgConnectOptions {
@@ -76,6 +79,7 @@ impl DatabaseSettings {
         } else {
             PgSslMode::Prefer
         };
+
         PgConnectOptions::new()
             .host(&self.host)
             .username(&self.username)
@@ -85,115 +89,148 @@ impl DatabaseSettings {
             .database(&self.database_name)
     }
 }
+
 pub type TokenConfig = HashMap<String, i16>;
 
 /// ------------------------ 环境 ------------------------
+#[derive(Debug, Clone, PartialEq)]
 pub enum Environment {
     Local,
     Production,
 }
 
+impl Environment {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Environment::Local => "local",
+            Environment::Production => "production",
+        }
+    }
+
+    pub fn config_filename(&self) -> String {
+        format!("{}.yaml", self.as_str())
+    }
+}
+
 impl std::str::FromStr for Environment {
-    type Err = ();
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "local" => Ok(Environment::Local),
             "production" => Ok(Environment::Production),
-            _ => Ok(Environment::Production), // 默认生产环境
+            other => Err(format!(
+                "'{}' is not a supported environment. Use either 'local' or 'production'.",
+                other
+            )),
         }
     }
 }
 
 impl std::fmt::Display for Environment {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Environment::Local => write!(f, "local"),
-            Environment::Production => write!(f, "production"),
-        }
-    }
-}
-
-impl TryFrom<String> for Environment {
-    type Error = String;
-
-    fn try_from(s: String) -> Result<Self, Self::Error> {
-        match s.to_lowercase().as_str() {
-            "local" => Ok(Self::Local),
-            "production" => Ok(Self::Production),
-            other => Err(format!(
-                "{other} is not a supported environment. Use either `local` or `production`."
-            )),
-        }
+        write!(f, "{}", self.as_str())
     }
 }
 
 /// ------------------------ 配置加载 ------------------------
-pub fn get_configuration(
-    config_dir: Option<PathBuf>, // 可选覆盖目录
-) -> Result<Setting, config::ConfigError> {
-    // 配置目录默认使用 crate 根目录下的 configuration
+pub fn get_configuration(config_dir: Option<PathBuf>) -> Result<Setting, config::ConfigError> {
     let config_directory = config_dir
         .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("configuration"));
 
-    // 环境默认 local
-    let env: Environment = std::env::var("APP_ENV")
-        .unwrap_or_else(|_| "production".into())
-        .try_into()
-        .expect("Failed to parse APP_ENVIRONMENT.");
-    let env_filename = format!("{env}.yaml");
+    let environment = get_environment()?;
 
-    // 构建配置
-    let settings = config::Config::builder()
+    let settings = build_config(config_directory, &environment)?;
+
+    // 应用环境变量覆盖
+    let mut setting: Setting = settings.try_deserialize()?;
+    setting.database = setting.database.with_env_overrides();
+
+    Ok(setting)
+}
+
+/// 获取当前环境
+fn get_environment() -> Result<Environment, config::ConfigError> {
+    let env_str = std::env::var("APP_ENV").unwrap_or_else(|_| "production".into());
+
+    env_str
+        .parse()
+        .map_err(|e: String| config::ConfigError::Message(e))
+}
+
+/// 构建配置
+fn build_config(
+    config_directory: PathBuf,
+    environment: &Environment,
+) -> Result<config::Config, config::ConfigError> {
+    config::Config::builder()
         .add_source(config::File::from(config_directory.join("base.yaml")))
-        .add_source(config::File::from(config_directory.join(env_filename)))
+        .add_source(config::File::from(
+            config_directory.join(environment.config_filename()),
+        ))
         .add_source(
             config::Environment::with_prefix("APP")
                 .prefix_separator("_")
                 .separator("__"),
         )
-        .build()?;
-
-    settings.try_deserialize::<Setting>()
+        .build()
 }
 
+#[cfg(test)]
 mod tests {
+    use super::*;
+    use std::env;
+
     #[test]
     fn test_environment_from_str() {
-        use super::Environment;
-        let env: Environment = "local".parse().unwrap();
-        assert!(matches!(env, Environment::Local));
+        assert_eq!("local".parse(), Ok(Environment::Local));
+        assert_eq!("production".parse(), Ok(Environment::Production));
 
-        let env: Environment = "production".parse().unwrap();
-        assert!(matches!(env, Environment::Production));
-
-        let env: Environment = "unknown".parse().unwrap();
-        assert!(matches!(env, Environment::Production)); // 默认生产环境
-
-        unsafe {
-            std::env::set_var("APP_ENV", "local");
-        }
-        let environment: Environment = std::env::var("APP_ENV")
-            .unwrap_or_else(|_| "local".into())
-            .try_into()
-            .expect("Failed to parse APP_ENVIRONMENT.");
-        assert!(matches!(environment, Environment::Local)); //
-
-        unsafe {
-            std::env::set_var("APP_ENV", "production");
-        }
-        let environment: Environment = std::env::var("APP_ENV")
-            .unwrap_or_else(|_| "local".into())
-            .try_into()
-            .expect("Failed to parse APP_ENVIRONMENT.");
-        assert!(matches!(environment, Environment::Production)); // 
+        let result: Result<Environment, _> = "unknown".parse();
+        assert!(result.is_err());
     }
-    #[test]
-    fn test_token_exp() {
-        use crate::configuration::get_configuration;
-        use std::path::PathBuf;
 
-        let config = get_configuration(Option::from(PathBuf::from("../configuration"))).unwrap();
+    #[test]
+    fn test_environment_display() {
+        assert_eq!(Environment::Local.to_string(), "local");
+        assert_eq!(Environment::Production.to_string(), "production");
+    }
+
+    #[test]
+    fn test_database_settings_env_overrides() {
+        let original = DatabaseSettings {
+            host: "localhost".to_string(),
+            username: "test_user".to_string(),
+            password: Secret::new("test_pass".to_string()),
+            port: 5432,
+            database_name: "test_db".to_string(),
+            require_ssl: false,
+        };
+
+        // 设置环境变量
+        unsafe {
+            env::set_var("DB_HOST", "override_host");
+            env::set_var("DB_USERNAME", "override_user");
+        }
+
+        let overridden = original.clone().with_env_overrides();
+
+        assert_eq!(overridden.host, "override_host");
+        assert_eq!(overridden.username, "override_user");
+        // 其他字段应该保持不变
+        assert_eq!(overridden.port, original.port);
+        assert_eq!(overridden.database_name, original.database_name);
+
+        // 清理环境变量
+        unsafe {
+            env::remove_var("DB_HOST");
+            env::remove_var("DB_USERNAME");
+        }
+    }
+
+    #[test]
+    fn test_token_config() {
+        let config = get_configuration(Some(PathBuf::from("../configuration"))).unwrap();
         assert_eq!(config.token.len(), 2);
         assert_eq!(config.token["access_token"], 20);
         assert_eq!(config.token["refresh_token"], 15);
