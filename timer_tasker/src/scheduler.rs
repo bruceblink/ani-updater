@@ -165,6 +165,7 @@ mod tests {
                 "mock".into(),
                 vec![TaskItem::News(NewsItem {
                     id: "baidu".to_string(),
+                    name: "百度".to_string(),
                     items: vec![],
                 })],
             );
