@@ -40,8 +40,6 @@ pub async fn run(listener: TcpListener, db_pool: PgPool, configuration: Setting)
     // 获取允许的源列表
     let allowed_origins = parse_allowed_origins().context("Failed to parse allowed origins")?;
 
-    info!("允许的跨域请求的前端域名白名单列表: {allowed_origins:?}");
-
     // 创建并启动服务器
     create_server(listener, app_state, allowed_origins)
         .await
