@@ -1,10 +1,10 @@
+use anyhow::{Context, Result};
 use common::api::{ApiResponse, ItemResult, NewsItem, TaskItem};
 use common::utils::date_utils::get_today_weekday;
-use serde_json::{Value, from_value};
+use serde_json::from_value;
 use std::collections::HashMap;
 use tokio::task::JoinSet;
 use tracing::error;
-
 /// 获取最新新闻的数据
 pub async fn fetch_latest_news_data(args: String) -> Result<ApiResponse<ItemResult>, String> {
     let sources: Vec<&str> = args.split(',').map(|s| s.trim()).collect();
@@ -34,10 +34,7 @@ pub async fn fetch_latest_news_data(args: String) -> Result<ApiResponse<ItemResu
     Ok(ApiResponse::ok(result))
 }
 
-async fn fetch_single_news_source(
-    client: &reqwest::Client,
-    arg: &str,
-) -> anyhow::Result<NewsItem, String> {
+async fn fetch_single_news_source(client: &reqwest::Client, arg: &str) -> Result<NewsItem> {
     let url = format!("https://news.likanug.top/api/s?id={}", arg);
 
     let response = client
@@ -45,16 +42,19 @@ async fn fetch_single_news_source(
         .header("Referer", "https://news.likanug.top/")
         .send()
         .await
-        .map_err(|e| format!("请求失败: {} - {}", arg, e))?;
+        .with_context(|| format!("请求新闻源失败: {}", arg))?;
 
-    let json_value: Value = response
+    // 检查HTTP状态码
+    if !response.status().is_success() {
+        anyhow::bail!("HTTP错误: {} - 状态码: {}", arg, response.status());
+    }
+    // 将响应解析成json
+    let json_value: serde_json::Value = response
         .json()
         .await
-        .map_err(|e| format!("解析JSON失败: {} - {}", arg, e))?;
-    let data: NewsItem =
-        from_value(json_value).map_err(|e| format!("解析JSON失败: {} - {}", arg, e))?;
+        .with_context(|| format!("解析JSON响应失败: {}", arg))?;
 
-    Ok(data)
+    from_value(json_value).with_context(|| format!("反序列化NewsItem失败: {}", arg))
 }
 
 #[cfg(test)]
@@ -63,7 +63,7 @@ mod test {
 
     #[tokio::test]
     async fn test_fetch_douban_image() {
-        let args = "baidu,bilibili-hot-search,bilibili-hot-video,bilibili-ranking";
+        let args = "v2ex-share,36kr,kuaishou,bilibili-hot-video,bilibili-ranking,36kr-quick,bilibili,bilibili-hot-search,sputniknewscn";
         let result = fetch_latest_news_data(args.to_string()).await.unwrap();
         println!("{:?}", result.data)
     }
