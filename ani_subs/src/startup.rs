@@ -17,7 +17,7 @@ use oauth2::basic::BasicClient;
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
 use std::net::TcpListener;
-use tracing::info;
+use tracing::{info, warn};
 use tracing_actix_web::TracingLogger;
 
 pub async fn run(listener: TcpListener, db_pool: PgPool, configuration: Setting) -> Result<Server> {
@@ -82,12 +82,23 @@ async fn create_app_state(
 
 /// 解析允许的源域名
 fn parse_allowed_origins() -> Result<Vec<String>> {
-    let origins = std::env::var("FRONTEND_DOMAINS")
-        .unwrap_or_default()
+    let env_value = std::env::var("FRONTEND_DOMAINS").unwrap_or_default();
+
+    let origins: Vec<String> = env_value
         .split(';')
-        .map(|s| s.trim().to_string())
+        .map(|s| s.trim())
         .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
         .collect();
+
+    // 记录日志
+    match (env_value.is_empty(), origins.is_empty()) {
+        (true, _) => info!("FRONTEND_DOMAINS not set, CORS will only allow same-origin requests"),
+        (false, true) => {
+            warn!("FRONTEND_DOMAINS is set but contains no valid origins after parsing")
+        }
+        (false, false) => info!("CORS allowed origins: {:?}", origins),
+    }
 
     Ok(origins)
 }
