@@ -8,6 +8,7 @@ database:
   password: "password"
   database_name: "newsletter"
   require_ssl: false
+  max_connections: 10   # 数据库连接池最大连接数
 email_client:
   base_url: "localhost"
   sender_email: "test@gmail.com"

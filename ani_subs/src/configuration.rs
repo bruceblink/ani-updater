@@ -38,6 +38,7 @@ pub struct DatabaseSettings {
     pub host: String,
     pub database_name: String,
     pub require_ssl: bool,
+    pub max_connections: u32, // 数据库连接池最大连接数
 }
 
 impl DatabaseSettings {
@@ -68,6 +69,12 @@ impl DatabaseSettings {
 
         if let Ok(require_ssl) = std::env::var("DB_REQUIRE_SSL") {
             self.require_ssl = require_ssl == "true";
+        }
+
+        if let Ok(max_connections) = std::env::var("DB_MAX_CONNS_NUM")
+            && let Ok(max_conns) = max_connections.parse()
+        {
+            self.max_connections = max_conns;
         }
 
         self
@@ -205,12 +212,14 @@ mod tests {
             port: 5432,
             database_name: "test_db".to_string(),
             require_ssl: false,
+            max_connections: 16,
         };
 
         // 设置环境变量
         unsafe {
             env::set_var("DB_HOST", "override_host");
             env::set_var("DB_USERNAME", "override_user");
+            env::set_var("DB_MAX_CONNS_NUM", "override_max_conns");
         }
 
         let overridden = original.clone().with_env_overrides();
@@ -220,11 +229,13 @@ mod tests {
         // 其他字段应该保持不变
         assert_eq!(overridden.port, original.port);
         assert_eq!(overridden.database_name, original.database_name);
+        assert_eq!(overridden.max_connections, original.max_connections);
 
         // 清理环境变量
         unsafe {
             env::remove_var("DB_HOST");
             env::remove_var("DB_USERNAME");
+            env::remove_var("DB_MAX_CONNS_NUM");
         }
     }
 

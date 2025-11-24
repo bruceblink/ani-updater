@@ -20,9 +20,6 @@ use std::net::TcpListener;
 use tracing::info;
 use tracing_actix_web::TracingLogger;
 
-// 设置默认最大连接数
-const DEFAULT_MAX_CONNECTIONS: u32 = 10;
-
 pub async fn run(listener: TcpListener, db_pool: PgPool, configuration: Setting) -> Result<Server> {
     // 加载环境变量（可选，失败不影响主要逻辑）
     dotenvy::dotenv().ok();
@@ -170,10 +167,10 @@ async fn create_server(
 }
 
 /// 创建数据库连接池
-pub async fn create_database_pool(configuration: &Setting) -> Result<sqlx::PgPool> {
+pub async fn create_database_pool(configuration: &Setting) -> Result<PgPool> {
     if let Ok(database_url) = std::env::var("DATABASE_URL") {
         return PgPoolOptions::new()
-            .max_connections(DEFAULT_MAX_CONNECTIONS)
+            .max_connections(configuration.database.max_connections)
             .connect(&database_url)
             .await
             .context("Failed to connect to database using DATABASE_URL environment variable");
@@ -184,14 +181,14 @@ pub async fn create_database_pool(configuration: &Setting) -> Result<sqlx::PgPoo
     let connect_options = database_settings.connect_options();
 
     PgPoolOptions::new()
-        .max_connections(DEFAULT_MAX_CONNECTIONS)
+        .max_connections(database_settings.max_connections)
         .connect_with(connect_options)
         .await
         .context("Failed to connect to database using configuration settings")
 }
 
 /// 运行数据库迁移
-pub async fn run_database_migrations(pool: &sqlx::PgPool) -> Result<()> {
+pub async fn run_database_migrations(pool: &PgPool) -> Result<()> {
     sqlx::migrate!("../migrations")
         .run(pool)
         .await
@@ -201,7 +198,7 @@ pub async fn run_database_migrations(pool: &sqlx::PgPool) -> Result<()> {
 }
 
 /// 启动 Web 服务器
-pub async fn start_web_server(configuration: Setting, connection_pool: sqlx::PgPool) -> Result<()> {
+pub async fn start_web_server(configuration: Setting, connection_pool: PgPool) -> Result<()> {
     let address = format!(
         "{}:{}",
         configuration.application.host, configuration.application.port
