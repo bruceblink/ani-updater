@@ -1,5 +1,5 @@
 use crate::common::AppState;
-use crate::configuration::{DatabaseSettings, Setting};
+use crate::configuration::Setting;
 use crate::middleware::{AuthMiddleware, CharsetMiddleware};
 use crate::routes::{
     OAuthConfig, get_sensor_history, logout, news_get, proxy_image, scheduled_tasks_get,
@@ -186,7 +186,7 @@ pub async fn create_database_pool(configuration: &Setting) -> Result<PgPool> {
     }
 
     // 只有在没有环境变量时，才需要克隆 configuration.database
-    let database_settings = DatabaseSettings::from(configuration.database.clone());
+    let database_settings = configuration.database.clone();
     let connect_options = database_settings.connect_options();
 
     PgPoolOptions::new()
