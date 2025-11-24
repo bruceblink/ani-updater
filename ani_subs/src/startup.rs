@@ -1,5 +1,5 @@
 use crate::common::AppState;
-use crate::configuration::Setting;
+use crate::configuration::{DatabaseSettings, Setting};
 use crate::middleware::{AuthMiddleware, CharsetMiddleware};
 use crate::routes::{
     OAuthConfig, get_sensor_history, logout, news_get, proxy_image, scheduled_tasks_get,
@@ -15,9 +15,13 @@ use actix_web::{App, HttpServer, web};
 use anyhow::{Context, Result};
 use oauth2::basic::BasicClient;
 use sqlx::PgPool;
+use sqlx::postgres::PgPoolOptions;
 use std::net::TcpListener;
 use tracing::info;
 use tracing_actix_web::TracingLogger;
+
+// 设置默认最大连接数
+const DEFAULT_MAX_CONNECTIONS: u32 = 10;
 
 pub async fn run(listener: TcpListener, db_pool: PgPool, configuration: Setting) -> Result<Server> {
     // 加载环境变量（可选，失败不影响主要逻辑）
@@ -163,4 +167,52 @@ async fn create_server(
     .run();
 
     Ok(server)
+}
+
+/// 创建数据库连接池
+pub async fn create_database_pool(configuration: &Setting) -> Result<sqlx::PgPool> {
+    if let Ok(database_url) = std::env::var("DATABASE_URL") {
+        return PgPoolOptions::new()
+            .max_connections(DEFAULT_MAX_CONNECTIONS)
+            .connect(&database_url)
+            .await
+            .context("Failed to connect to database using DATABASE_URL environment variable");
+    }
+
+    // 只有在没有环境变量时，才需要克隆 configuration.database
+    let database_settings = DatabaseSettings::from_env(configuration.database.clone());
+    let connect_options = database_settings.connect_options();
+
+    PgPoolOptions::new()
+        .max_connections(DEFAULT_MAX_CONNECTIONS)
+        .connect_with(connect_options)
+        .await
+        .context("Failed to connect to database using configuration settings")
+}
+
+/// 运行数据库迁移
+pub async fn run_database_migrations(pool: &sqlx::PgPool) -> Result<()> {
+    sqlx::migrate!("../migrations")
+        .run(pool)
+        .await
+        .context("Failed to run database migrations")?;
+
+    Ok(())
+}
+
+/// 启动 Web 服务器
+pub async fn start_web_server(configuration: Setting, connection_pool: sqlx::PgPool) -> Result<()> {
+    let address = format!(
+        "{}:{}",
+        configuration.application.host, configuration.application.port
+    );
+
+    let listener = TcpListener::bind(&address)
+        .with_context(|| format!("Failed to bind to address: {}", address))?;
+
+    let server = run(listener, connection_pool, configuration)
+        .await
+        .context("Failed to start server")?;
+
+    server.await.context("Server error during execution")
 }
