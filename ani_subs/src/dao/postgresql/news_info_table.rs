@@ -16,14 +16,15 @@ pub async fn upsert_news_info(news_item: &NewsItem, db_pool: &PgPool) -> Result<
         r#"
         INSERT INTO public.news_info (
             news_from,
+            name,
             data
-        ) VALUES ($1, $2)
-        ON CONFLICT (news_from, news_date) DO UPDATE SET
-            news_from = EXCLUDED.news_from,
+        ) VALUES ($1, $2, $3)
+        ON CONFLICT (news_from, name, news_date) DO UPDATE SET
             data = EXCLUDED.data
         "#,
     )
     .bind(&news_item.id)
+    .bind(&news_item.name)
     .bind(data)
     .execute(db_pool)
     .await

@@ -158,5 +158,6 @@ pub type VideoItem = BaseVideo;
 #[serde(rename_all = "camelCase")]
 pub struct NewsItem {
     pub id: String,
+    pub name: String,
     pub items: Vec<Value>, // 不关心内部结构，直接用 Value 保存
 }
