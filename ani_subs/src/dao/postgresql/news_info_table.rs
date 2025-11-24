@@ -19,7 +19,9 @@ pub async fn upsert_news_info(news_item: &NewsItem, db_pool: &PgPool) -> Result<
             name,
             data
         ) VALUES ($1, $2, $3)
-        ON CONFLICT (news_from, name, news_date) DO UPDATE SET
+        ON CONFLICT (news_from, news_date) DO UPDATE SET
+            news_from = EXCLUDED.news_from,
+            name = EXCLUDED.name,
             data = EXCLUDED.data
         "#,
     )
