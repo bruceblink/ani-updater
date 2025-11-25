@@ -131,8 +131,6 @@ impl TaskManager {
         if let Some(scheduler) = current.take() {
             scheduler.stop();
             info!("已停止当前的定时任务调度器");
-        } else {
-            info!("没有正在运行的定时任务调度器需要停止");
         }
     }
 
@@ -220,36 +218,4 @@ fn create_empty_query() -> web::Query<QueryPage<TaskFilter>> {
     };
 
     web::Query(query_page)
-}
-
-/// 初始化定时任务配置
-pub async fn init_scheduled_tasks_config(db_pool: &PgPool) -> Vec<TaskMeta> {
-    // 创建空的分页查询条件，用于使用分页查询的函数查询所有数据
-    let query = create_empty_query();
-    match list_all_scheduled_tasks_by_page(query, db_pool).await {
-        Ok(timer_tasker) => {
-            timer_tasker
-                .items
-                .iter()
-                .map(|task| {
-                    // 安全地提取字符串值
-                    let cmd = task.params["cmd"].as_str().unwrap_or("").to_string();
-
-                    let arg = task.params["arg"].as_str().unwrap_or("").to_string();
-
-                    TaskMeta {
-                        name: task.name.clone(),
-                        cmd,
-                        arg,
-                        cron_expr: task.cron.clone(),
-                        retry_times: task.retry_times,
-                    }
-                })
-                .collect::<Vec<TaskMeta>>()
-        }
-        Err(e) => {
-            error!("定时任务初始化配置错误: {e:?}");
-            Vec::new()
-        }
-    }
 }
