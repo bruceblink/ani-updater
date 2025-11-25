@@ -21,9 +21,6 @@ use tracing::{info, warn};
 use tracing_actix_web::TracingLogger;
 
 pub async fn run(listener: TcpListener, db_pool: PgPool, configuration: Setting) -> Result<Server> {
-    // 加载环境变量（可选，失败不影响主要逻辑）
-    dotenvy::dotenv().ok();
-
     // 创建 OAuth 配置和客户端
     let oauth_config = create_oauth_config()
         .await
