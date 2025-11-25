@@ -143,6 +143,7 @@ fn get_environment() -> Result<Environment, config::ConfigError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::env;
 
     #[test]
     fn test_environment_from_str() {
@@ -156,5 +157,37 @@ mod tests {
         let config = get_configuration(Some(PathBuf::from("../configuration"))).unwrap();
         assert_eq!(config.token["access_token"], 20);
         assert_eq!(config.token["refresh_token"], 15);
+    }
+
+    #[test]
+    fn test_database_settings_env_overrides() {
+        let origin_settings = get_configuration(Some(PathBuf::from("../configuration"))).unwrap();
+
+        let original: DatabaseSettings = origin_settings.database;
+
+        // 设置环境变量 覆盖从配置文件中加载的配置
+        unsafe {
+            env::set_var("APP_DATABASE__HOST", "override_host");
+            env::set_var("APP_DATABASE__USERNAME", "override_user");
+            env::set_var("APP_DATABASE__MAX_CONNECTIONS", "20");
+        }
+
+        let overridden = get_configuration(Some(PathBuf::from("../configuration")))
+            .unwrap()
+            .database;
+
+        assert_eq!(overridden.host, "override_host");
+        assert_eq!(overridden.username, "override_user");
+        assert_eq!(overridden.max_connections, 20);
+        // 其他字段应该保持不变
+        assert_eq!(overridden.port, original.port);
+        assert_eq!(overridden.database_name, original.database_name);
+
+        // 清理环境变量
+        unsafe {
+            env::remove_var("APP_DATABASE__HOST");
+            env::remove_var("APP_DATABASE__USERNAME");
+            env::remove_var("APP_DATABASE__MAX_CONNECTIONS");
+        }
     }
 }
