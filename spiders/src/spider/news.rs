@@ -4,7 +4,7 @@ use common::utils::date_utils::get_today_weekday;
 use serde_json::from_value;
 use std::collections::HashMap;
 use tokio::task::JoinSet;
-use tracing::error;
+use tracing::{error, warn};
 /// 获取最新新闻的数据
 pub async fn fetch_latest_news_data(args: String) -> Result<ApiResponse<ItemResult>, String> {
     let sources: Vec<&str> = args.split(',').map(|s| s.trim()).collect();
@@ -26,7 +26,7 @@ pub async fn fetch_latest_news_data(args: String) -> Result<ApiResponse<ItemResu
     while let Some(task_result) = join_set.join_next().await {
         match task_result {
             Ok(Ok(news_item)) => all_news.push(TaskItem::News(news_item)),
-            Ok(Err(e)) => error!("获取新闻源失败: {}", e),
+            Ok(Err(e)) => warn!("获取新闻源失败: {}", e),
             Err(e) => error!("任务执行失败: {}", e),
         }
     }
