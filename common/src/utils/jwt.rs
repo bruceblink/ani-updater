@@ -1,10 +1,14 @@
 use anyhow::{Context, Result};
 use chrono::{Duration, Utc};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use once_cell::sync::Lazy;
 use rand::Rng;
 use rand::distr::Alphanumeric;
 use serde::{Deserialize, Serialize};
 use std::env;
+
+static JWT_SECRET: Lazy<Result<String>> =
+    Lazy::new(|| env::var("JWT_SECRET").context("环境变量 JWT_SECRET 未设置"));
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -52,8 +56,10 @@ pub struct AccessToken {
 }
 
 /// 获取 JWT_SECRET
-fn jwt_secret() -> Result<String> {
-    env::var("JWT_SECRET").context("环境变量 JWT_SECRET 未设置")
+fn jwt_secret() -> Result<&'static String> {
+    JWT_SECRET
+        .as_ref()
+        .map_err(|e| anyhow::anyhow!(e.to_string()))
 }
 
 /// 校验 JWT
