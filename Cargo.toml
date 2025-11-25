@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "ani_subs",
+    "web_services",
     "spiders",
     "common", "timer_tasker",
 ]

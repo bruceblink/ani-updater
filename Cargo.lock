@@ -274,44 +274,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ani_subs"
-version = "0.0.7"
-dependencies = [
- "actix-cors",
- "actix-web",
- "anyhow",
- "bcrypt",
- "chrono",
- "chrono-tz",
- "common",
- "config",
- "dotenvy",
- "futures",
- "futures-util",
- "jsonwebtoken",
- "lazy_static",
- "mime",
- "oauth2",
- "once_cell",
- "rand 0.9.2",
- "reqwest 0.12.23",
- "secrecy",
- "serde",
- "serde-aux",
- "serde_json",
- "sqlx",
- "time",
- "timer_tasker",
- "tokio",
- "tracing",
- "tracing-actix-web",
- "tracing-bunyan-formatter",
- "tracing-log 0.2.0",
- "tracing-subscriber",
- "unicode-segmentation",
-]
-
-[[package]]
 name = "anyhow"
 version = "1.0.99"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3718,6 +3680,44 @@ dependencies = [
  "phf_codegen",
  "string_cache",
  "string_cache_codegen",
+]
+
+[[package]]
+name = "web_services"
+version = "0.0.7"
+dependencies = [
+ "actix-cors",
+ "actix-web",
+ "anyhow",
+ "bcrypt",
+ "chrono",
+ "chrono-tz",
+ "common",
+ "config",
+ "dotenvy",
+ "futures",
+ "futures-util",
+ "jsonwebtoken",
+ "lazy_static",
+ "mime",
+ "oauth2",
+ "once_cell",
+ "rand 0.9.2",
+ "reqwest 0.12.23",
+ "secrecy",
+ "serde",
+ "serde-aux",
+ "serde_json",
+ "sqlx",
+ "time",
+ "timer_tasker",
+ "tokio",
+ "tracing",
+ "tracing-actix-web",
+ "tracing-bunyan-formatter",
+ "tracing-log 0.2.0",
+ "tracing-subscriber",
+ "unicode-segmentation",
 ]
 
 [[package]]

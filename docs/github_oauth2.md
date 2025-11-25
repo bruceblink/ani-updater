@@ -21,5 +21,5 @@ OAUTH_BASE_URL=${HomePage URL} # 后端应用服务的URL
 FRONTEND_URL=http://localhost:3039 # 登录成功后跳转的前端应用的URL
 FRONTEND_DOMAINS=localhost:3039;example.com # 允许跨域访问后端资源的前端域名白名单列表,分号分隔
 ```
-具体的环境变量配置可以查看[`oauth_config.ts`](../ani_subs/src/routes/auth/oauth_config.rs)文件
+具体的环境变量配置可以查看[`oauth_config.ts`](../web_services/src/routes/auth/oauth_config.rs)文件
 配套的前端测试项目可以使用[ani_updater_frontend_test](https://github.com/bruceblink/material-kit-react)

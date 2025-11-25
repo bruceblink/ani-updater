@@ -14,7 +14,7 @@ RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 ENV SQLX_OFFLINE=true
 # Build our project
-RUN cargo build --release --bin ani_subs
+RUN cargo build --release --bin web_services
 
 FROM debian:bookworm-slim AS runtime
 WORKDIR /app
@@ -24,7 +24,7 @@ RUN apt-get update -y \
     && apt-get autoremove -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
-COPY --from=builder /app/target/release/ani_subs ani_subs
+COPY --from=builder /app/target/release/web_services web_services
 COPY configuration configuration
 ENV APP_ENV=production
-ENTRYPOINT ["./ani_subs"]
+ENTRYPOINT ["./web_services"]

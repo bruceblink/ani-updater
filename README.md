@@ -6,8 +6,8 @@
 
 ```
 ani-updater/
-├── ani_spiders/      # 动漫数据爬虫库，支持多个平台
-├── ani_subs/         # 订阅服务，提供 API 与任务调度
+├── spiders/      # 动漫数据爬虫库，支持多个平台
+├── web_services/         # 订阅服务，提供 API 与任务调度
 ├── common/           # 公共工具库
 ├── timer_tasker/     # 定时任务调度与命令分发
 ├── configuration/    # 配置文件
@@ -20,8 +20,8 @@ ani-updater/
 
 ## 功能简介
 
-- **ani_spiders**：聚合各大平台（如哔哩哔哩、爱奇艺、腾讯、优酷、Mikan、Age动漫等）动漫数据的爬虫库，统一数据结构输出。
-- **ani_subs**：提供动漫订阅、推送、API 服务，支持数据库管理、定时任务、健康检查等。
+- **spiders**：聚合各大平台（如哔哩哔哩、爱奇艺、腾讯、优酷、Mikan、Age动漫等）动漫数据的爬虫库，统一数据结构输出。
+- **web_services**：提供动漫订阅、推送、API 服务，支持数据库管理、定时任务、健康检查等。
 - **timer_tasker**：定时任务调度器，负责定时拉取数据的lib。
 - **common**：项目通用工具与基础设施代码。
 - **数据库与迁移**：PostgreSQL 作为主数据库，支持自动建表与数据迁移。
@@ -60,7 +60,7 @@ docker-compose -f docker/docker-compose.yml -p ani-updater up -d postgresql
 # 构建所有子项目
 cargo build --workspace
 # 运行订阅服务
-cargo run -p ani_subs
+cargo run -p 
 
 ```
 

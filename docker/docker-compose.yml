@@ -52,11 +52,11 @@ services:
 #    command: redis-server /usr/local/redis/config/redis.conf --appendonly yes --requirepass 123456
 #    networks:
 #      - ani-updater  # 加入 ani-updater 网络
-  ani_subs:
+  web_services:
     build:
       context: ../          # Dockerfile 相对于 docker-compose.yml 的路径
       dockerfile: Dockerfile
-    container_name: ani_subs
+    container_name: web_services
     restart: always
     depends_on:
       - postgresql
