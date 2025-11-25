@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
     "ani_subs",
-    "ani_spiders",
+    "spiders",
     "common", "timer_tasker",
 ]
 

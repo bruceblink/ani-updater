@@ -15,7 +15,7 @@ tokio = { workspace = true }
 serde = { workspace = true }
 tracing = { workspace = true }
 chrono ={ workspace = true }
-ani_spiders = { path = "../ani_spiders" }
+spiders = { path = "../spiders" }
 common = { path = "../common" }
 cron = { workspace = true }
 async-trait = { workspace = true }

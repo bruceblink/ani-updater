@@ -274,21 +274,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ani_spiders"
-version = "0.0.7"
-dependencies = [
- "anyhow",
- "base64 0.22.1",
- "chrono",
- "common",
- "reqwest 0.12.23",
- "scraper",
- "serde_json",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "ani_subs"
 version = "0.0.7"
 dependencies = [
@@ -2777,6 +2762,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "spiders"
+version = "0.0.7"
+dependencies = [
+ "anyhow",
+ "base64 0.22.1",
+ "chrono",
+ "common",
+ "reqwest 0.12.23",
+ "scraper",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "spin"
 version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3196,13 +3196,13 @@ dependencies = [
 name = "timer_tasker"
 version = "0.0.7"
 dependencies = [
- "ani_spiders",
  "async-trait",
  "chrono",
  "common",
  "cron",
  "num_cpus",
  "serde",
+ "spiders",
  "tokio",
  "tracing",
 ]
