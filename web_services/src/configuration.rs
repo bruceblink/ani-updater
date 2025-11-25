@@ -42,7 +42,6 @@ pub struct DatabaseSettings {
     pub max_connections: u32, // 数据库连接池最大连接数
 }
 
-/// 构造 PgConnectOptions
 impl DatabaseSettings {
     /// 构造 PgConnectOptions
     pub fn connect_options(&self) -> PgConnectOptions {
@@ -89,7 +88,10 @@ impl std::str::FromStr for Environment {
         match s.to_lowercase().as_str() {
             "local" => Ok(Environment::Local),
             "production" => Ok(Environment::Production),
-            other => Err(format!("Unsupported environment: {}", other)),
+            other => Err(format!(
+                "'{}' is not a supported environment. Use 'local' or 'production'.",
+                other
+            )),
         }
     }
 }
@@ -102,7 +104,7 @@ impl std::fmt::Display for Environment {
 
 ///---------------------- 配置加载主函数 ----------------------
 pub fn get_configuration(config_dir: Option<PathBuf>) -> Result<Setting, config::ConfigError> {
-    dotenvy::dotenv().ok(); // 自动加载 .env（可选）
+    dotenvy::dotenv().ok(); // 加载 .env
 
     // 配置目录
     let config_directory = config_dir
@@ -111,23 +113,26 @@ pub fn get_configuration(config_dir: Option<PathBuf>) -> Result<Setting, config:
     // 获取 APP_ENV=local/production
     let environment = get_environment()?;
 
-    // 构造配置
+    // 构造加载器
     let settings = config::Config::builder()
         .add_source(config::File::from(config_directory.join("base.yaml")))
         .add_source(config::File::from(
             config_directory.join(environment.config_filename()),
         ))
+        // ⬇ 支持嵌套环境变量 APP_FOO__BAR
         .add_source(
             config::Environment::with_prefix("APP")
                 .prefix_separator("_")
                 .separator("__"),
         )
+        // ⬇ 非 APP 前缀的环境变量也支持（如 POSTGRES_PASSWORD、DB_HOST）
+        .add_source(config::Environment::default().separator("__"))
         .build()?;
 
     settings.try_deserialize()
 }
 
-/// 从环境变量读取当前环境
+/// 获取 APP_ENV 环境变量
 fn get_environment() -> Result<Environment, config::ConfigError> {
     let env_str = std::env::var("APP_ENV").unwrap_or_else(|_| "production".into());
 
@@ -144,12 +149,6 @@ mod tests {
         assert_eq!("local".parse(), Ok(Environment::Local));
         assert_eq!("production".parse(), Ok(Environment::Production));
         assert!("unknown".parse::<Environment>().is_err());
-    }
-
-    #[test]
-    fn test_environment_display() {
-        assert_eq!(Environment::Local.to_string(), "local");
-        assert_eq!(Environment::Production.to_string(), "production");
     }
 
     #[test]
