@@ -10,13 +10,9 @@ use oauth2::{
 use once_cell::sync::Lazy;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, env};
+use std::collections::HashMap;
 
 static HTTP: Lazy<Client> = Lazy::new(Client::new);
-
-lazy_static! {
-    static ref SECRET: String = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
-}
 
 lazy_static! {
     static ref ALLOWED_REDIRECT_URIS: Vec<&'static str> = vec![
@@ -66,7 +62,7 @@ async fn auth_github_login(
     let state_jwt = jsonwebtoken::encode(
         &jsonwebtoken::Header::default(),
         &claims,
-        &jsonwebtoken::EncodingKey::from_secret(SECRET.as_ref()),
+        &jsonwebtoken::EncodingKey::from_secret(app_state.oauth_config.jwt_secret.as_ref()),
     )
     .unwrap();
 
@@ -99,7 +95,7 @@ async fn auth_github_callback(
     // 解码 state JWT
     let token_data = jsonwebtoken::decode::<StateClaims>(
         &state_jwt,
-        &jsonwebtoken::DecodingKey::from_secret(SECRET.as_ref()),
+        &jsonwebtoken::DecodingKey::from_secret(app_state.oauth_config.jwt_secret.as_ref()),
         &jsonwebtoken::Validation::default(),
     )
     .map_err(|_| ApiError::Internal("Invalid state".into()))?;

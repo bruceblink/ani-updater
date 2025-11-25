@@ -13,6 +13,10 @@ pub struct Setting {
     pub application: ApplicationSettings,
     pub email_client: EmailClientSettings,
     pub token: TokenConfig,
+    pub github_client_id: Option<String>,
+    pub github_client_secret: Option<String>,
+    pub oauth_base_url: Option<String>,
+    pub jwt_secret: Option<String>,
 }
 
 ///---------------------- 各类配置项 ----------------------

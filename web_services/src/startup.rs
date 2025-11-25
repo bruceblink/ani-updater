@@ -22,7 +22,7 @@ use tracing_actix_web::TracingLogger;
 
 pub async fn run(listener: TcpListener, db_pool: PgPool, configuration: Setting) -> Result<Server> {
     // 创建 OAuth 配置和客户端
-    let oauth_config = create_oauth_config()
+    let oauth_config = create_oauth_config(configuration.clone())
         .await
         .context("Failed to create OAuth configuration")?;
 
@@ -44,8 +44,9 @@ pub async fn run(listener: TcpListener, db_pool: PgPool, configuration: Setting)
 }
 
 /// 创建 OAuth 配置
-async fn create_oauth_config() -> Result<OAuthConfig> {
-    OAuthConfig::from_env().context("Failed to load OAuth configuration from environment variables")
+async fn create_oauth_config(configuration: Setting) -> Result<OAuthConfig> {
+    OAuthConfig::from_configuration(configuration)
+        .context("Failed to load OAuth configuration from environment variables")
 }
 
 /// 创建 OAuth 客户端

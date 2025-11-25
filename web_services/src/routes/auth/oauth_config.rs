@@ -1,3 +1,4 @@
+use crate::configuration::Setting;
 use anyhow::{Context, Result};
 use oauth2::{AuthUrl, ClientId, ClientSecret, RedirectUrl, TokenUrl};
 
@@ -9,19 +10,30 @@ pub struct OAuthConfig {
     pub auth_url: AuthUrl,
     pub token_url: TokenUrl,
     pub redirect_url: RedirectUrl,
+    pub jwt_secret: String,
 }
 
 impl OAuthConfig {
-    pub fn from_env() -> Result<Self> {
-        let client_id =
-            ClientId::new(std::env::var("GITHUB_CLIENT_ID").context("GITHUB_CLIENT_ID 未设置")?);
-
-        let client_secret = ClientSecret::new(
-            std::env::var("GITHUB_CLIENT_SECRET").context("GITHUB_CLIENT_SECRET 未设置")?,
+    pub fn from_configuration(configuration: Setting) -> Result<Self> {
+        let client_id = ClientId::new(
+            configuration
+                .github_client_id
+                .context("GITHUB_CLIENT_ID 环境变量未设置")?,
         );
 
-        let base_url =
-            std::env::var("OAUTH_BASE_URL").unwrap_or_else(|_| "http://localhost:8000".to_string());
+        let client_secret = ClientSecret::new(
+            configuration
+                .github_client_secret
+                .context("GITHUB_CLIENT_SECRET 环境变量未设置")?,
+        );
+
+        let base_url = configuration
+            .oauth_base_url
+            .context("GITHUB_CLIENT_SECRET 环境变量未设置")?;
+
+        let jwt_secret = configuration
+            .jwt_secret
+            .context("JWT_SECRET 环境变量未设置")?;
 
         let auth_url = AuthUrl::new("https://github.com/login/oauth/authorize".to_string())
             .context("Invalid auth URL")?;
@@ -38,6 +50,7 @@ impl OAuthConfig {
             auth_url,
             token_url,
             redirect_url,
+            jwt_secret,
         })
     }
 }
