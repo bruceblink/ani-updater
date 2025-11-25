@@ -65,7 +65,12 @@ services:
     environment:
       TZ: Asia/Shanghai
       APP_ENV: production   # 设置应用环境为生产环境,如果本地改成local
-      DATABASE_URL: postgres://postgres:password@postgresql:5432/newsletter
+      DATABASE_URL: postgres://postgres:password@postgresql:5432/newsletter # 配置自己的数据库连接url
+      JWT_SECRET: JWT_SECRET@123 # 配置自己的jwt密钥
+      GITHUB_CLIENT_ID: xxxx # 配置自己的GitHub 第三方认证的 CLIENT_ID
+      GITHUB_CLIENT_SECRET: xxxx # 配置自己的GitHub 第三方认证的 CLIENT_SECRET
+      FRONTEND_URL: http://localhost:3039  # 登录成功后跳转的前端应用的URL
+      FRONTEND_DOMAINS: localhost:3039;example.com # 允许跨域访问后端资源的前端域名白名单列表,分号分隔
     volumes:
       - ../configuration:/app/configuration:ro  # 配置文件挂载，可按需调整
     networks:
