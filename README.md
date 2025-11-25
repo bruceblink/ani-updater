@@ -70,6 +70,7 @@ cargo run -p
 # 启动数据库与应用服务
 docker-compose -f docker/docker-compose.yml -p ani-updater up -d
 ```
+使用docker-compose启动时需要在docker-compose.yml中配置相关的环境变量,具体的环境变量配置见[github_oauth2](docs/github_oauth2.md)
 
 ### 5. API 说明
 
