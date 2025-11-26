@@ -139,7 +139,6 @@ pub struct AniItem {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
 pub struct BaseVideo {
     pub id: String,                    // id
     pub title: String,                 // 标题
