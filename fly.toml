@@ -7,11 +7,6 @@ processes = []
 
 [env]
 APP_ENV = "production"
-DB_HOST = "ani-postgres.internal"
-DB_PORT = "5432"
-DB_NAME = "newsletter"
-DB_USERNAME = "postgres"
-DB_REQUIRE_SSL = "false"
 TZ = "Asia/Shanghai"
 
 [[services]]
