@@ -124,7 +124,7 @@ pub enum TaskItem {
     Ani(AniItem),
     Video(VideoItem),
     News(NewsItem),
-    Health(Value),
+    Health(HealthItem),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -160,4 +160,12 @@ pub struct NewsItem {
     pub id: String,
     pub name: String,
     pub items: Vec<Value>, // 不关心内部结构，直接用 Value 保存
+}
+
+/// 健康检测返回的结果集
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HealthItem {
+    pub url: String,
+    pub result: Value, // 不关心内部结构，直接用 Value 保存
 }

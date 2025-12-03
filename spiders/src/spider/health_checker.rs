@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use common::api::{ApiResponse, ItemResult, TaskItem};
+use common::api::{ApiResponse, HealthItem, ItemResult, TaskItem};
 use common::utils::date_utils::get_today_weekday;
 use std::collections::HashMap;
 use tokio::task::JoinSet;
@@ -35,7 +35,7 @@ pub async fn health_check(args: String) -> Result<ApiResponse<ItemResult>, Strin
     Ok(ApiResponse::ok(result))
 }
 
-async fn health_check_single(client: &reqwest::Client, arg: &str) -> Result<serde_json::Value> {
+async fn health_check_single(client: &reqwest::Client, arg: &str) -> Result<HealthItem> {
     let response = client
         .get(arg)
         .header("Referer", arg)
@@ -53,7 +53,10 @@ async fn health_check_single(client: &reqwest::Client, arg: &str) -> Result<serd
         .await
         .with_context(|| format!("解析JSON响应失败: {}", arg))?;
 
-    Ok(json_value)
+    Ok(HealthItem {
+        url: arg.to_string(),
+        result: json_value,
+    })
 }
 
 #[cfg(test)]

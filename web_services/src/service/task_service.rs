@@ -200,7 +200,7 @@ async fn handle_item(item: &TaskItem, pool: &PgPool) -> anyhow::Result<()> {
             upsert_news_info(news, pool).await?;
         }
         TaskItem::Health(health) => {
-            info!("健康检测结果: {health}")
+            info!("健康检测结果: {} => {}", health.url, health.result);
         }
     }
     Ok(())
