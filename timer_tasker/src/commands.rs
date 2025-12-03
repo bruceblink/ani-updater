@@ -3,6 +3,7 @@ use common::api::ItemResult;
 use spiders::agedm::fetch_agedm_ani_data;
 use spiders::bilibili::fetch_bilibili_ani_data;
 use spiders::douban::fetch_douban_movie_data;
+use spiders::health_checker::health_check;
 use spiders::iqiyi::fetch_iqiyi_ani_data;
 use spiders::mikanani::fetch_mikanani_ani_data;
 use spiders::news::fetch_latest_news_data;
@@ -59,6 +60,11 @@ pub fn build_cmd_map() -> HashMap<String, CmdFn> {
     map.insert(
         "fetch_latest_news_data".to_string(),
         Arc::new(|args| Box::pin(fetch_latest_news_data(args))),
+    );
+
+    map.insert(
+        "health_check".to_string(),
+        Arc::new(|urls| Box::pin(health_check(urls))),
     );
 
     map
