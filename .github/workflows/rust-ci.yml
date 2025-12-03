@@ -125,7 +125,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: ci
     if: startsWith(github.ref, 'refs/tags/v')
-    concurrency: deploy-group
+
     steps:
       # 1️⃣ 检出完整代码 （加上 fetch-depth: 0 最佳实践）
       - name: Checkout code
