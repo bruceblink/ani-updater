@@ -124,6 +124,7 @@ pub enum TaskItem {
     Ani(AniItem),
     Video(VideoItem),
     News(NewsItem),
+    Health(Value),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

@@ -1,6 +1,7 @@
 pub mod agedm;
 pub mod bilibili;
 pub mod douban;
+pub mod health_checker;
 pub mod iqiyi;
 pub mod mikanani;
 pub mod news;
