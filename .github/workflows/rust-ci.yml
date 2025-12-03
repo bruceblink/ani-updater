@@ -120,23 +120,34 @@ jobs:
       - name: Run tests
         run: cargo test
 
+  build-release:
+    name: Build Github release
+    runs-on: ubuntu-latest
+    needs: [ci] # 确保 CI 成功后再触发
+    concurrency: deploy-group
+    if: |
+      startsWith(github.ref, 'refs/tags/v') ||
+      github.event_name == 'workflow_dispatch'
+    permissions:
+      packages: write
+      contents: read
+
+    steps:
       # 1️⃣3️⃣ 构建release版本
       - name: Build release
         run: cargo build --release
 
-      # 1️⃣4️⃣ 打包 Releases
-      - name: Package Linux binary
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          mkdir -p dist
-          cp target/release/ani-updater dist/
-          tar -czf ani-updater-${{ github.ref_name }}-linux-x86_64.tar.gz -C dist ani-updater
-      # 1️⃣5️⃣ 发布上传到 GitHub
-      - name: Upload Linux release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
+      # 1️⃣4️⃣ 设置 Node.js（用于 changelogithub 生成 changelog）
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          files: ani-updater-${{ github.ref_name }}-linux-x86_64.tar.gz
+          node-version: lts/*
+
+      # 1️⃣5️⃣ 生成 changelog，并创建 GitHub Release
+      - name: Generate Changelog and Create Release
+        run: npx changelogithub
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   fly-deploy:
     name: Fly Deploy
