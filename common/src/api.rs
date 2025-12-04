@@ -125,6 +125,7 @@ pub enum TaskItem {
     Video(VideoItem),
     News(NewsInfo),
     Health(HealthItem),
+    Extract(NewsInfo2Item),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -168,4 +169,19 @@ pub struct NewsInfo {
 pub struct HealthItem {
     pub url: String,
     pub result: Value, // 不关心内部结构，直接用 Value 保存
+}
+
+// NewsItem的结构体
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NewsInfo2Item {
+    pub id: String,
+    pub news_from: String,
+    pub name: String,
+    pub news_date: chrono::NaiveDate,
+    pub news_item_id: String,
+    pub title: String,
+    pub url: String,
+    pub content: Option<String>,
+    pub extra: Value, // 不关心内部结构，直接用 Value 保存
 }
