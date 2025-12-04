@@ -123,7 +123,7 @@ pub type ItemResult = HashMap<String, Vec<TaskItem>>;
 pub enum TaskItem {
     Ani(AniItem),
     Video(VideoItem),
-    News(NewsItem),
+    News(NewsInfo),
     Health(HealthItem),
 }
 
@@ -156,7 +156,7 @@ pub type VideoItem = BaseVideo;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct NewsItem {
+pub struct NewsInfo {
     pub id: String,
     pub name: String,
     pub items: Vec<Value>, // 不关心内部结构，直接用 Value 保存

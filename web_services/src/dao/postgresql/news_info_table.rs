@@ -3,12 +3,12 @@ use crate::routes::{NewsFilter, NewsInfoDTO};
 use actix_web::web;
 use anyhow::Result;
 use chrono::Utc;
-use common::api::{ApiError, NewsItem, PageData};
+use common::api::{ApiError, NewsInfo, PageData};
 use serde_json::json;
 use sqlx::{FromRow, PgPool, Postgres, QueryBuilder};
 
 /// 新闻信息插入新记录
-pub async fn upsert_news_info(news_item: &NewsItem, db_pool: &PgPool) -> Result<()> {
+pub async fn upsert_news_info(news_item: &NewsInfo, db_pool: &PgPool) -> Result<()> {
     let data = json!({
         "items": news_item.items
     });

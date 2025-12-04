@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use common::api::{ApiResponse, ItemResult, NewsItem, TaskItem};
+use common::api::{ApiResponse, ItemResult, NewsInfo, TaskItem};
 use common::utils::date_utils::get_today_weekday;
 use serde_json::from_value;
 use std::collections::HashMap;
@@ -34,7 +34,7 @@ pub async fn fetch_latest_news_data(args: String) -> Result<ApiResponse<ItemResu
     Ok(ApiResponse::ok(result))
 }
 
-async fn fetch_single_news_source(client: &reqwest::Client, arg: &str) -> Result<NewsItem> {
+async fn fetch_single_news_source(client: &reqwest::Client, arg: &str) -> Result<NewsInfo> {
     let url = format!("https://news.likanug.top/api/s?id={}", arg);
 
     let response = client
