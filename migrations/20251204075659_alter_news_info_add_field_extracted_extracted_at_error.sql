@@ -1,8 +1,8 @@
 -- Add migration script here
 ALTER TABLE news_info
-    ADD COLUMN extracted boolean DEFAULT false,
-    ADD COLUMN extracted_at TIMESTAMPTZ,
-    ADD COLUMN error text;
+    ADD COLUMN IF NOT EXISTS extracted boolean DEFAULT false,
+    ADD COLUMN IF NOT EXISTS extracted_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS error text;
 
 COMMENT ON TABLE news_info IS '存储每次抓取的原始新闻数据，每条记录对应一个来源和日期的新闻批次';
 COMMENT ON COLUMN news_info.data IS '原始抓取 JSON 数据';
