@@ -203,8 +203,8 @@ async fn handle_item(item: &TaskItem, pool: &PgPool) -> anyhow::Result<()> {
         TaskItem::Health(health) => {
             info!("健康检测结果: {} => {}", health.url, health.result);
         }
-        TaskItem::Extract(_) => {
-            todo!()
+        TaskItem::Extract(new_item) => {
+            upsert_news_item(new_item, pool).await?;
         }
     }
     Ok(())
