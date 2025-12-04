@@ -1,5 +1,6 @@
 use crate::dao::{
-    list_all_scheduled_tasks_by_page, upsert_ani_info, upsert_news_info, upsert_video_info,
+    list_all_scheduled_tasks_by_page, upsert_ani_info, upsert_news_info, upsert_news_item,
+    upsert_video_info,
 };
 use crate::domain::po::QueryPage;
 use crate::routes::TaskFilter;
@@ -201,6 +202,9 @@ async fn handle_item(item: &TaskItem, pool: &PgPool) -> anyhow::Result<()> {
         }
         TaskItem::Health(health) => {
             info!("健康检测结果: {} => {}", health.url, health.result);
+        }
+        TaskItem::Extract(_) => {
+            todo!()
         }
     }
     Ok(())
