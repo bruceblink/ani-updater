@@ -1,3 +1,4 @@
+use crate::commands::CmdFn;
 use async_trait::async_trait;
 use common::api::ApiResponse;
 use common::api::ItemResult;
@@ -5,7 +6,6 @@ use cron::Schedule;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -69,13 +69,6 @@ impl Task {
         Schedule::from_str(&self.cron_expr).expect("Invalid cron expression")
     }
 }
-
-/// CmdFn 类型（和你之前约定一致）
-pub type CmdFn = Arc<
-    dyn Fn(String) -> Pin<Box<dyn Future<Output = Result<ApiResponse<ItemResult>, String>> + Send>>
-        + Send
-        + Sync,
->;
 
 /// 将 TaskMeta 列表和命令表合并，生成运行时 Task 列表
 pub fn build_tasks_from_meta(metas: &Vec<TaskMeta>, cmd_map: &HashMap<String, CmdFn>) -> Vec<Task> {
