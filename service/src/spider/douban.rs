@@ -80,7 +80,7 @@ fn process_json_value(json_value: &Value) -> ItemResult {
 
 #[cfg(test)]
 mod test {
-    use crate::douban::fetch_douban_movie_data;
+    use crate::spider::douban::fetch_douban_movie_data;
 
     const URL: &str = "https://m.douban.com/rexxar/api/v2/subject/recent_hot/movie";
 

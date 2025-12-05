@@ -1,20 +1,20 @@
 use common::api::ApiResponse;
 use common::po::ItemResult;
-use spiders::agedm::fetch_agedm_ani_data;
-use spiders::bilibili::fetch_bilibili_ani_data;
-use spiders::douban::fetch_douban_movie_data;
-use spiders::health_checker::health_check;
-use spiders::iqiyi::fetch_iqiyi_ani_data;
-use spiders::mikanani::fetch_mikanani_ani_data;
-use spiders::news::fetch_latest_news_data;
-use spiders::tencent::fetch_qq_ani_data;
-use spiders::youku::fetch_youku_ani_data;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
 use crate::extract_news_info_to_item::extract_transform_news_info_to_item;
+use crate::spider::agedm::fetch_agedm_ani_data;
+use crate::spider::bilibili::fetch_bilibili_ani_data;
+use crate::spider::douban::fetch_douban_movie_data;
+use crate::spider::health_checker::health_check;
+use crate::spider::iqiyi::fetch_iqiyi_ani_data;
+use crate::spider::mikanani::fetch_mikanani_ani_data;
+use crate::spider::news::fetch_latest_news_data;
+use crate::spider::tencent::fetch_qq_ani_data;
+use crate::spider::youku::fetch_youku_ani_data;
 use sqlx::PgPool;
 
 /// 通用命令输入参数，可以传任意 JSON 数据，也可传数据库连接

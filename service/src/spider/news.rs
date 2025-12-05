@@ -61,7 +61,7 @@ async fn fetch_single_news_source(client: &reqwest::Client, arg: &str) -> Result
 
 #[cfg(test)]
 mod test {
-    use crate::news::fetch_latest_news_data;
+    use crate::spider::news::fetch_latest_news_data;
 
     #[tokio::test]
     async fn test_fetch_douban_image() {

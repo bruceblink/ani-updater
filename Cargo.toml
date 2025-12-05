@@ -2,7 +2,6 @@
 resolver = "2"
 members = [
     "web_services",
-    "spiders",
     "common",
     "timer_tasker",
     "infra",

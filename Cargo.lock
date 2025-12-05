@@ -2647,10 +2647,16 @@ version = "0.0.8"
 dependencies = [
  "actix-web",
  "anyhow",
+ "base64 0.22.1",
+ "chrono",
  "common",
  "infra",
- "spiders",
+ "reqwest 0.12.23",
+ "scraper",
+ "serde_json",
  "sqlx",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -2769,21 +2775,6 @@ checksum = "233504af464074f9d066d7b5416c5f9b894a5862a6506e306f7b816cdd6f1807"
 dependencies = [
  "libc",
  "windows-sys 0.59.0",
-]
-
-[[package]]
-name = "spiders"
-version = "0.0.8"
-dependencies = [
- "anyhow",
- "base64 0.22.1",
- "chrono",
- "common",
- "reqwest 0.12.23",
- "scraper",
- "serde_json",
- "tokio",
- "tracing",
 ]
 
 [[package]]
