@@ -12,7 +12,6 @@ use anyhow::{Context, Result};
 use infra::{OAuthConfig, Setting, configure_cors, create_oauth_client, create_oauth_config};
 use oauth2::basic::BasicClient;
 use sqlx::PgPool;
-use sqlx::postgres::PgPoolOptions;
 use std::net::TcpListener;
 use tracing::{info, warn};
 use tracing_actix_web::TracingLogger;
@@ -41,7 +40,7 @@ pub async fn run(listener: TcpListener, db_pool: PgPool, configuration: Setting)
 }
 
 /// 解析允许的源域名
-fn parse_allowed_origins() -> anyhow::Result<Vec<String>> {
+fn parse_allowed_origins() -> Result<Vec<String>> {
     let env_value = std::env::var("FRONTEND_DOMAINS").unwrap_or_default();
 
     let origins: Vec<String> = env_value
@@ -126,37 +125,6 @@ async fn create_server(
     .run();
 
     Ok(server)
-}
-
-/// 创建数据库连接池
-pub async fn create_database_pool(configuration: &Setting) -> Result<PgPool> {
-    if let Ok(database_url) = std::env::var("DATABASE_URL") {
-        return PgPoolOptions::new()
-            .max_connections(configuration.database.max_connections)
-            .connect(&database_url)
-            .await
-            .context("Failed to connect to database using DATABASE_URL environment variable");
-    }
-
-    // 只有在没有环境变量时，才需要克隆 configuration.database
-    let database_settings = configuration.database.clone();
-    let connect_options = database_settings.connect_options();
-
-    PgPoolOptions::new()
-        .max_connections(database_settings.max_connections)
-        .connect_with(connect_options)
-        .await
-        .context("Failed to connect to database using configuration settings")
-}
-
-/// 运行数据库迁移
-pub async fn run_database_migrations(pool: &PgPool) -> Result<()> {
-    sqlx::migrate!("../migrations")
-        .run(pool)
-        .await
-        .context("Failed to run database migrations")?;
-
-    Ok(())
 }
 
 /// 启动 Web 服务器

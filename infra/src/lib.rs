@@ -1,8 +1,10 @@
 mod conf;
-mod db;
 pub use conf::*;
 mod log;
 pub use log::*;
+
+mod db;
+pub use db::*;
 
 pub fn add(left: u64, right: u64) -> u64 {
     left + right

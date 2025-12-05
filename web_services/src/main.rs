@@ -1,8 +1,11 @@
 use anyhow::{Context, Result};
-use infra::{get_configuration, get_subscriber, init_subscriber};
+use infra::{
+    create_database_pool, get_configuration, get_subscriber, init_subscriber,
+    run_database_migrations,
+};
 use std::path::PathBuf;
 use web_services::service::initialize_task_manager;
-use web_services::startup::{create_database_pool, run_database_migrations, start_web_server};
+use web_services::startup::start_web_server;
 
 #[tokio::main]
 async fn main() -> Result<()> {
