@@ -1,6 +1,7 @@
 use crate::common::AppState;
 use actix_web::{HttpResponse, put, web};
-use common::api::{ApiError, ApiResponse, ApiResult};
+use common::api::{ApiError, ApiResponse};
+use common::po::ApiResult;
 
 // 在路由中添加
 #[put("/task/reload")]

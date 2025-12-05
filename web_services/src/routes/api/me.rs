@@ -1,6 +1,7 @@
 use crate::common::ExtractToken;
 use actix_web::{HttpRequest, HttpResponse, get};
-use common::api::{ApiError, ApiResponse, ApiResult};
+use common::api::{ApiError, ApiResponse};
+use common::po::ApiResult;
 use common::utils::verify_jwt;
 
 #[get("/me")]

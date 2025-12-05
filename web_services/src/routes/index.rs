@@ -1,5 +1,6 @@
 use actix_web::{HttpResponse, get};
-use common::api::{ApiResponse, ApiResult};
+use common::api::ApiResponse;
+use common::po::ApiResult;
 
 #[get("/")]
 async fn index() -> ApiResult {

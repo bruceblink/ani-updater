@@ -1,6 +1,7 @@
 use crate::common::AppState;
 use actix_web::{HttpResponse, post, web};
-use common::api::{ApiResponse, ApiResult};
+use common::api::ApiResponse;
+use common::po::ApiResult;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 

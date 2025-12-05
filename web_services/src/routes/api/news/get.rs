@@ -1,9 +1,9 @@
 use crate::common::AppState;
 use crate::dao::list_all_news_info_by_page;
-use crate::domain::po::QueryPage;
 use actix_web::{HttpRequest, HttpResponse, get, web};
 use chrono::Utc;
-use common::api::{ApiError, ApiResponse, ApiResult};
+use common::api::{ApiError, ApiResponse};
+use common::po::{ApiResult, QueryPage};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 

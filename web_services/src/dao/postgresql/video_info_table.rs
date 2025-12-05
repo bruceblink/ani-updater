@@ -1,5 +1,5 @@
 use anyhow::Result;
-use common::api::VideoItem;
+use common::po::VideoItem;
 use sqlx::PgPool;
 
 /// 视频信息插入新记录

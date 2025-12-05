@@ -1,8 +1,8 @@
 use crate::common::AppState;
 use crate::dao::{get_ani_info_by_id, list_all_ani_info};
-use crate::domain::po::QueryPage;
 use actix_web::{HttpResponse, web};
-use common::api::{ApiError, ApiResponse, ApiResult};
+use common::api::{ApiError, ApiResponse};
+use common::po::{ApiResult, QueryPage};
 use serde::Deserialize;
 
 // 定义嵌套的查询参数结构

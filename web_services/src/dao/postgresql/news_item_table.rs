@@ -1,9 +1,9 @@
-use crate::domain::po::QueryPage;
 use crate::routes::NewsFilter;
 use actix_web::web;
 use anyhow::Result;
 use chrono::Utc;
-use common::api::{ApiError, NewsInfo2Item, PageData};
+use common::api::{ApiError, NewsInfo2Item};
+use common::po::{PageData, QueryPage};
 use sqlx::{FromRow, PgPool, Postgres, QueryBuilder};
 
 pub struct NewsItemDTO {

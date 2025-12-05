@@ -1,8 +1,8 @@
-use crate::domain::po::QueryPage;
 use crate::routes::TaskFilter;
 use actix_web::web;
 use chrono::Utc;
-use common::api::{ApiError, PageData};
+use common::api::ApiError;
+use common::po::{PageData, QueryPage};
 use serde::Serialize;
 use sqlx::{FromRow, PgPool, Postgres, QueryBuilder};
 

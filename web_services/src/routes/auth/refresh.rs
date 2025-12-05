@@ -1,7 +1,8 @@
 use crate::common::{ACCESS_TOKEN, AppState, REFRESH_TOKEN};
 use actix_web::cookie::Cookie;
 use actix_web::{HttpRequest, HttpResponse, post, web};
-use common::api::{ApiError, ApiResponse, ApiResult};
+use common::api::{ApiError, ApiResponse};
+use common::po::ApiResult;
 use common::utils::{CommonUser, generate_jwt, generate_refresh_token};
 use serde::Serialize;
 use sqlx::FromRow;

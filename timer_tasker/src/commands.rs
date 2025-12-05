@@ -1,5 +1,5 @@
 use common::api::ApiResponse;
-use common::api::ItemResult;
+use common::po::ItemResult;
 use spiders::agedm::fetch_agedm_ani_data;
 use spiders::bilibili::fetch_bilibili_ani_data;
 use spiders::douban::fetch_douban_movie_data;

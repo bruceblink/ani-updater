@@ -1,10 +1,12 @@
 use anyhow::{Context, Result};
-use common::api::{ApiResponse, ItemResult, NewsInfo, TaskItem};
+use common::api::ApiResponse;
+use common::po::{ItemResult, NewsInfo, TaskItem};
 use common::utils::date_utils::get_today_weekday;
 use serde_json::from_value;
 use std::collections::HashMap;
 use tokio::task::JoinSet;
 use tracing::{error, warn};
+
 /// 获取最新新闻的数据
 pub async fn fetch_latest_news_data(args: String) -> Result<ApiResponse<ItemResult>, String> {
     let sources: Vec<&str> = args.split(',').map(|s| s.trim()).collect();

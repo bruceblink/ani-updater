@@ -1,8 +1,8 @@
 use crate::dao::list_all_news_info_by_page;
-use crate::domain::po::QueryPage;
 use crate::routes::NewsFilter;
 use actix_web::web;
-use common::api::{ApiResponse, ItemResult, NewsInfo2Item, TaskItem};
+use common::api::{ApiResponse, NewsInfo2Item};
+use common::po::{ItemResult, QueryPage, TaskItem};
 use common::utils::date_utils::{DateFormat, format_now, get_today_weekday};
 use sqlx::PgPool;
 use std::collections::HashMap;

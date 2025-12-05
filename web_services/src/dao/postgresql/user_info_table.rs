@@ -1,6 +1,6 @@
-use crate::domain::dto::{NewUser, UserDto, UserIdentityDto};
-use crate::domain::po::UserInfo;
 use chrono_tz::Asia::Shanghai;
+use common::dto::{NewUser, UserDto, UserIdentityDto};
+use common::po::UserInfo;
 use sqlx::{PgPool, Row};
 
 /// 根据用户名查询用户信息

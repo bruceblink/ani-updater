@@ -1,8 +1,8 @@
 use crate::common::AppState;
 use crate::dao::list_all_scheduled_tasks_by_page;
-use crate::domain::po::QueryPage;
 use actix_web::{HttpRequest, HttpResponse, get, web};
-use common::api::{ApiError, ApiResponse, ApiResult};
+use common::api::{ApiError, ApiResponse};
+use common::po::{ApiResult, QueryPage};
 use serde::{Deserialize, Serialize};
 
 /// 定义"News"的嵌套的查询参数结构

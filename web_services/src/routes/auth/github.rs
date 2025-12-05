@@ -1,7 +1,8 @@
 use crate::common::{ACCESS_TOKEN, AppState, GITHUB_USER_AGENT, REFRESH_TOKEN};
 use crate::service::github_user_register;
 use actix_web::{HttpResponse, Responder, cookie::Cookie, get, web};
-use common::api::{ApiError, ApiResult};
+use common::api::ApiError;
+use common::po::ApiResult;
 use common::utils::{CommonUser, GithubUser, generate_jwt, generate_refresh_token};
 use lazy_static::lazy_static;
 use oauth2::{

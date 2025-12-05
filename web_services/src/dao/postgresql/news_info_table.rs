@@ -1,9 +1,9 @@
-use crate::domain::po::QueryPage;
 use crate::routes::{NewsFilter, NewsInfoDTO};
 use actix_web::web;
 use anyhow::Result;
 use chrono::Utc;
-use common::api::{ApiError, NewsInfo, PageData};
+use common::api::ApiError;
+use common::po::{NewsInfo, PageData, QueryPage};
 use serde_json::json;
 use sqlx::{FromRow, PgPool, Postgres, QueryBuilder};
 

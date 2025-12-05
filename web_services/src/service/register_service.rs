@@ -1,5 +1,5 @@
 use crate::dao::upsert_user_with_third_part;
-use crate::domain::dto::UserIdentityDto;
+use common::dto::UserIdentityDto;
 use common::utils::{GithubUser, RefreshToken};
 use sqlx::PgPool;
 

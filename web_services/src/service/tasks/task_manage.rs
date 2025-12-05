@@ -2,11 +2,10 @@ use crate::dao::{
     list_all_scheduled_tasks_by_page, upsert_ani_info, upsert_news_info, upsert_news_item,
     upsert_video_info,
 };
-use crate::domain::po::QueryPage;
 use crate::routes::TaskFilter;
 use actix_web::web;
 use common::api::ApiResponse;
-use common::api::{ItemResult, TaskItem};
+use common::po::{ItemResult, QueryPage, TaskItem};
 use common::utils::date_utils::get_today_weekday;
 use serde_json::json;
 use sqlx::PgPool;
