@@ -147,10 +147,10 @@ impl TaskManager {
             let connect_pool = Arc::clone(&connect_pool);
             async move {
                 while let Some(res) = rx.recv().await {
-                    if let Some(ani_item_result) = res.result {
+                    if let Some(item_result) = res.result {
                         let pool_clone = Arc::clone(&connect_pool);
                         tokio::spawn(async move {
-                            if let Err(e) = run_task_service(ani_item_result, pool_clone).await {
+                            if let Err(e) = run_task_service(item_result, pool_clone).await {
                                 warn!("task {:?} 保存失败", e);
                             }
                         });
