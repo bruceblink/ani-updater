@@ -16,16 +16,22 @@ pub struct NewsInfoDTO {
     pub data: serde_json::Value,
     pub created_at: chrono::DateTime<Utc>,
     pub updated_at: Option<chrono::DateTime<Utc>>,
+    pub name: String,
+    pub extracted: bool,
+    pub extracted_at: Option<chrono::DateTime<Utc>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct NewsInfo {
     pub id: i64,
     pub news_from: String,
+    pub name: String,
     pub news_date: chrono::NaiveDate,
     pub data: serde_json::Value,
     pub created_at: chrono::DateTime<Utc>,
     pub updated_at: Option<chrono::DateTime<Utc>>,
+    pub extracted: bool,
+    pub extracted_at: Option<chrono::DateTime<Utc>>,
 }
 
 /// 定义"News"的嵌套的查询参数结构
@@ -34,6 +40,7 @@ pub struct NewsInfo {
 pub struct NewsFilter {
     pub news_from: Option<String>,
     pub news_date: Option<String>,
+    pub extracted: Option<bool>,
 }
 
 #[get("/news")]

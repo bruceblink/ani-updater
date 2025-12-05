@@ -43,10 +43,14 @@ struct NewsInfoWithTotal {
     #[allow(dead_code)]
     pub id: i64,
     pub news_from: String,
+    pub name: String,
     pub news_date: chrono::NaiveDate,
     pub data: serde_json::Value,
     pub created_at: chrono::DateTime<Utc>,
     pub updated_at: Option<chrono::DateTime<Utc>>,
+    pub extracted: bool,
+    #[allow(dead_code)]
+    pub extracted_at: Option<chrono::DateTime<Utc>>,
     pub total_count: i64,
 }
 
@@ -65,7 +69,7 @@ pub async fn list_all_news_info_by_page(
 
     let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
         r#"
-            SELECT ni.id, ni.news_from, ni.news_date, ni.data, ni.created_at, ni.updated_at, COUNT(*) OVER() as total_count
+            SELECT ni.id, ni.news_from, ni.news_date, ni.data, ni.created_at, ni.updated_at, ni.name, ni.extract, ni.extracted_at COUNT(*) OVER() as total_count
             FROM news_info ni
             WHERE 1 = 1
           "#,
@@ -79,6 +83,13 @@ pub async fn list_all_news_info_by_page(
         if let Some(news_date) = &filter.news_date {
             query_builder.push(" AND news_date = ");
             query_builder.push_bind(news_date);
+        }
+        if let Some(extracted) = &filter.extracted {
+            query_builder.push(" AND extracted = ");
+            query_builder.push_bind(extracted);
+        } else {
+            query_builder.push(" AND extracted = ");
+            query_builder.push_bind(false);
         }
     }
 
@@ -110,10 +121,13 @@ pub async fn list_all_news_info_by_page(
         .map(|news_info| NewsInfoDTO {
             id: news_info.id,
             news_from: news_info.news_from.clone(),
+            name: news_info.name.clone(),
             news_date: news_info.news_date,
             data: news_info.data.clone(),
             created_at: news_info.created_at,
             updated_at: news_info.updated_at,
+            extracted: news_info.extracted,
+            extracted_at: news_info.updated_at,
         })
         .collect::<Vec<NewsInfoDTO>>();
 
