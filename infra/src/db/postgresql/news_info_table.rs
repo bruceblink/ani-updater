@@ -70,7 +70,7 @@ pub async fn list_all_news_info_by_page(
 
     let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
         r#"
-            SELECT ni.id, ni.news_from, ni.news_date, ni.data, ni.created_at, ni.updated_at, ni.name, ni.extract, ni.extracted_at COUNT(*) OVER() as total_count
+            SELECT ni.id, ni.news_from, ni.news_date, ni.data, ni.created_at, ni.updated_at, ni.name, ni.extracted, ni.extracted_at, COUNT(*) OVER() as total_count
             FROM news_info ni
             WHERE 1 = 1
           "#,
