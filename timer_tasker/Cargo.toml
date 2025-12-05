@@ -20,3 +20,4 @@ cron = { workspace = true }
 async-trait = { workspace = true }
 num_cpus = { workspace = true }
 service = {path = "../service"}
+sqlx.workspace = true

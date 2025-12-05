@@ -76,7 +76,7 @@ impl TaskManager {
         let task_conf = self.load_task_config().await?;
 
         // 3. 构建任务
-        let tasks = build_tasks_from_meta(&task_conf, &self.cmd_map);
+        let tasks = build_tasks_from_meta(&task_conf, &self.cmd_map, self.db_pool.clone());
 
         // 4. 创建新调度器
         let scheduler = Arc::new(Scheduler::new(tasks, None));

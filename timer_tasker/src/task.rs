@@ -3,7 +3,8 @@ use common::api::ApiResponse;
 use common::po::ItemResult;
 use cron::Schedule;
 use serde::Deserialize;
-use service::commands::CmdFn;
+use service::commands::{CmdFn, CommandInput};
+use sqlx::PgPool;
 use std::collections::HashMap;
 use std::future::Future;
 use std::str::FromStr;
@@ -71,11 +72,15 @@ impl Task {
 }
 
 /// 将 TaskMeta 列表和命令表合并，生成运行时 Task 列表
-pub fn build_tasks_from_meta(metas: &Vec<TaskMeta>, cmd_map: &HashMap<String, CmdFn>) -> Vec<Task> {
+pub fn build_tasks_from_meta(
+    metas: &Vec<TaskMeta>,
+    cmd_map: &HashMap<String, CmdFn>,
+    db_pool: Arc<PgPool>,
+) -> Vec<Task> {
     let mut tasks = Vec::new();
 
     for meta in metas {
-        // 先克隆出 TaskMeta 中将要使用到的字段（避免在闭包里借用 meta）
+        // 提前克隆需要的字段，避免闭包借用局部变量
         let name = meta.name.clone();
         let cmd = meta.cmd.clone();
         let arg = meta.arg.clone();
@@ -86,10 +91,8 @@ pub fn build_tasks_from_meta(metas: &Vec<TaskMeta>, cmd_map: &HashMap<String, Cm
             // 找到命令：把 cmd_fn 和 arg 克隆到闭包里
             let cmd_fn = cmd_fn.clone();
             let arg_for_closure = arg.clone();
-
-            // 构造 Task 使用原始 meta（Task::new 会 clone 需要的元数据）
-            // 注意：这里传入 meta（引用）给 Task::new，但闭包不再捕获 meta，
-            // 闭包只捕获 cmd_fn 和 arg_for_closure（它们是 owned / Arc 克隆的）
+            let db_pool = db_pool.clone();
+            // 构造 Task
             let task = Task::new(
                 &TaskMeta {
                     name: name.clone(),
@@ -100,18 +103,27 @@ pub fn build_tasks_from_meta(metas: &Vec<TaskMeta>, cmd_map: &HashMap<String, Cm
                 },
                 move || {
                     let cmd_fn = cmd_fn.clone();
-                    let arg = arg_for_closure.clone();
+                    let args = arg_for_closure.clone();
+                    let name_for_log = name.clone(); // 如果闭包里要用 name 做日志
+                    let db_pool = db_pool.clone();
                     async move {
-                        // 直接调用命令函数并返回它的结果
-                        cmd_fn(arg).await
+                        // 调用命令函数
+                        let input = CommandInput {
+                            args,
+                            db: Option::from(db_pool), // 后续可传 Arc<PgPool>
+                        };
+                        cmd_fn(input)
+                            .await
+                            .map_err(|e| format!("Task '{}' failed: {}", name_for_log, e))
                     }
                 },
             );
 
             tasks.push(task);
         } else {
-            // 未找到命令：构造一个立即返回 Err 的 action（closure 只捕获字符串，不借用 meta）
+            // cmd 未找到，返回 Err
             let missing_cmd = cmd.clone();
+            let name_for_log = name.clone();
             let task = Task::new(
                 &TaskMeta {
                     name: name.clone(),
@@ -122,8 +134,13 @@ pub fn build_tasks_from_meta(metas: &Vec<TaskMeta>, cmd_map: &HashMap<String, Cm
                 },
                 move || {
                     let missing_cmd = missing_cmd.clone();
-                    let name = name.clone();
-                    async move { Err(format!("cmd '{missing_cmd}' not found for task '{name}'")) }
+                    let name_for_log = name_for_log.clone();
+                    async move {
+                        Err(format!(
+                            "cmd '{}' not found for task '{}'",
+                            missing_cmd, name_for_log
+                        ))
+                    }
                 },
             );
 
