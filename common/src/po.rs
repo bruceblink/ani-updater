@@ -196,3 +196,19 @@ pub struct HealthItem {
     pub url: String,
     pub result: Value, // 不关心内部结构，直接用 Value 保存
 }
+
+#[derive(Debug, FromRow, Clone)]
+pub struct ScheduledTasks {
+    #[allow(dead_code)]
+    pub id: i64,
+    pub name: String,
+    pub cron: String,
+    pub params: serde_json::Value,
+    pub is_enabled: bool,
+    pub retry_times: i16,
+    pub last_run: Option<chrono::DateTime<Utc>>,
+    pub next_run: Option<chrono::DateTime<Utc>>,
+    pub last_status: String,
+    pub created_at: chrono::DateTime<Utc>,
+    pub updated_at: Option<chrono::DateTime<Utc>>,
+}

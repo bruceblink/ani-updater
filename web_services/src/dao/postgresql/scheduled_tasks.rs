@@ -2,12 +2,12 @@ use crate::routes::TaskFilter;
 use actix_web::web;
 use chrono::Utc;
 use common::api::ApiError;
-use common::po::{PageData, QueryPage};
-use serde::Serialize;
+use common::dto::ScheduledTasksDTO;
+use common::po::{PageData, QueryPage, ScheduledTasks};
 use sqlx::{FromRow, PgPool, Postgres, QueryBuilder};
 
 #[derive(Debug, FromRow, Clone)]
-pub struct ScheduledTasks {
+struct ScheduledTasksWithTotal {
     #[allow(dead_code)]
     pub id: i64,
     pub name: String,
@@ -18,37 +18,9 @@ pub struct ScheduledTasks {
     pub last_run: Option<chrono::DateTime<Utc>>,
     pub next_run: Option<chrono::DateTime<Utc>>,
     pub last_status: String,
-    pub created_at: chrono::DateTime<Utc>,
-    pub updated_at: Option<chrono::DateTime<Utc>>,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ScheduledTasksDTO {
-    pub id: i64,
-    pub name: String,
-    pub cron: String,
-    pub params: serde_json::Value,
-    pub is_enabled: bool,
-    pub retry_times: u8,
-    pub last_run: Option<chrono::DateTime<Utc>>,
-    pub next_run: Option<chrono::DateTime<Utc>>,
-    pub last_status: String,
-}
-
-#[derive(Debug, FromRow, Clone)]
-pub struct ScheduledTasksWithTotal {
     #[allow(dead_code)]
-    pub id: i64,
-    pub name: String,
-    pub cron: String,
-    pub params: serde_json::Value,
-    pub is_enabled: bool,
-    pub retry_times: i16,
-    pub last_run: Option<chrono::DateTime<Utc>>,
-    pub next_run: Option<chrono::DateTime<Utc>>,
-    pub last_status: String,
     pub created_at: chrono::DateTime<Utc>,
+    #[allow(dead_code)]
     pub updated_at: Option<chrono::DateTime<Utc>>,
     pub total_count: i64,
 }

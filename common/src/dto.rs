@@ -50,3 +50,40 @@ pub struct UserIdentityDto {
     pub refresh_token: Option<String>,
     pub expires_at: Option<chrono::DateTime<Utc>>,
 }
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NewsInfoDTO {
+    pub id: i64,
+    pub news_from: String,
+    pub news_date: chrono::NaiveDate,
+    pub data: serde_json::Value,
+    pub created_at: chrono::DateTime<Utc>,
+    pub updated_at: Option<chrono::DateTime<Utc>>,
+    pub name: String,
+    pub extracted: bool,
+    pub extracted_at: Option<chrono::DateTime<Utc>>,
+}
+
+pub struct NewsItemDTO {
+    pub id: String,
+    pub title: String,
+    pub url: String,
+    pub content: serde_json::Value,
+    pub source: chrono::DateTime<Utc>,
+    pub published_at: Option<chrono::DateTime<Utc>>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScheduledTasksDTO {
+    pub id: i64,
+    pub name: String,
+    pub cron: String,
+    pub params: serde_json::Value,
+    pub is_enabled: bool,
+    pub retry_times: u8,
+    pub last_run: Option<chrono::DateTime<Utc>>,
+    pub next_run: Option<chrono::DateTime<Utc>>,
+    pub last_status: String,
+}
