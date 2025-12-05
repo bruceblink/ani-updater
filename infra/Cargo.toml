@@ -24,3 +24,6 @@ anyhow = { workspace = true }
 oauth2.workspace = true
 actix-web = { workspace = true }
 actix-cors.workspace = true
+serde_json.workspace = true
+chrono-tz.workspace = true
+common = {path = "../common"}

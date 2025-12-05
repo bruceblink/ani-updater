@@ -1,16 +1,9 @@
 use crate::common::AppState;
-use crate::dao::{get_ani_info_by_id, list_all_ani_info};
 use actix_web::{HttpResponse, web};
+use common::AniFilter;
 use common::api::{ApiError, ApiResponse};
 use common::po::{ApiResult, QueryPage};
-use serde::Deserialize;
-
-// 定义嵌套的查询参数结构
-#[derive(Debug, Deserialize, Clone)]
-pub struct AniFilter {
-    pub title: Option<String>,
-    pub platform: Option<String>,
-}
+use infra::{get_ani_info_by_id, list_all_ani_info};
 
 pub async fn get_ani(path: web::Path<(i64,)>, app_state: web::Data<AppState>) -> ApiResult {
     let ani_id = path.into_inner().0;

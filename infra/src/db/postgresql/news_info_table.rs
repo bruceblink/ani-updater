@@ -1,7 +1,7 @@
-use crate::routes::NewsFilter;
 use actix_web::web;
 use anyhow::Result;
 use chrono::Utc;
+use common::NewsFilter;
 use common::api::ApiError;
 use common::dto::NewsInfoDTO;
 use common::po::{NewsInfo, PageData, QueryPage};

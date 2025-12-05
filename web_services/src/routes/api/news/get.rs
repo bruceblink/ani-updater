@@ -1,18 +1,9 @@
 use crate::common::AppState;
-use crate::dao::list_all_news_info_by_page;
 use actix_web::{HttpRequest, HttpResponse, get, web};
+use common::NewsFilter;
 use common::api::{ApiError, ApiResponse};
 use common::po::{ApiResult, QueryPage};
-use serde::{Deserialize, Serialize};
-
-/// 定义"News"的嵌套的查询参数结构
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct NewsFilter {
-    pub news_from: Option<String>,
-    pub news_date: Option<String>,
-    pub extracted: Option<bool>,
-}
+use infra::list_all_news_info_by_page;
 
 #[get("/news")]
 async fn news_get(

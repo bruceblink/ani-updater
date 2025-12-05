@@ -127,7 +127,7 @@ impl Scheduler {
 mod tests {
     use super::*;
     use crate::task::{Task, TaskAction, TaskResult};
-    use common::api::NewsInfo;
+    use common::po::{NewsInfo, TaskItem};
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use tokio::sync::mpsc;
@@ -143,11 +143,11 @@ mod tests {
         async fn run(
             &self,
         ) -> Result<
-            common::api::ApiResponse<std::collections::HashMap<String, Vec<common::api::TaskItem>>>,
+            common::api::ApiResponse<std::collections::HashMap<String, Vec<TaskItem>>>,
             String,
         > {
             use chrono::Local;
-            use common::api::{ApiResponse, TaskItem};
+            use common::api::ApiResponse;
             use std::collections::HashMap;
 
             let count = self.counter.fetch_add(1, Ordering::SeqCst) + 1;

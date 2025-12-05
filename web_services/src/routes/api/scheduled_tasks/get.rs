@@ -1,18 +1,9 @@
 use crate::common::AppState;
-use crate::dao::list_all_scheduled_tasks_by_page;
 use actix_web::{HttpRequest, HttpResponse, get, web};
+use common::TaskFilter;
 use common::api::{ApiError, ApiResponse};
 use common::po::{ApiResult, QueryPage};
-use serde::{Deserialize, Serialize};
-
-/// 定义"News"的嵌套的查询参数结构
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TaskFilter {
-    pub name: Option<String>,
-    pub arg: Option<String>,
-    pub cmd: Option<String>,
-}
+use infra::list_all_scheduled_tasks_by_page;
 
 #[get("/scheduledTasks")]
 async fn scheduled_tasks_get(

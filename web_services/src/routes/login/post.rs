@@ -1,9 +1,9 @@
 use crate::common::{AppState, ExtractToken};
-use crate::dao::get_user_by_username;
 use actix_web::cookie::{Cookie, SameSite};
 use actix_web::{HttpRequest, HttpResponse, Responder, post, web};
 use bcrypt::verify;
 use chrono::Utc;
+use infra::get_user_by_username;
 use jsonwebtoken::{EncodingKey, Header, encode};
 use serde::{Deserialize, Serialize};
 
