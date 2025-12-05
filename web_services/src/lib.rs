@@ -3,6 +3,5 @@ pub mod startup;
 
 pub mod common;
 pub mod dao;
-pub mod domain;
 mod middleware;
 pub mod service;
