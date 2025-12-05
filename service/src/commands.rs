@@ -14,6 +14,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
+use crate::extract_news_info_to_item::extract_transform_news_info_to_item;
 use sqlx::PgPool;
 
 /// 通用命令输入参数，可以传任意 JSON 数据，也可传数据库连接
@@ -80,6 +81,14 @@ pub fn build_cmd_map() -> HashMap<String, CmdFn> {
     map.insert(
         "health_check".to_string(),
         Arc::new(|input: CommandInput| Box::pin(health_check(input.args))),
+    );
+
+    map.insert(
+        "extract_transform_news_info_to_item".to_string(),
+        Arc::new(|input: CommandInput| match input.db.clone() {
+            Some(db_pool) => Box::pin(extract_transform_news_info_to_item(db_pool)),
+            None => Box::pin(async { Err("DbPool is required".to_string()) }),
+        }),
     );
 
     map
