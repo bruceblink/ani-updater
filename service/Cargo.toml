@@ -1,0 +1,16 @@
+[package]
+name = "service"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+categories.workspace = true
+
+[dependencies]
+common = {path = "../common"}
+infra = {path = "../infra"}
+spiders = {path = "../spiders"}
+sqlx.workspace = true
+anyhow.workspace = true
+actix-web.workspace = true

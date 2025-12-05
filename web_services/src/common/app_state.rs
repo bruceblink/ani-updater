@@ -1,5 +1,5 @@
 use crate::routes::SensorData;
-use crate::service::{TaskManager, get_global_task_manager};
+use crate::task_manage::{TaskManager, get_global_task_manager};
 use infra::{OAuthConfig, Setting};
 use oauth2::basic::BasicClient;
 use sqlx::PgPool;

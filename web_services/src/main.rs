@@ -4,8 +4,8 @@ use infra::{
     run_database_migrations,
 };
 use std::path::PathBuf;
-use web_services::service::initialize_task_manager;
 use web_services::startup::start_web_server;
+use web_services::task_manage::initialize_task_manager;
 
 #[tokio::main]
 async fn main() -> Result<()> {

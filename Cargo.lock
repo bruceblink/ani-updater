@@ -2642,6 +2642,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "service"
+version = "0.0.8"
+dependencies = [
+ "actix-web",
+ "anyhow",
+ "common",
+ "infra",
+ "spiders",
+ "sqlx",
+]
+
+[[package]]
 name = "servo_arc"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3200,7 +3212,7 @@ dependencies = [
  "cron",
  "num_cpus",
  "serde",
- "spiders",
+ "service",
  "tokio",
  "tracing",
 ]
@@ -3496,12 +3508,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e70f2a8b45122e719eb623c01822704c4e0907e7e426a05927e1a1cfff5b75d0"
 
 [[package]]
-name = "unicode-segmentation"
-version = "1.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6ccf251212114b54433ec949fd6a7841275f9ada20dddd2f29e9ceea4501493"
-
-[[package]]
 name = "unicode-width"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3722,7 +3728,6 @@ dependencies = [
 name = "web_services"
 version = "0.0.8"
 dependencies = [
- "actix-cors",
  "actix-web",
  "anyhow",
  "bcrypt",
@@ -3741,13 +3746,13 @@ dependencies = [
  "reqwest 0.12.23",
  "serde",
  "serde_json",
+ "service",
  "sqlx",
  "time",
  "timer_tasker",
  "tokio",
  "tracing",
  "tracing-actix-web",
- "unicode-segmentation",
 ]
 
 [[package]]

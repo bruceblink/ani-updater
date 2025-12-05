@@ -1,5 +1,4 @@
 use crate::common::{ACCESS_TOKEN, AppState, GITHUB_USER_AGENT, REFRESH_TOKEN};
-use crate::service::github_user_register;
 use actix_web::{HttpResponse, Responder, cookie::Cookie, get, web};
 use common::api::ApiError;
 use common::po::ApiResult;
@@ -11,6 +10,7 @@ use oauth2::{
 use once_cell::sync::Lazy;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use service::register_service::github_user_register;
 use std::collections::HashMap;
 
 static HTTP: Lazy<Client> = Lazy::new(Client::new);
