@@ -81,13 +81,19 @@ pub async fn list_all_news_info_by_page(
             query_builder.push(" AND news_from LIKE ");
             query_builder.push_bind(format!("%{news_from}%"));
         }
+
         if let Some(news_date) = &filter.news_date {
-            query_builder.push(" AND news_date = ");
-            query_builder.push_bind(news_date);
+            if let Ok(date) = chrono::NaiveDate::parse_from_str(news_date, "%Y-%m-%d") {
+                query_builder.push(" AND news_date = ");
+                query_builder.push_bind(date);
+            } else {
+                tracing::warn!("news_date 格式不正确: {}", news_date);
+            }
         }
+
         if let Some(extracted) = &filter.extracted {
             query_builder.push(" AND extracted = ");
-            query_builder.push_bind(extracted);
+            query_builder.push_bind(*extracted);
         } else {
             query_builder.push(" AND extracted = ");
             query_builder.push_bind(false);
