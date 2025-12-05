@@ -1,9 +1,8 @@
 use anyhow::{Context, Result};
+use infra::{get_configuration, get_subscriber, init_subscriber};
 use std::path::PathBuf;
-use web_services::configuration::get_configuration;
 use web_services::service::initialize_task_manager;
 use web_services::startup::{create_database_pool, run_database_migrations, start_web_server};
-use web_services::telemetry::{get_subscriber, init_subscriber};
 
 #[tokio::main]
 async fn main() -> Result<()> {

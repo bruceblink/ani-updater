@@ -111,8 +111,9 @@ pub fn get_configuration(config_dir: Option<PathBuf>) -> Result<Setting, config:
     dotenvy::dotenv().ok(); // 加载 .env
 
     // 配置目录
-    let config_directory = config_dir
-        .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("configuration"));
+    let config_directory = config_dir.unwrap_or_else(|| {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../configuration")
+    });
 
     // 获取 APP_ENV=local/production
     let environment = get_environment()?;

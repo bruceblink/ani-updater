@@ -18,15 +18,9 @@ actix-web = { workspace = true }
 actix-cors.workspace = true
 tokio = { workspace = true }
 serde = { workspace = true }
-config = { workspace = true }
 sqlx = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
-tracing-bunyan-formatter = { workspace = true }
-serde-aux = { workspace = true }
-tracing-log = { workspace = true }
 tracing-actix-web = { workspace = true }
-secrecy = { workspace = true }
 unicode-segmentation = { workspace = true }
 reqwest = { workspace = true, features = ["stream"] }
 chrono ={ workspace = true }
@@ -39,10 +33,10 @@ jsonwebtoken = { workspace = true }
 bcrypt = { workspace = true }
 oauth2.workspace = true
 once_cell.workspace = true
-dotenvy.workspace = true
 futures.workspace = true
 time.workspace = true
 futures-util.workspace = true
 lazy_static.workspace = true
 rand.workspace = true
 mime.workspace = true
+infra = {path = "../infra"}

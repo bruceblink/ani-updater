@@ -1,5 +1,6 @@
-use crate::configuration::Setting;
+use crate::conf::configuration::Setting;
 use anyhow::{Context, Result};
+use oauth2::basic::BasicClient;
 use oauth2::{AuthUrl, ClientId, ClientSecret, RedirectUrl, TokenUrl};
 
 /// 定义 OAuth2 授权的相关配置
@@ -53,4 +54,23 @@ impl OAuthConfig {
             jwt_secret,
         })
     }
+}
+
+/// 创建 OAuth 配置
+pub async fn create_oauth_config(configuration: Setting) -> anyhow::Result<OAuthConfig> {
+    OAuthConfig::from_configuration(configuration)
+        .context("Failed to load OAuth configuration from environment variables")
+}
+
+/// 创建 OAuth 客户端
+pub fn create_oauth_client(config: &OAuthConfig) -> anyhow::Result<BasicClient> {
+    let client = BasicClient::new(
+        config.client_id.clone(),
+        Some(config.client_secret.clone()),
+        config.auth_url.clone(),
+        Some(config.token_url.clone()),
+    )
+    .set_redirect_uri(config.redirect_url.clone());
+
+    Ok(client)
 }

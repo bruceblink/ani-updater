@@ -1,11 +1,11 @@
-use crate::telemetry::fmt::format::Writer;
-use crate::telemetry::fmt::time::FormatTime;
 use chrono::Local;
-use tracing_actix_web::root_span_macro::private::tracing::Subscriber;
+use tracing::Subscriber;
 use tracing_actix_web::root_span_macro::private::tracing::dispatcher::set_global_default;
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_log::LogTracer;
 use tracing_subscriber::fmt::MakeWriter;
+use tracing_subscriber::fmt::format::Writer;
+use tracing_subscriber::fmt::time::FormatTime;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::{EnvFilter, Registry, fmt};
 

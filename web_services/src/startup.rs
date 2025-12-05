@@ -1,18 +1,15 @@
 use crate::common::AppState;
-use crate::configuration::Setting;
 use crate::middleware::{AuthMiddleware, CharsetMiddleware};
-use crate::routes::{
-    OAuthConfig, get_sensor_history, logout, news_get, proxy_image, scheduled_tasks_get,
-    sse_sensor, task_reload,
-};
 use crate::routes::{auth_github_callback, auth_github_login, auth_refresh};
 use crate::routes::{get_ani, get_anis};
+use crate::routes::{
+    get_sensor_history, logout, news_get, proxy_image, scheduled_tasks_get, sse_sensor, task_reload,
+};
 use crate::routes::{login, me, sync_me_get, sync_me_post, sync_task_source};
-use actix_cors::Cors;
 use actix_web::dev::Server;
-use actix_web::http::header;
 use actix_web::{App, HttpServer, web};
 use anyhow::{Context, Result};
+use infra::{OAuthConfig, Setting, configure_cors, create_oauth_client, create_oauth_config};
 use oauth2::basic::BasicClient;
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
@@ -43,41 +40,8 @@ pub async fn run(listener: TcpListener, db_pool: PgPool, configuration: Setting)
         .context("Failed to create server")
 }
 
-/// 创建 OAuth 配置
-async fn create_oauth_config(configuration: Setting) -> Result<OAuthConfig> {
-    OAuthConfig::from_configuration(configuration)
-        .context("Failed to load OAuth configuration from environment variables")
-}
-
-/// 创建 OAuth 客户端
-fn create_oauth_client(config: &OAuthConfig) -> Result<BasicClient> {
-    let client = BasicClient::new(
-        config.client_id.clone(),
-        Some(config.client_secret.clone()),
-        config.auth_url.clone(),
-        Some(config.token_url.clone()),
-    )
-    .set_redirect_uri(config.redirect_url.clone());
-
-    Ok(client)
-}
-
-/// 创建应用状态
-async fn create_app_state(
-    db_pool: PgPool,
-    configuration: Setting,
-    oauth_config: OAuthConfig,
-    oauth_client: BasicClient,
-) -> Result<web::Data<AppState>> {
-    let app_state = AppState::create_app_state(db_pool, configuration, oauth_config, oauth_client)
-        .await
-        .context("Failed to initialize application state")?;
-
-    Ok(web::Data::new(app_state))
-}
-
 /// 解析允许的源域名
-fn parse_allowed_origins() -> Result<Vec<String>> {
+fn parse_allowed_origins() -> anyhow::Result<Vec<String>> {
     let env_value = std::env::var("FRONTEND_DOMAINS").unwrap_or_default();
 
     let origins: Vec<String> = env_value
@@ -99,27 +63,18 @@ fn parse_allowed_origins() -> Result<Vec<String>> {
     Ok(origins)
 }
 
-/// 配置 CORS 中间件
-fn configure_cors(allowed_origins: Vec<String>) -> Cors {
-    if allowed_origins.is_empty() {
-        // 如果没有配置允许的源，使用默认设置（仅允许同源）
-        Cors::default()
-            .allowed_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS"])
-            .allowed_headers(vec![header::AUTHORIZATION, header::CONTENT_TYPE])
-            .supports_credentials()
-    } else {
-        // 根据配置的源列表设置 CORS
-        // 将 allowed_origins 移动到闭包中
-        Cors::default()
-            .allowed_origin_fn(move |origin, _req_head| {
-                allowed_origins
-                    .iter()
-                    .any(|o| origin.as_bytes() == o.as_bytes())
-            })
-            .allowed_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS"])
-            .allowed_headers(vec![header::AUTHORIZATION, header::CONTENT_TYPE])
-            .supports_credentials()
-    }
+/// 创建应用状态
+async fn create_app_state(
+    db_pool: PgPool,
+    configuration: Setting,
+    oauth_config: OAuthConfig,
+    oauth_client: BasicClient,
+) -> Result<web::Data<AppState>> {
+    let app_state = AppState::create_app_state(db_pool, configuration, oauth_config, oauth_client)
+        .await
+        .context("Failed to initialize application state")?;
+
+    Ok(web::Data::new(app_state))
 }
 
 /// 创建服务器

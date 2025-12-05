@@ -1,0 +1,26 @@
+[package]
+name = "infra"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+categories.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+config = { workspace = true }
+sqlx = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-bunyan-formatter = { workspace = true }
+serde-aux = { workspace = true }
+tracing-log = { workspace = true }
+secrecy = { workspace = true }
+dotenvy.workspace = true
+tracing-actix-web.workspace = true
+chrono ={ workspace = true }
+anyhow = { workspace = true }
+oauth2.workspace = true
+actix-web = { workspace = true }
+actix-cors.workspace = true
