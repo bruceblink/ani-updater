@@ -6,14 +6,15 @@ use common::utils::date_utils::{DateFormat, format_now, get_today_weekday};
 use infra::list_all_news_info_by_page;
 use sqlx::PgPool;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 pub async fn extract_transform_news_info_to_item(
-    db_pool: &PgPool,
+    db_pool: Arc<PgPool>,
 ) -> anyhow::Result<ApiResponse<ItemResult>, String> {
     let mut item_result: ItemResult = HashMap::new();
     let weekday = get_today_weekday().name_cn.to_string();
     let query = create_empty_query();
-    let result = list_all_news_info_by_page(query, db_pool)
+    let result = list_all_news_info_by_page(query, &db_pool)
         .await
         .map_err(|e| e.to_string())?;
 
