@@ -5,7 +5,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use crate::extract_news_info_to_item::extract_transform_news_info_to_item;
+use crate::process_news_info_to_item::extract_transform_news_info_to_item;
 use crate::spider::agedm::fetch_agedm_ani_data;
 use crate::spider::bilibili::fetch_bilibili_ani_data;
 use crate::spider::douban::fetch_douban_movie_data;

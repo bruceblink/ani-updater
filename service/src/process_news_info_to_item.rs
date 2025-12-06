@@ -29,7 +29,7 @@ pub async fn extract_transform_news_info_to_item(
                 .iter()
                 .map(|item| {
                     TaskItem::Extract(NewsInfo2Item {
-                        id: news_info.id.to_string(),
+                        id: news_info.id,
                         news_from: news_info.news_from.clone(),
                         name: news_info.name.clone(),
                         news_date: news_info.news_date, // NaiveDate 类型，不用 clone
