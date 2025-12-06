@@ -2,7 +2,7 @@ use actix_web::web;
 use anyhow::Result;
 use chrono::Utc;
 use common::NewsFilter;
-use common::api::ApiError;
+use common::api::{ApiError, NewsInfo2Item};
 use common::dto::NewsInfoDTO;
 use common::po::{NewsInfo, PageData, QueryPage};
 use serde_json::json;
@@ -155,4 +155,24 @@ pub async fn list_all_news_info_by_page(
     };
     result.total_pages = total_pages;
     Ok(result)
+}
+
+pub async fn upsert_news_info_extracted_state(
+    news_item: &NewsInfo2Item,
+    tx: &mut sqlx::Transaction<'_, Postgres>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"
+            update news_info set extracted = true, extracted_at = CURRENT_TIMESTAMP where id = $1
+        "#,
+    )
+    .bind(news_item.id)
+    .execute(tx.as_mut())
+    .await
+    .map_err(|e| {
+        tracing::error!("更新news_info表 {:?} 数据提取状态失败: {}", news_item, e);
+        e
+    })?;
+
+    Ok(())
 }
