@@ -131,10 +131,17 @@ jobs:
 
     steps:
       # 1️⃣ 检出完整代码 （加上 fetch-depth: 0 最佳实践）
-      - name: Checkout code
+      - name: Checkout code with full history
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      # 【新增】调试步骤，查看标签和最近提交
+      - name: Debug - Show git history and tags
+        run: |
+          git log --oneline -5
+          echo "--- All tags ---"
+          git tag --sort=-v:refname
 
       # 2️⃣ 构建release版本
       - uses: actions/checkout@v4
