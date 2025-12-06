@@ -5,11 +5,14 @@ use common::NewsFilter;
 use common::api::{ApiError, NewsInfo2Item};
 use common::dto::NewsItemDTO;
 use common::po::{PageData, QueryPage};
-use sqlx::{FromRow, PgPool, Postgres, QueryBuilder};
+use sqlx::{FromRow, PgPool, QueryBuilder};
 
-/// 新闻信息插入新记录
-pub async fn upsert_news_item(news_item: &NewsInfo2Item, db_pool: &PgPool) -> Result<()> {
-    let _ = sqlx::query(
+/// 新闻信息插入或更新
+pub async fn upsert_news_item(
+    news_item: &NewsInfo2Item,
+    tx: &mut sqlx::Transaction<'_, sqlx::postgres::Postgres>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
         r#"
         INSERT INTO public.news_item (
             id,
@@ -36,11 +39,11 @@ pub async fn upsert_news_item(news_item: &NewsInfo2Item, db_pool: &PgPool) -> Re
     .bind(news_item.news_date)
     .bind(&news_item.name)
     .bind(&news_item.content)
-    .execute(db_pool)
+    .execute(tx.as_mut()) // ✅ 正确写法
     .await
     .map_err(|e| {
         tracing::error!("插入或更新 news_item {:?} 失败: {}", news_item, e);
-        anyhow::anyhow!(e)
+        e
     })?;
 
     Ok(())
@@ -63,11 +66,11 @@ struct NewsItemWithTotal {
     pub total_count: i64,
 }
 
+/// 分页查询新闻列表
 pub async fn list_all_news_item_by_page(
     query: web::Query<QueryPage<NewsFilter>>,
     db_pool: &PgPool,
 ) -> Result<PageData<NewsItemDTO>> {
-    // 构造带绑定参数的 QueryAs
     let mut result = PageData {
         items: vec![],
         total_count: 0,
@@ -76,12 +79,22 @@ pub async fn list_all_news_item_by_page(
         total_pages: 0,
     };
 
-    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
+    let mut query_builder: QueryBuilder<sqlx::postgres::Postgres> = QueryBuilder::new(
         r#"
-            SELECT ni.id, ni.news_info_id, ni.title, ni.url, ni.published_at, ni.source, ni.content, ni.created_at, ni.updated_at COUNT(*) OVER() as total_count
+            SELECT
+                ni.id,
+                ni.news_info_id,
+                ni.title,
+                ni.url,
+                ni.published_at,
+                ni.source,
+                ni.content,
+                ni.created_at,
+                ni.updated_at,
+                COUNT(*) OVER() AS total_count
             FROM news_info ni
             WHERE 1 = 1
-          "#,
+        "#,
     );
 
     if let Some(filter) = &query.filter {
@@ -95,8 +108,9 @@ pub async fn list_all_news_item_by_page(
         }
     }
 
-    query_builder.push(" ORDER BY updated_at DESC");
+    query_builder.push(" ORDER BY updated_at DESC ");
 
+    // 分页
     if let Some(page_size) = query.page_size {
         query_builder.push(" LIMIT ");
         query_builder.push_bind(page_size as i64);
@@ -108,7 +122,8 @@ pub async fn list_all_news_item_by_page(
         query_builder.push_bind(((page - 1) * page_size) as i64);
         result.page = page;
     }
-    // 查询 数据库的原始数据
+
+    // 执行查询
     let rows: Vec<NewsItemWithTotal> = query_builder
         .build_query_as()
         .fetch_all(db_pool)
@@ -117,34 +132,30 @@ pub async fn list_all_news_item_by_page(
             tracing::error!("数据库查询错误: {e:?}");
             ApiError::Database("数据库查询失败".into())
         })?;
-    // 转换数据库数据为前端需要的的DTO数据
-    let data: Vec<NewsItemDTO> = rows
-        .iter()
-        .map(|news_info| NewsItemDTO {
-            id: news_info.id.clone(),
-            title: news_info.title.clone(),
-            url: news_info.url.clone(),
-            content: news_info.content.clone(),
-            published_at: news_info.published_at,
-            source: news_info.source,
-        })
-        .collect::<Vec<NewsItemDTO>>();
 
-    result.items = data;
-    let total_count = if rows.is_empty() {
-        0
+    // 数据转换
+    let items = rows
+        .iter()
+        .map(|item| NewsItemDTO {
+            id: item.id.clone(),
+            title: item.title.clone(),
+            url: item.url.clone(),
+            content: item.content.clone(),
+            published_at: item.published_at,
+            source: item.source,
+        })
+        .collect();
+
+    result.items = items;
+
+    let total = rows.first().map(|r| r.total_count).unwrap_or(0);
+    result.total_count = total as usize;
+
+    result.total_pages = if result.page_size > 0 {
+        ((total as f64) / (result.page_size as f64)).ceil() as u32
     } else {
-        rows[0].total_count
-    };
-    result.total_count = total_count as usize;
-    let total_pages = if total_count == 0 {
         0
-    } else {
-        query
-            .page_size
-            .map(|ps| ((total_count as f64) / (ps as f64)).ceil() as u32)
-            .unwrap_or(0)
     };
-    result.total_pages = total_pages;
+
     Ok(result)
 }
