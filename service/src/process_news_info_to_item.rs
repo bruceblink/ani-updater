@@ -2,13 +2,13 @@ use actix_web::web;
 use common::NewsFilter;
 use common::api::{ApiResponse, NewsInfo2Item};
 use common::po::{ItemResult, QueryPage, TaskItem};
-use common::utils::date_utils::{DateFormat, format_now, get_today_weekday};
+use common::utils::date_utils::get_today_weekday;
 use infra::{list_all_news_info_by_page, upsert_news_info_extracted_state, upsert_news_item};
 use sqlx::{PgPool, Pool};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-pub async fn extract_transform_news_info_to_item(
+pub async fn query_news_info_to_extract(
     db_pool: Arc<PgPool>,
 ) -> anyhow::Result<ApiResponse<ItemResult>, String> {
     let mut item_result: ItemResult = HashMap::new();
@@ -54,17 +54,17 @@ pub async fn extract_transform_news_info_to_item(
 
 /// 创建空的news_info分页查询条件
 fn create_empty_query() -> web::Query<QueryPage<NewsFilter>> {
-    let now_str = format_now(DateFormat::Iso);
+    //let now_str = format_now(DateFormat::Iso);
     let filter = NewsFilter {
         news_from: None,
-        news_date: Option::from(now_str),
+        news_date: None,
         extracted: Option::from(false),
     };
 
     let query_page = QueryPage {
         page: None,
         filter: Some(filter),
-        page_size: None,
+        page_size: Some(50),
     };
 
     web::Query(query_page)
