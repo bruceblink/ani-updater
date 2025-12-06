@@ -106,7 +106,7 @@ impl ResponseError for ApiError {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NewsInfo2Item {
-    pub id: String,
+    pub id: i64,
     pub news_from: String,
     pub name: String,
     pub news_date: chrono::NaiveDate,
