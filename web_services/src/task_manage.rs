@@ -4,11 +4,11 @@ use common::api::ApiResponse;
 use common::po::{ItemResult, QueryPage, TaskItem};
 use common::utils::date_utils::get_today_weekday;
 use infra::{
-    list_all_scheduled_tasks_by_page, upsert_ani_info, upsert_news_info, upsert_news_item,
-    upsert_video_info,
+    list_all_scheduled_tasks_by_page, upsert_ani_info, upsert_news_info, upsert_video_info,
 };
 use serde_json::json;
 use service::commands::{CmdFn, build_cmd_map};
+use service::process_news_info_to_item::process_news;
 use sqlx::PgPool;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
@@ -203,7 +203,7 @@ async fn handle_item(item: &TaskItem, pool: &PgPool) -> anyhow::Result<()> {
             info!("健康检测结果: {} => {}", health.url, health.result);
         }
         TaskItem::Extract(new_item) => {
-            upsert_news_item(new_item, pool).await?;
+            process_news(new_item, pool).await?;
         }
     }
     Ok(())

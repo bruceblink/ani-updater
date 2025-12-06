@@ -3,8 +3,8 @@ use common::NewsFilter;
 use common::api::{ApiResponse, NewsInfo2Item};
 use common::po::{ItemResult, QueryPage, TaskItem};
 use common::utils::date_utils::{DateFormat, format_now, get_today_weekday};
-use infra::list_all_news_info_by_page;
-use sqlx::PgPool;
+use infra::{list_all_news_info_by_page, upsert_news_info_extracted_state, upsert_news_item};
+use sqlx::{PgPool, Pool};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -68,4 +68,20 @@ fn create_empty_query() -> web::Query<QueryPage<NewsFilter>> {
     };
 
     web::Query(query_page)
+}
+
+pub async fn process_news(
+    new_item: &NewsInfo2Item,
+    pool: &Pool<sqlx::postgres::Postgres>,
+) -> Result<(), sqlx::Error> {
+    // 开启事务
+    let mut tx = pool.begin().await?;
+
+    // 把事务引用传给两个 upsert 函数
+    upsert_news_item(new_item, &mut tx).await?;
+    upsert_news_info_extracted_state(new_item, &mut tx).await?;
+
+    // 事务提交
+    tx.commit().await?;
+    Ok(())
 }
