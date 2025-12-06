@@ -51,7 +51,10 @@ jobs:
 
     steps:
       # 1️⃣ 下载仓库代码
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # 2️⃣ 缓存 Cargo registry，加速依赖下载
       - name: Cache Cargo registry
