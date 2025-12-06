@@ -20,14 +20,21 @@ pub async fn upsert_news_item(news_item: &NewsInfo2Item, db_pool: &PgPool) -> Re
             source,
             content
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (id) DO UPDATE SET
+            news_info_id = EXCLUDED.news_info_id,
+            title = EXCLUDED.title,
+            url = EXCLUDED.url,
+            published_at = EXCLUDED.published_at,
+            source = EXCLUDED.source,
+            content = EXCLUDED.content
         "#,
     )
     .bind(&news_item.news_item_id)
-    .bind(&news_item.id)
+    .bind(news_item.id)
     .bind(&news_item.title)
     .bind(&news_item.url)
     .bind(news_item.news_date)
-    .bind(&news_item.news_from)
+    .bind(&news_item.name)
     .bind(&news_item.content)
     .execute(db_pool)
     .await
