@@ -28,7 +28,7 @@ pub async fn query_news_info_to_extract(
                 .unwrap_or(&Vec::new())
                 .iter()
                 .map(|item| {
-                    TaskItem::Extract(NewsInfo2Item {
+                    TaskItem::ExtractNewsItem(NewsInfo2Item {
                         id: news_info.id,
                         news_from: news_info.news_from.clone(),
                         name: news_info.name.clone(),

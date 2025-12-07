@@ -202,7 +202,7 @@ async fn handle_item(item: &TaskItem, pool: &PgPool) -> anyhow::Result<()> {
         TaskItem::Health(health) => {
             info!("健康检测结果: {} => {}", health.url, health.result);
         }
-        TaskItem::Extract(new_item) => {
+        TaskItem::ExtractNewsItem(new_item) => {
             process_news(new_item, pool).await?;
         }
     }
