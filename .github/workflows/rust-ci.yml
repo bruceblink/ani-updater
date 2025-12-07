@@ -17,6 +17,11 @@ on:
       - main
   workflow_dispatch:
 
+# 必要权限：允许使用 GITHUB_TOKEN 创建 Release 等写操作
+permissions:
+  contents: write
+  packages: write
+
 env:
   CARGO_TERM_COLOR: always
   SQLX_VERSION: "0.8.0"
@@ -138,13 +143,6 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      # 【新增】调试步骤，查看标签和最近提交
-      - name: Debug - Show git history and tags
-        run: |
-          git log --oneline -5
-          echo "--- All tags ---"
-          git tag --sort=-v:refname
-
       # 2️⃣ 构建 release 版本（直接使用 workspace，无需再次 checkout）
       - name: Build release
         run: cargo build --release
@@ -154,12 +152,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
-
-      # 【保障】确保不是浅克隆并拉取 tags
-      - name: Ensure full git history and tags (safety)
-        run: |
-          git fetch --prune --unshallow || true
-          git fetch --tags
 
       # 4️⃣ 生成 changelog，并创建 GitHub Release
       - name: Generate Changelog and Create Release
