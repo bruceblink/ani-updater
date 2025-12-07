@@ -8,7 +8,7 @@ use infra::{
 };
 use serde_json::json;
 use service::commands::{CmdFn, build_cmd_map};
-use service::process_news_info_to_item::process_news;
+use service::process_news_info_to_item::extract_news_item;
 use sqlx::PgPool;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
@@ -203,7 +203,7 @@ async fn handle_item(item: &TaskItem, pool: &PgPool) -> anyhow::Result<()> {
             info!("健康检测结果: {} => {}", health.url, health.result);
         }
         TaskItem::ExtractNewsItem(new_item) => {
-            process_news(new_item, pool).await?;
+            extract_news_item(new_item, pool).await?;
         }
         TaskItem::ExtractNewsNewsKeywords(res) => {
             info!("新闻keywords提取结果: {} => {}", res.url, res.result);

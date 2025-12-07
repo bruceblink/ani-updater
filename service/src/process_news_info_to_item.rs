@@ -70,7 +70,7 @@ fn create_empty_query() -> web::Query<QueryPage<NewsFilter>> {
     web::Query(query_page)
 }
 
-pub async fn process_news(
+pub async fn extract_news_item(
     new_item: &NewsInfo2Item,
     pool: &Pool<sqlx::postgres::Postgres>,
 ) -> Result<(), sqlx::Error> {
