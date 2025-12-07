@@ -50,11 +50,12 @@ jobs:
       APP_ENV: local   # ✅ 全局环境变量
 
     steps:
-      # 1️⃣ 下载仓库代码
+      # 1️⃣ 下载仓库代码（完整历史）
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          fetch-tags: true
 
       # 2️⃣ 缓存 Cargo registry，加速依赖下载
       - name: Cache Cargo registry
@@ -130,11 +131,12 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
-      # 1️⃣ 检出完整代码 （加上 fetch-depth: 0 最佳实践）
+      # 1️⃣ 检出完整代码（确保完整历史和 tags）
       - name: Checkout code with full history
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          fetch-tags: true
 
       # 【新增】调试步骤，查看标签和最近提交
       - name: Debug - Show git history and tags
@@ -143,8 +145,7 @@ jobs:
           echo "--- All tags ---"
           git tag --sort=-v:refname
 
-      # 2️⃣ 构建release版本
-      - uses: actions/checkout@v4
+      # 2️⃣ 构建 release 版本（直接使用 workspace，无需再次 checkout）
       - name: Build release
         run: cargo build --release
 
@@ -153,6 +154,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
+
+      # 【保障】确保不是浅克隆并拉取 tags
+      - name: Ensure full git history and tags (safety)
+        run: |
+          git fetch --prune --unshallow || true
+          git fetch --tags
 
       # 4️⃣ 生成 changelog，并创建 GitHub Release
       - name: Generate Changelog and Create Release
@@ -170,6 +177,9 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -210,10 +220,16 @@ jobs:
       github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     concurrency: deploy-group
     steps:
-      # 1️⃣ 下载仓库代码
-      - uses: actions/checkout@v4
+      # 1️⃣ 下载仓库代码（完整历史）
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
       # 2️⃣ 安装 flyctl
       - uses: superfly/flyctl-actions/setup-flyctl@master
+
       # 3️⃣ 部署应用到 Fly.io
       - run: flyctl deploy --remote-only
         env:
