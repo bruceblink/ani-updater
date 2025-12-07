@@ -511,7 +511,7 @@ dependencies = [
 
 [[package]]
 name = "common"
-version = "0.0.8"
+version = "0.0.10"
 dependencies = [
  "actix-web",
  "anyhow",
@@ -1446,7 +1446,7 @@ dependencies = [
 
 [[package]]
 name = "infra"
-version = "0.0.8"
+version = "0.0.10"
 dependencies = [
  "actix-cors",
  "actix-web",
@@ -2643,7 +2643,7 @@ dependencies = [
 
 [[package]]
 name = "service"
-version = "0.0.8"
+version = "0.0.10"
 dependencies = [
  "actix-web",
  "anyhow",
@@ -3195,7 +3195,7 @@ dependencies = [
 
 [[package]]
 name = "timer_tasker"
-version = "0.0.8"
+version = "0.0.10"
 dependencies = [
  "async-trait",
  "chrono",
@@ -3718,7 +3718,7 @@ dependencies = [
 
 [[package]]
 name = "web_services"
-version = "0.0.8"
+version = "0.0.10"
 dependencies = [
  "actix-web",
  "anyhow",
