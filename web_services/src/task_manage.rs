@@ -8,7 +8,7 @@ use infra::{
 };
 use serde_json::json;
 use service::commands::{CmdFn, build_cmd_map};
-use service::process_news_info_to_item::extract_news_item;
+use service::process_news_info::extract_news_item;
 use sqlx::PgPool;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
