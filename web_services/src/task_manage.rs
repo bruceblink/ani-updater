@@ -205,6 +205,9 @@ async fn handle_item(item: &TaskItem, pool: &PgPool) -> anyhow::Result<()> {
         TaskItem::ExtractNewsItem(new_item) => {
             process_news(new_item, pool).await?;
         }
+        TaskItem::ExtractNewsNewsKeywords(res) => {
+            info!("新闻keywords提取结果: {} => {}", res.url, res.result);
+        }
     }
     Ok(())
 }

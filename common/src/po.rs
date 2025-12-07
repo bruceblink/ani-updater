@@ -152,6 +152,7 @@ pub enum TaskItem {
     News(NewsInfo),
     Health(HealthItem),
     ExtractNewsItem(NewsInfo2Item),
+    ExtractNewsNewsKeywords(HealthItem),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

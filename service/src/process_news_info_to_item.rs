@@ -112,7 +112,7 @@ pub async fn extract_keywords_to_news_keywords(
     // 将响应解析成json
     let json_value: serde_json::Value = response.json().await.map_err(|e| e.to_string())?;
 
-    let all_items: Vec<TaskItem> = vec![TaskItem::Health(HealthItem {
+    let all_items: Vec<TaskItem> = vec![TaskItem::ExtractNewsNewsKeywords(HealthItem {
         url: api_url.to_string(),
         result: json_value,
     })];
