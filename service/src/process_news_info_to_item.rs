@@ -1,7 +1,7 @@
 use actix_web::web;
 use common::NewsFilter;
 use common::api::{ApiResponse, NewsInfo2Item};
-use common::po::{ItemResult, QueryPage, TaskItem};
+use common::po::{HealthItem, ItemResult, QueryPage, TaskItem};
 use common::utils::date_utils::get_today_weekday;
 use infra::{list_all_news_info_by_page, upsert_news_info_extracted_state, upsert_news_item};
 use sqlx::{PgPool, Pool};
@@ -84,4 +84,52 @@ pub async fn process_news(
     // 事务提交
     tx.commit().await?;
     Ok(())
+}
+
+/// 提取新增关键字到news_keywords表
+pub async fn extract_keywords_to_news_keywords(
+    api_url: String,
+) -> anyhow::Result<ApiResponse<ItemResult>, String> {
+    let mut result: ItemResult = HashMap::new();
+    let client = reqwest::Client::new();
+    let weekday = get_today_weekday().name_cn.to_string();
+
+    let response = client
+        .get(api_url.clone())
+        .header("Referer", api_url.clone())
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // 检查HTTP状态码
+    if !response.status().is_success() {
+        return Err(format!(
+            "HTTP错误: {} - 状态码: {}",
+            api_url.clone(),
+            response.status()
+        ));
+    }
+    // 将响应解析成json
+    let json_value: serde_json::Value = response.json().await.map_err(|e| e.to_string())?;
+
+    let all_items: Vec<TaskItem> = vec![TaskItem::Health(HealthItem {
+        url: api_url.to_string(),
+        result: json_value,
+    })];
+    result.insert(weekday, all_items);
+    Ok(ApiResponse::ok(result))
+}
+
+#[cfg(test)]
+mod test {
+    use crate::process_news_info_to_item::extract_keywords_to_news_keywords;
+
+    #[tokio::test]
+    async fn test_extract_keywords_to_news_keywords() {
+        let args = "http://127.0.0.1:8001/api/analysis/tfidf?limit=500&top_k=5";
+        let result = extract_keywords_to_news_keywords(args.to_string())
+            .await
+            .unwrap();
+        println!("{:?}", result.data)
+    }
 }
