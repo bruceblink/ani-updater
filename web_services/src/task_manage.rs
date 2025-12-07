@@ -7,8 +7,8 @@ use infra::{
     list_all_scheduled_tasks_by_page, upsert_ani_info, upsert_news_info, upsert_video_info,
 };
 use serde_json::json;
-use service::commands::{CmdFn, build_cmd_map};
 use service::process_news_info::extract_news_item;
+use service::timer_task_command::{CmdFn, build_cmd_map};
 use sqlx::PgPool;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
