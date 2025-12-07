@@ -87,7 +87,7 @@ pub async fn extract_news_item(
 }
 
 /// 提取新增关键字到news_keywords表
-pub async fn extract_keywords_to_news_keywords(
+pub async fn extract_news_keywords(
     api_url: String,
 ) -> anyhow::Result<ApiResponse<ItemResult>, String> {
     let mut result: ItemResult = HashMap::new();
