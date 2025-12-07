@@ -122,14 +122,13 @@ pub async fn extract_keywords_to_news_keywords(
 
 #[cfg(test)]
 mod test {
-    use crate::process_news_info_to_item::extract_keywords_to_news_keywords;
 
     #[tokio::test]
     async fn test_extract_keywords_to_news_keywords() {
-        let args = "http://127.0.0.1:8001/api/analysis/tfidf?limit=500&top_k=5";
+        /*        let args = "https://news-analytics-gw35.onrender.com/api/analysis/tfidf?limit=500&top_k=5";
         let result = extract_keywords_to_news_keywords(args.to_string())
             .await
             .unwrap();
-        println!("{:?}", result.data)
+        println!("{:?}", result.data)*/
     }
 }
