@@ -4,6 +4,7 @@ use common::api::{ApiResponse, NewsInfo2Item};
 use common::po::{HealthItem, ItemResult, QueryPage, TaskItem};
 use common::utils::date_utils::get_today_weekday;
 use infra::{list_all_news_info_by_page, upsert_news_info_extracted_state, upsert_news_item};
+use serde_json::json;
 use sqlx::{PgPool, Pool};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -93,10 +94,13 @@ pub async fn extract_news_keywords(
     let mut result: ItemResult = HashMap::new();
     let client = reqwest::Client::new();
     let weekday = get_today_weekday().name_cn.to_string();
-
+    //  构建空的请求体 JSON 数据，使用默认请求参数
+    let request_body = json!({});
     let response = client
-        .get(api_url.clone())
+        .post(api_url.clone())
         .header("Referer", api_url.clone())
+        .header("Content-Type", "application/json")
+        .json(&request_body)
         .send()
         .await
         .map_err(|e| e.to_string())?;
@@ -125,8 +129,8 @@ mod test {
 
     #[tokio::test]
     async fn test_extract_keywords_to_news_keywords() {
-        /*        let args = "https://news-analytics-gw35.onrender.com/api/analysis/tfidf?limit=500&top_k=5";
-        let result = extract_keywords_to_news_keywords(args.to_string())
+        /*        let args = "http://127.0.0.1:8001/api/analysis/tfidf";
+        let result = extract_news_keywords(args.to_string())
             .await
             .unwrap();
         println!("{:?}", result.data)*/
