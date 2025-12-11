@@ -62,7 +62,7 @@ async fn health_check_single(client: &reqwest::Client, arg: &str) -> Result<Heal
 
 #[cfg(test)]
 mod test {
-    use crate::spider::health_checker::health_check;
+    use crate::health_checker::health_check;
 
     #[tokio::test]
     async fn test_fetch_douban_image() {

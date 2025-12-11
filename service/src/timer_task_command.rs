@@ -5,11 +5,11 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
+use crate::health_checker::health_check;
 use crate::process_news_info::{extract_news_keywords, query_news_info_to_extract};
 use crate::spider::agedm::fetch_agedm_ani_data;
 use crate::spider::bilibili::fetch_bilibili_ani_data;
 use crate::spider::douban::fetch_douban_movie_data;
-use crate::spider::health_checker::health_check;
 use crate::spider::iqiyi::fetch_iqiyi_ani_data;
 use crate::spider::mikanani::fetch_mikanani_ani_data;
 use crate::spider::news::fetch_latest_news_data;
