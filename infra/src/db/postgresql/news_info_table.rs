@@ -100,7 +100,7 @@ pub async fn list_all_news_info_by_page(
         }
     }
 
-    query_builder.push(" ORDER BY updated_at DESC");
+    query_builder.push(" ORDER BY created_at DESC");
 
     if let Some(page_size) = query.page_size {
         query_builder.push(" LIMIT ");
