@@ -30,18 +30,33 @@ CREATE TABLE IF NOT EXISTS news_item
     created_at    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 
-    extracted     BOOLEAN DEFAULT FALSE,
-    extracted_at  TIMESTAMPTZ,
+    extracted      BOOLEAN DEFAULT FALSE NOT NULL,
+    extracted_at   TIMESTAMPTZ,
 
     -- 关键：同一个新闻 ID 在同一天只能出现一次
     CONSTRAINT uq_news_date UNIQUE (item_id, published_at)
 );
 
-COMMENT ON TABLE news_item IS '存储新闻条目；item_id 为内部主键，(id, published_at) 为业务唯一约束';
-COMMENT ON COLUMN news_item.id IS '数据库内部主键，供外键引用';
-COMMENT ON COLUMN news_item.item_id IS '新闻原始ID（例如URL中的数字，可能跨天重复）';
-COMMENT ON COLUMN news_item.embedding IS '新闻标题或正文的语义向量（如 BGE / m3e）';
-COMMENT ON COLUMN news_item.cluster_id IS '语义聚类后的事件ID';
+COMMENT ON TABLE news_item IS '存储新闻条目；item_id 为来源ID，(item_id, published_at) 为业务唯一约束';
+COMMENT ON COLUMN news_item.id IS '数据库内部主键（自增）';
+COMMENT ON COLUMN news_item.item_id IS '新闻原始ID（可能跨天重复）';
+COMMENT ON COLUMN news_item.embedding IS '新闻标题或正文的语义向量（如 MiniLM、BGE）';
+COMMENT ON COLUMN news_item.cluster_id IS '语义聚类事件ID';
+
+-- 索引
+CREATE INDEX IF NOT EXISTS idx_news_cluster
+    ON news_item (cluster_id);
+
+CREATE INDEX IF NOT EXISTS idx_news_published_at
+    ON news_item (published_at);
+
+CREATE INDEX IF NOT EXISTS idx_news_item_id
+    ON news_item (item_id);
+
+-- 向量索引（插入部分 embedding 之后执行）
+-- CREATE INDEX IF NOT EXISTS idx_news_embedding
+--     ON news_item USING ivfflat (embedding vector_cosine_ops)
+--     WITH (lists = 100);
 
 
 
