@@ -5,7 +5,7 @@ networks:
 
 services:
   postgresql:
-    image: postgres:latest
+    image: pgvector/pgvector:pg17
     container_name: postgresql
     restart: always
     ports:
