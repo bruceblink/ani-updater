@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS news_item
     content       TEXT,                                -- 新闻正文（大多为空，后续可扩展）
 
     -- NLP / 分析扩展字段（可以留空）
-    embedding     VECTOR(768),                         -- 语义向量
+    cluster_method     TEXT,                           -- 聚类算法
     cluster_id    BIGINT,                              -- 聚类事件ID
 
     created_at    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS news_item
 COMMENT ON TABLE news_item IS '存储新闻条目；item_id 为来源ID，(item_id, published_at) 为业务唯一约束';
 COMMENT ON COLUMN news_item.id IS '数据库内部主键（自增）';
 COMMENT ON COLUMN news_item.item_id IS '新闻原始ID（可能跨天重复）';
-COMMENT ON COLUMN news_item.embedding IS '新闻标题或正文的语义向量（如 MiniLM、BGE）';
+COMMENT ON COLUMN news_item.cluster_method IS '新闻标题或正文使用的聚类算法';
 COMMENT ON COLUMN news_item.cluster_id IS '语义聚类事件ID';
 
 -- 索引
@@ -52,11 +52,6 @@ CREATE INDEX IF NOT EXISTS idx_news_published_at
 
 CREATE INDEX IF NOT EXISTS idx_news_item_id
     ON news_item (item_id);
-
--- 向量索引（插入部分 embedding 之后执行）
--- CREATE INDEX IF NOT EXISTS idx_news_embedding
---     ON news_item USING ivfflat (embedding vector_cosine_ops)
---     WITH (lists = 100);
 
 
 
