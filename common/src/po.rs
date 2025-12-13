@@ -1,4 +1,4 @@
-use crate::api::{ApiError, NewsInfo2Item};
+use crate::api::ApiError;
 use crate::dto::AniInfoDto;
 use actix_web::HttpResponse;
 use chrono::Utc;
@@ -151,7 +151,7 @@ pub enum TaskItem {
     Video(VideoItem),
     News(NewsInfo),
     Health(HealthItem),
-    ExtractNewsItem(NewsInfo2Item),
+    ExtractNewsItem(HealthItem),
     ExtractNewsNewsKeywords(HealthItem),
 }
 

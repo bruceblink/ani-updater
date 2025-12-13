@@ -7,7 +7,6 @@ use infra::{
     list_all_scheduled_tasks_by_page, upsert_ani_info, upsert_news_info, upsert_video_info,
 };
 use serde_json::json;
-use service::process_news_info::extract_news_item;
 use service::timer_task_command::{CmdFn, build_cmd_map};
 use sqlx::PgPool;
 use std::collections::HashMap;
@@ -202,8 +201,8 @@ async fn handle_item(item: &TaskItem, pool: &PgPool) -> anyhow::Result<()> {
         TaskItem::Health(health) => {
             info!("健康检测结果: {} => {}", health.url, health.result);
         }
-        TaskItem::ExtractNewsItem(new_item) => {
-            extract_news_item(new_item, pool).await?;
+        TaskItem::ExtractNewsItem(res) => {
+            info!("新闻item提取结果: {} => {}", res.url, res.result);
         }
         TaskItem::ExtractNewsNewsKeywords(res) => {
             info!("新闻keywords提取结果: {} => {}", res.url, res.result);

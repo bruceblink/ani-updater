@@ -6,7 +6,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use crate::health_checker::health_check;
-use crate::process_news_info::{extract_news_keywords, query_news_info_to_extract};
+use crate::process_news_info::{extract_news_item, extract_news_keywords};
 use crate::spider::agedm::fetch_agedm_ani_data;
 use crate::spider::bilibili::fetch_bilibili_ani_data;
 use crate::spider::douban::fetch_douban_movie_data;
@@ -85,10 +85,7 @@ pub fn build_cmd_map() -> HashMap<String, CmdFn> {
 
     map.insert(
         "extract_transform_news_info_to_item".to_string(),
-        Arc::new(|input: CommandInput| match input.db.clone() {
-            Some(db_pool) => Box::pin(query_news_info_to_extract(db_pool)),
-            None => Box::pin(async { Err("DbPool is required".to_string()) }),
-        }),
+        Arc::new(|input: CommandInput| Box::pin(extract_news_item(input.args))),
     );
 
     map.insert(
