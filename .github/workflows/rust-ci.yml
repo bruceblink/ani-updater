@@ -109,6 +109,20 @@ jobs:
           GRANT_QUERY="ALTER USER ${APP_USER} CREATEDB;"
           PGPASSWORD="password" psql -U "postgres" -h "localhost" -c "${GRANT_QUERY}"
 
+      # 7️⃣.1 创建应用数据库，并让 APP_USER 拥有所有权 (Superuser)
+      - name: Create Application Database
+        run: |
+          # 创建数据库，并指定 APP_USER 为 Owner
+          CREATE_DB_QUERY="CREATE DATABASE ${APP_DB_NAME} OWNER ${APP_USER};"
+          PGPASSWORD="password" psql -U "postgres" -h "localhost" -c "${CREATE_DB_QUERY}"
+
+      # 7️⃣.2 安装 vector 扩展 (Superuser)
+      - name: Install vector Extension
+        run: |
+          # 连接到新创建的数据库，并以 Superuser 身份安装扩展
+          INSTALL_EXTENSION_QUERY="CREATE EXTENSION IF NOT EXISTS vector;"
+          PGPASSWORD="password" psql -U "postgres" -h "localhost" -d "${APP_DB_NAME}" -c "${INSTALL_EXTENSION_QUERY}"
+
       # 8️⃣ 确保本地脚本可执行
       - name: Ensure scripts executable
         run: chmod +x ./scripts/*.sh
