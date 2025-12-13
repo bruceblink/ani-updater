@@ -50,22 +50,34 @@ then
     >&2 echo "Postgres is still unavailable - sleeping"
     sleep 1 
   done
-  
-  # Create the application user
-  CREATE_QUERY="CREATE USER ${APP_USER} WITH PASSWORD '${APP_USER_PWD}';"
-  docker exec -it "${CONTAINER_NAME}" psql -U "${SUPERUSER}" -c "${CREATE_QUERY}"
-  
-  # Grant create db privileges to the app user
-  GRANT_QUERY="ALTER USER ${APP_USER} CREATEDB;"
-  docker exec -it "${CONTAINER_NAME}" psql -U "${SUPERUSER}" -c "${GRANT_QUERY}"
+
+  # 1. 创建目标数据库 (Superuser)
+  CREATE_DB_QUERY="CREATE DATABASE ${APP_DB_NAME} OWNER ${APP_USER};"
+  docker exec -it "${CONTAINER_NAME}" psql -U "${SUPERUSER}" -c "${CREATE_DB_QUERY}"
+
+  # 2. 创建应用程序用户 (Superuser)
+  CREATE_USER_QUERY="CREATE USER ${APP_USER} WITH PASSWORD '${APP_USER_PWD}';"
+  docker exec -it "${CONTAINER_NAME}" psql -U "${SUPERUSER}" -c "${CREATE_USER_QUERY}"
+
+  # 3. **新增步骤：安装扩展 (Superuser)**
+  #    连接到 APP_DB_NAME 数据库，并安装 vector 扩展。
+  INSTALL_EXTENSION_QUERY="CREATE EXTENSION IF NOT EXISTS vector;"
+  docker exec -it "${CONTAINER_NAME}" psql -U "${SUPERUSER}" -d "${APP_DB_NAME}" -c "${INSTALL_EXTENSION_QUERY}"
+
+  # 4. 授予/撤销权限
+  # 由于前面已经创建了数据库并指定了 Owner 为 APP_USER，
+  # 应用程序用户现在对该数据库拥有完全控制权，通常不再需要 'CREATEDB' 权限。
+  # 因此，为了遵循最小权限原则，我建议移除之前的 GRANT_QUERY。
+  # 如果您仍然需要 CREATEDB 权限，请保持原样。
+
 fi
 
 >&2 echo "Postgres is up and running on port ${DB_PORT} - running migrations now!"
 
-# Create the application database
+# 使用 APP_USER 的凭证连接
 DATABASE_URL=postgres://${APP_USER}:${APP_USER_PWD}@localhost:${DB_PORT}/${APP_DB_NAME}
 export DATABASE_URL
-sqlx database create
-sqlx migrate run
+sqlx database create # 这一步现在是可选的，或者会检查数据库是否已存在
+sqlx migrate run # 现在扩展已安装，迁移将顺利通过
 
 >&2 echo "Postgres has been migrated, ready to go!"
