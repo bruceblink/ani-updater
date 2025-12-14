@@ -1,8 +1,9 @@
 -- Add migration script here
-CREATE TABLE if not exists news_event_item
+CREATE TABLE IF NOT EXISTS news_event_item
 (
-    event_id bigint NOT NULL,
-    news_id  text   NOT NULL,
+    event_id   bigint NOT NULL,
+    news_id    bigint NOT NULL,
+
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
 
