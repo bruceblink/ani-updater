@@ -19,11 +19,11 @@ CREATE TABLE if not exists news_event
 
 
 -- 同一天同一聚类只能生成一个事件
-CREATE UNIQUE INDEX uniq_news_event_date_cluster
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_news_event_date_cluster
     ON news_event (event_date, cluster_id);
 
 -- 热点查询核心索引
-CREATE INDEX idx_event_day_heat
+CREATE INDEX IF NOT EXISTS idx_event_day_heat
     ON news_event (event_date, score DESC);
 
 COMMENT ON TABLE news_event IS

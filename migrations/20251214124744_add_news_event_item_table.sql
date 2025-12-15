@@ -28,5 +28,5 @@ COMMENT ON COLUMN news_event_item.news_id IS
     '关联的新闻ID';
 
 -- 用于查询新闻事件对应的新闻
-CREATE INDEX idx_event_item_news
+CREATE INDEX if not exists idx_event_item_news
     ON news_event_item (news_id);

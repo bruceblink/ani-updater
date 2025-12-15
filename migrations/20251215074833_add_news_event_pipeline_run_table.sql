@@ -39,7 +39,7 @@ comment on column news_event_pipeline_run.message is
 comment on column news_event_pipeline_run.created_at is
     '流水线步骤实际执行时间';
 
-create index idx_news_event_pipeline_run_step_date
+create index if not exists idx_news_event_pipeline_run_step_date
     on news_event_pipeline_run (step_name, event_date);
 
 
