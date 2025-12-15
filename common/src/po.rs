@@ -153,6 +153,8 @@ pub enum TaskItem {
     Health(HealthItem),
     ExtractNewsItem(HealthItem),
     ExtractNewsNewsKeywords(HealthItem),
+    ExtractNewsEvent(HealthItem),
+    MergeNewsItem(HealthItem),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

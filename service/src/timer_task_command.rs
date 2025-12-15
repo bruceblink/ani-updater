@@ -6,7 +6,9 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use crate::health_checker::health_check;
-use crate::process_news_info::{extract_news_item, extract_news_keywords};
+use crate::process_news_info::{
+    extract_news_event, extract_news_item, extract_news_keywords, merge_cross_day_news_events,
+};
 use crate::spider::agedm::fetch_agedm_ani_data;
 use crate::spider::bilibili::fetch_bilibili_ani_data;
 use crate::spider::douban::fetch_douban_movie_data;
@@ -91,6 +93,16 @@ pub fn build_cmd_map() -> HashMap<String, CmdFn> {
     map.insert(
         "extract_keywords_to_news_keywords".to_string(),
         Arc::new(|input: CommandInput| Box::pin(extract_news_keywords(input.args))),
+    );
+
+    map.insert(
+        "extract_news_event".to_string(),
+        Arc::new(|input: CommandInput| Box::pin(extract_news_event(input.args))),
+    );
+
+    map.insert(
+        "merge_cross_day_news_events".to_string(),
+        Arc::new(|input: CommandInput| Box::pin(merge_cross_day_news_events(input.args))),
     );
 
     map

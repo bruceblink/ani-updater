@@ -207,6 +207,13 @@ async fn handle_item(item: &TaskItem, pool: &PgPool) -> anyhow::Result<()> {
         TaskItem::ExtractNewsNewsKeywords(res) => {
             info!("新闻keywords提取结果: {} => {}", res.url, res.result);
         }
+        TaskItem::ExtractNewsEvent(res) => {
+            info!("新闻event提取结果: {} => {}", res.url, res.result);
+        }
+
+        TaskItem::MergeNewsItem(res) => {
+            info!("新闻event合并结果: {} => {}", res.url, res.result);
+        }
     }
     Ok(())
 }
