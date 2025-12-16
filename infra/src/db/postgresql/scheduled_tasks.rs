@@ -96,6 +96,11 @@ pub async fn list_all_scheduled_tasks_by_page(
             query_builder.push(" AND params ->> 'cmd' LIKE ");
             query_builder.push_bind(cmd);
         }
+
+        if let Some(is_enabled) = &filter.is_enabled {
+            query_builder.push(" AND is_enabled = ");
+            query_builder.push_bind(is_enabled);
+        }
     }
 
     query_builder.push(" ORDER BY updated_at DESC");

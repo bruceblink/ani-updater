@@ -23,4 +23,5 @@ pub struct TaskFilter {
     pub name: Option<String>,
     pub arg: Option<String>,
     pub cmd: Option<String>,
+    pub is_enabled: Option<bool>,
 }

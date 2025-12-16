@@ -224,6 +224,7 @@ fn create_empty_query() -> web::Query<QueryPage<TaskFilter>> {
         name: None,
         arg: None,
         cmd: None,
+        is_enabled: Option::from(true),
     };
 
     let query_page = QueryPage {
