@@ -6,15 +6,16 @@
 
 ```
 ani-updater/
-├── spiders/      # 动漫数据爬虫库，支持多个平台
-├── web_services/         # 订阅服务，提供 API 与任务调度
 ├── common/           # 公共工具库
-├── timer_tasker/     # 定时任务调度与命令分发
 ├── configuration/    # 配置文件
 ├── docker/           # Docker 相关文件
+├── infra/            # 数据库、配置和日志等基础设施模块
 ├── migrations/       # 数据库迁移脚本
 ├── postgresql/       # 本地数据库数据与配置
 ├── scripts/          # 辅助脚本
+├── service/          # 具体的业务整合模块
+├── timer_tasker/     # 定时任务模块
+├── web_services/     # web服务模块，应用的启动总入口
 └── ...
 ```
 
