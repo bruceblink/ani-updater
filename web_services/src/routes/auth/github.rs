@@ -142,6 +142,7 @@ async fn auth_github_callback(
     // 生成系统的refresh_token
     let jwt_refresh = generate_refresh_token(app_state.configuration.token[REFRESH_TOKEN] as i64)
         .map_err(|_| ApiError::Internal("refresh_token 生成失败".into()))?;
+
     // 注册“使用GitHub登录的用户”为系统用户
     let refresh_token_string = github_user_register(
         app_state.db_pool.clone(),
