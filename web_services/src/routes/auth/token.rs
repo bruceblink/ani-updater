@@ -18,12 +18,12 @@ struct UserWithIdentity {
     provider_uid: Option<String>,
 }
 
-/**
-    access_token刷新的API，cookie中携带refresh token获取access_token <br>
-    /auth/refresh  POST请求
-*/
-#[post("/auth/refresh")]
-async fn auth_refresh(req: HttpRequest, app_state: web::Data<AppState>) -> ApiResult {
+///
+/// 刷新access_token的API，cookie中携带refresh token获取access_token <br>
+/// /auth/token/refresh  POST请求
+///
+#[post("/auth/token/refresh")]
+async fn auth_token_refresh(req: HttpRequest, app_state: web::Data<AppState>) -> ApiResult {
     let old_refresh_cookie = req
         .cookie(REFRESH_TOKEN)
         .ok_or_else(|| ApiError::Unauthorized("缺少 refresh token".into()))?;
@@ -116,4 +116,11 @@ async fn auth_refresh(req: HttpRequest, app_state: web::Data<AppState>) -> ApiRe
             "access_token_exp": new_access_token.expires_at.timestamp() as usize,
             "user": common_user
         }))))
+}
+
+/// 吊销access_token的API <br>
+/// /auth/token/revoke  POST请求
+#[post("/auth/token/revoke")]
+async fn auth_token_revoke(_req: HttpRequest, _app_state: web::Data<AppState>) -> ApiResult {
+    todo!()
 }
