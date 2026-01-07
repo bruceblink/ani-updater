@@ -1,7 +1,7 @@
 use crate::common::AppState;
 use crate::middleware::{AuthMiddleware, CharsetMiddleware};
 use crate::routes::register::register;
-use crate::routes::{auth_github_callback, auth_github_login, auth_refresh};
+use crate::routes::{auth_github_callback, auth_github_login};
 use crate::routes::{get_ani, get_anis};
 use crate::routes::{
     get_sensor_history, logout, news_get, proxy_image, scheduled_tasks_get, sse_sensor, task_reload,
@@ -95,7 +95,6 @@ async fn create_server(
             // 公开路由（无需认证）
             .service(auth_github_login)
             .service(auth_github_callback)
-            .service(auth_refresh)
             .service(logout)
             .service(sse_sensor)
             .service(get_sensor_history)

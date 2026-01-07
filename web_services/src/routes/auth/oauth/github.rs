@@ -122,11 +122,54 @@ async fn auth_github_callback(
     )
     .map_err(|_| ApiError::Internal("Invalid state".into()))?;
 
-    let redirect_uri = token_data.claims.redirect_uri;
     let pkce_verifier = PkceCodeVerifier::new(token_data.claims.pkce_verifier);
 
-    let github_token_resp = app_state
-        .oauth_client
+    // 获取GitHub的用户信息
+    let user = get_github_user_info(&app_state.oauth_client, code.clone(), pkce_verifier).await?;
+
+    // 注册“使用GitHub登录的用户”为系统用户
+    let refresh_token_string = github_user_register(
+        &app_state.db_pool.clone(),
+        &app_state.configuration,
+        user.clone(),
+    )
+    .await
+    .map_err(|_| ApiError::Internal("github用户注册为系统用户失败".into()))?;
+
+    // 生成 access_token的cookie
+    let access_cookie = Cookie::build(ACCESS_TOKEN, jwt_access.clone().token)
+        .http_only(true)
+        .secure(true) // 生产环境必须 https
+        .path("/")
+        .same_site(actix_web::cookie::SameSite::None) // 为None时可以跨站点请求携带 Cookie
+        .finish();
+    // 生成 refresh_token的cookie
+    let refresh_cookie = Cookie::build(REFRESH_TOKEN, refresh_token_string.1)
+        .http_only(true)
+        .secure(true) // 生产环境必须 https
+        .path("/")
+        .same_site(actix_web::cookie::SameSite::None) // 为None时可以跨站点请求携带 Cookie
+        .finish();
+    // 为了保险，防止浏览器(例如firefox的权限就比较严格，不一定会携带access_cookie)不携带access_cookie，
+    // 最终重定向到前端传来的 redirect_uri
+    let redirect_uri = token_data.claims.redirect_uri;
+    let final_redirect_url = format!("{redirect_uri}?token={}", jwt_access.token);
+
+    Ok(HttpResponse::Found()
+        .append_header(("Location", final_redirect_url))
+        .cookie(access_cookie)
+        .cookie(refresh_cookie)
+        .finish())
+}
+
+/// 获取GitHub用户信息
+pub async fn get_github_user_info(
+    oauth_client: &BasicClient,
+    code: String,
+    pkce_verifier: PkceCodeVerifier,
+) -> anyhow::Result<GithubUser> {
+    // 获取 GitHub Access Token
+    let github_token_resp = oauth_client
         .exchange_code(AuthorizationCode::new(code))
         .set_pkce_verifier(pkce_verifier)
         .request_async(oauth2::reqwest::async_http_client)
@@ -160,58 +203,5 @@ async fn auth_github_callback(
             .map(String::from);
     }
 
-    // 生成系统的refresh_token
-    let jwt_refresh = generate_refresh_token(app_state.configuration.token[REFRESH_TOKEN] as i64)
-        .map_err(|_| ApiError::Internal("refresh_token 生成失败".into()))?;
-
-    // 注册“使用GitHub登录的用户”为系统用户
-    let refresh_token_string = github_user_register(
-        app_state.db_pool.clone(),
-        user.clone(),
-        Some(github_token_resp.access_token().secret().to_string()),
-        jwt_refresh,
-    )
-    .await
-    .map_err(|_| ApiError::Internal("refresh_token 持久化失败".into()))?;
-
-    let new_user = CommonUser {
-        id: refresh_token_string.0,
-        sub: user.login.clone(),
-        uid: user.id,
-        r#type: "github".to_string(),
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar_url,
-    };
-
-    // 生成系统的jwt token
-    let jwt_access = generate_jwt(
-        &new_user,
-        app_state.configuration.token[ACCESS_TOKEN] as i64,
-    )
-    .map_err(|_| ApiError::Internal("access_token 生成失败".into()))?;
-
-    // 生成 access_token的cookie
-    let access_cookie = Cookie::build(ACCESS_TOKEN, jwt_access.clone().token)
-        .http_only(true)
-        .secure(true) // 生产环境必须 https
-        .path("/")
-        .same_site(actix_web::cookie::SameSite::None) // 为None时可以跨站点请求携带 Cookie
-        .finish();
-    // 生成 refresh_token的cookie
-    let refresh_cookie = Cookie::build(REFRESH_TOKEN, refresh_token_string.1)
-        .http_only(true)
-        .secure(true) // 生产环境必须 https
-        .path("/")
-        .same_site(actix_web::cookie::SameSite::None) // 为None时可以跨站点请求携带 Cookie
-        .finish();
-    // 为了保险，防止浏览器(例如firefox的权限就比较严格，不一定会携带access_cookie)不携带access_cookie，
-    // 最终重定向到前端传来的 redirect_uri
-    let final_redirect_url = format!("{redirect_uri}?token={}", jwt_access.token);
-
-    Ok(HttpResponse::Found()
-        .append_header(("Location", final_redirect_url))
-        .cookie(access_cookie)
-        .cookie(refresh_cookie)
-        .finish())
+    Ok(user)
 }
