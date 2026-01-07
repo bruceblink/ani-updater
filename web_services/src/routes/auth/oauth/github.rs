@@ -1,9 +1,10 @@
 use crate::common::{ACCESS_TOKEN, AppState, GITHUB_USER_AGENT, REFRESH_TOKEN};
-use actix_web::{HttpResponse, Responder, cookie::Cookie, get, web};
+use actix_web::{HttpResponse, cookie::Cookie, get, web};
 use common::api::ApiError;
 use common::po::ApiResult;
 use common::utils::{CommonUser, GithubUser, generate_jwt, generate_refresh_token};
 use lazy_static::lazy_static;
+use oauth2::basic::BasicClient;
 use oauth2::{
     AuthorizationCode, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, Scope, TokenResponse,
 };
@@ -12,6 +13,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use service::register_service::github_user_register;
 use std::collections::HashMap;
+use tracing::error;
 
 static HTTP: Lazy<Client> = Lazy::new(Client::new);
 
@@ -39,17 +41,39 @@ struct StateClaims {
 async fn auth_github_login(
     app_state: web::Data<AppState>,
     query: web::Query<HashMap<String, String>>,
-) -> impl Responder {
-    // 获取前端重定向的URL
-    let redirect_uri = match query.get("redirect_uri")
+) -> ApiResult {
+    // 1. 校验 redirect_uri
+    let redirect_uri = query
+        .get("redirect_uri")
         .map(|s| s.trim())
         .filter(|s| !s.is_empty())
         //.filter(|s| ALLOWED_REDIRECT_URIS.contains(s)) // 可选白名单
-    {
-        Some(uri) => uri,
-        None => return HttpResponse::BadRequest().body("Invalid redirect_uri"),
-    };
+        .ok_or_else(|| ApiError::BadRequest("Invalid redirect_uri".into()))?;
 
+    // 2. 生成 GitHub 授权地址
+    let auth_url = get_github_authorization_url(
+        &app_state.oauth_client,
+        redirect_uri,
+        &app_state.oauth_config.jwt_secret,
+    )
+    .await
+    .map_err(|e| {
+        error!("GitHub auth url generate failed: {:?}", e);
+        ApiError::Internal("生成 GitHub 授权地址失败".into())
+    })?;
+
+    // 3. 302 跳转
+    Ok(HttpResponse::Found()
+        .append_header(("Location", auth_url))
+        .finish())
+}
+
+/// 生成 GitHub 授权地址
+pub async fn get_github_authorization_url(
+    oauth_client: &BasicClient,
+    redirect_uri: &str,
+    jwt_secret: &String,
+) -> anyhow::Result<String> {
     let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
 
     // 生成 JWT state
@@ -63,26 +87,23 @@ async fn auth_github_login(
     let state_jwt = jsonwebtoken::encode(
         &jsonwebtoken::Header::default(),
         &claims,
-        &jsonwebtoken::EncodingKey::from_secret(app_state.oauth_config.jwt_secret.as_ref()),
-    )
-    .unwrap();
+        &jsonwebtoken::EncodingKey::from_secret(jwt_secret.as_ref()),
+    )?;
 
-    let (auth_url, _csrf_token) = app_state
-        .oauth_client
+    // 获取授权 URL
+    let (auth_url, _) = oauth_client
         .authorize_url(move || CsrfToken::new(state_jwt))
         .add_scope(Scope::new("read:user".into()))
         .add_scope(Scope::new("user:email".into()))
         .set_pkce_challenge(pkce_challenge)
         .url();
 
-    HttpResponse::Found()
-        .append_header(("Location", auth_url.to_string()))
-        .finish()
+    Ok(auth_url.to_string())
 }
 
 /**
     GitHub 第三方登录的回调 API <br>
-    /auth/github/callback Get 请求 <br>
+    /auth/oauth/github/callback Get 请求 <br>
     url请求参数:  code=xxxx&state=xxxx
 */
 #[get("/auth/oauth/github/callback")]
