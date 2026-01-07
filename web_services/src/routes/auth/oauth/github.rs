@@ -35,7 +35,7 @@ struct StateClaims {
     /auth/github/login Get 请求 <br>
     url请求参数:  redirect_uri=xxxx
 */
-#[get("/auth/github/login")]
+#[get("/auth/oauth/github/login")]
 async fn auth_github_login(
     app_state: web::Data<AppState>,
     query: web::Query<HashMap<String, String>>,
@@ -85,7 +85,7 @@ async fn auth_github_login(
     /auth/github/callback Get 请求 <br>
     url请求参数:  code=xxxx&state=xxxx
 */
-#[get("/auth/github/callback")]
+#[get("/auth/oauth/github/callback")]
 async fn auth_github_callback(
     app_state: web::Data<AppState>,
     query: web::Query<HashMap<String, String>>,
