@@ -20,3 +20,6 @@ mod filter;
 pub mod po;
 pub mod utils;
 pub use filter::*;
+
+pub const ACCESS_TOKEN: &str = "access_token";
+pub const REFRESH_TOKEN: &str = "refresh_token";

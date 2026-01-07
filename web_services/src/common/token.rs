@@ -1,8 +1,5 @@
 use actix_web::{HttpRequest, dev::ServiceRequest};
-
-pub const ACCESS_TOKEN: &str = "access_token";
-pub const REFRESH_TOKEN: &str = "refresh_token";
-
+use common::{ACCESS_TOKEN, REFRESH_TOKEN};
 pub static GITHUB_USER_AGENT: &str = "ani-updater/0.1 (+https://github.com/likanug/ani-updater)";
 
 /// 提取请求中的token
