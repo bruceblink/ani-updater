@@ -3,13 +3,13 @@ use actix_web::cookie::{Cookie, SameSite};
 use actix_web::{HttpRequest, HttpResponse, Responder, post, web};
 use bcrypt::verify;
 use chrono::Utc;
-use infra::get_user_by_username;
+use infra::get_user_by_email;
 use jsonwebtoken::{EncodingKey, Header, encode};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
 pub struct LoginRequest {
-    username: String,
+    email: String,
     password: String,
 }
 
@@ -24,7 +24,7 @@ pub async fn login(
     credentials: web::Json<LoginRequest>,
 ) -> impl Responder {
     // 查询用户
-    let user = match get_user_by_username(credentials.username.clone(), &app_state.db_pool).await {
+    let user = match get_user_by_email(credentials.email.clone(), &app_state.db_pool).await {
         Ok(Some(u)) => u,
         _ => return HttpResponse::Unauthorized().finish(),
     };

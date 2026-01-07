@@ -3,11 +3,8 @@ use common::dto::{NewUser, UserDto, UserIdentityDto};
 use common::po::UserInfo;
 use sqlx::{PgPool, Row};
 
-/// 根据用户名查询用户信息
-pub async fn get_user_by_username(
-    username: String,
-    db_pool: &PgPool,
-) -> anyhow::Result<Option<UserDto>> {
+/// 根据email名查询用户信息
+pub async fn get_user_by_email(email: String, db_pool: &PgPool) -> anyhow::Result<Option<UserDto>> {
     let rec = sqlx::query_as::<_, UserInfo>(
         r#"
                 SELECT 
@@ -21,10 +18,10 @@ pub async fn get_user_by_username(
                     updated_at
                 FROM user_info
                 WHERE
-                  username = $1
+                  email = $1
             ;"#,
     )
-    .bind(username)
+    .bind(email)
     .fetch_optional(db_pool)
     .await?;
     // 转换时间字段到上海时区
