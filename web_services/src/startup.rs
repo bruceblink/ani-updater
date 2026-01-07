@@ -1,5 +1,6 @@
 use crate::common::AppState;
 use crate::middleware::{AuthMiddleware, CharsetMiddleware};
+use crate::routes::register::register;
 use crate::routes::{auth_github_callback, auth_github_login, auth_refresh};
 use crate::routes::{get_ani, get_anis};
 use crate::routes::{
@@ -98,6 +99,7 @@ async fn create_server(
             .service(logout)
             .service(sse_sensor)
             .service(get_sensor_history)
+            .service(register)
             .route("/login", web::post().to(login))
             // 需要认证的 API 路由
             .service(

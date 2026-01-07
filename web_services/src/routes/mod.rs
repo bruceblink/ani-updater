@@ -3,8 +3,7 @@ mod api;
 mod auth;
 mod index;
 mod login;
-mod register;
-
+pub mod register;
 pub use admin::*;
 pub use api::*;
 pub use auth::*;
