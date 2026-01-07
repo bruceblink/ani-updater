@@ -1,8 +1,9 @@
-use crate::common::{ACCESS_TOKEN, AppState, GITHUB_USER_AGENT, REFRESH_TOKEN};
+use crate::common::{AppState, GITHUB_USER_AGENT};
 use actix_web::{HttpResponse, cookie::Cookie, get, web};
 use common::api::ApiError;
 use common::po::ApiResult;
-use common::utils::{CommonUser, GithubUser, generate_jwt, generate_refresh_token};
+use common::utils::GithubUser;
+use common::{ACCESS_TOKEN, REFRESH_TOKEN};
 use lazy_static::lazy_static;
 use oauth2::basic::BasicClient;
 use oauth2::{
@@ -128,7 +129,7 @@ async fn auth_github_callback(
     let user = get_github_user_info(&app_state.oauth_client, code.clone(), pkce_verifier).await?;
 
     // 注册“使用GitHub登录的用户”为系统用户
-    let refresh_token_string = github_user_register(
+    let (access_token, refresh_token) = github_user_register(
         &app_state.db_pool.clone(),
         &app_state.configuration,
         user.clone(),
@@ -137,14 +138,14 @@ async fn auth_github_callback(
     .map_err(|_| ApiError::Internal("github用户注册为系统用户失败".into()))?;
 
     // 生成 access_token的cookie
-    let access_cookie = Cookie::build(ACCESS_TOKEN, jwt_access.clone().token)
+    let access_cookie = Cookie::build(ACCESS_TOKEN, access_token.clone().token)
         .http_only(true)
         .secure(true) // 生产环境必须 https
         .path("/")
         .same_site(actix_web::cookie::SameSite::None) // 为None时可以跨站点请求携带 Cookie
         .finish();
     // 生成 refresh_token的cookie
-    let refresh_cookie = Cookie::build(REFRESH_TOKEN, refresh_token_string.1)
+    let refresh_cookie = Cookie::build(REFRESH_TOKEN, refresh_token.token)
         .http_only(true)
         .secure(true) // 生产环境必须 https
         .path("/")
@@ -153,7 +154,7 @@ async fn auth_github_callback(
     // 为了保险，防止浏览器(例如firefox的权限就比较严格，不一定会携带access_cookie)不携带access_cookie，
     // 最终重定向到前端传来的 redirect_uri
     let redirect_uri = token_data.claims.redirect_uri;
-    let final_redirect_url = format!("{redirect_uri}?token={}", jwt_access.token);
+    let final_redirect_url = format!("{redirect_uri}?token={}", access_token.token);
 
     Ok(HttpResponse::Found()
         .append_header(("Location", final_redirect_url))
