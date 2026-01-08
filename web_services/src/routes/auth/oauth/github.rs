@@ -133,9 +133,11 @@ async fn auth_github_callback(
     .map_err(|_| ApiError::Internal("Invalid state".into()))?;
 
     let pkce_verifier = PkceCodeVerifier::new(token_data.claims.pkce_verifier);
-
-    // 获取GitHub的用户信息
-    let user = get_github_user_info(&app_state.oauth_client, code.clone(), pkce_verifier).await?;
+    // 3. 换取GitHub access_token
+    let github_token =
+        exchange_github_access_token(&app_state.oauth_client, code, pkce_verifier).await?;
+    // 4. 获取GitHub的用户信息
+    let user = get_github_user_info(github_token).await?;
 
     // 注册“使用GitHub登录的用户”为系统用户
     let (access_token, refresh_token) = github_user_register(
@@ -172,13 +174,12 @@ async fn auth_github_callback(
         .finish())
 }
 
-/// 获取GitHub用户信息
-pub async fn get_github_user_info(
+/// 换取github的access_token
+async fn exchange_github_access_token(
     oauth_client: &BasicClient,
     code: String,
     pkce_verifier: PkceCodeVerifier,
-) -> anyhow::Result<GithubUser> {
-    // 获取 GitHub Access Token
+) -> anyhow::Result<String> {
     let github_token_resp = oauth_client
         .exchange_code(AuthorizationCode::new(code))
         .set_pkce_verifier(pkce_verifier)
@@ -186,9 +187,14 @@ pub async fn get_github_user_info(
         .await
         .map_err(|_| ApiError::Internal("换取 github 的 access_token 失败".into()))?;
 
+    Ok(github_token_resp.access_token().secret().to_string())
+}
+
+/// 获取GitHub用户信息
+pub async fn get_github_user_info(access_token: String) -> anyhow::Result<GithubUser> {
     let mut user: GithubUser = HTTP
         .get("https://api.github.com/user")
-        .bearer_auth(github_token_resp.access_token().secret())
+        .bearer_auth(access_token.clone())
         .header("User-Agent", GITHUB_USER_AGENT)
         .send()
         .await
@@ -200,7 +206,7 @@ pub async fn get_github_user_info(
     if user.email.is_none()
         && let Ok(resp) = HTTP
             .get("https://api.github.com/user/emails")
-            .bearer_auth(github_token_resp.access_token().secret())
+            .bearer_auth(access_token)
             .header("User-Agent", GITHUB_USER_AGENT)
             .send()
             .await
