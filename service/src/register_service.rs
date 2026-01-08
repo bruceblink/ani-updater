@@ -21,7 +21,7 @@ pub async fn github_user_register(
     let user = find_or_create_user_by_github(&mut tx, &github_user).await?;
 
     // 2. 生成 refresh_token
-    let refresh = generate_refresh_token(configuration.token[REFRESH_TOKEN] as i64)?;
+    let refresh = generate_refresh_token(configuration.token[REFRESH_TOKEN])?;
 
     // 3. refresh_token 入库
     insert_refresh_token(&mut tx, user.id, &refresh).await?;
@@ -29,15 +29,19 @@ pub async fn github_user_register(
     // 4. 生成 access_token
     let access = generate_jwt(
         &CommonUser {
-            id: 0,
-            sub: "".to_string(),
-            uid: 0,
-            r#type: "".to_string(),
-            name: None,
-            email: None,
-            avatar: None,
+            id: user.id,
+            sub: github_user.login,
+            uid: github_user.id,
+            r#type: "github".to_string(),
+            name: Option::from(user.display_name),
+            email: Option::from(user.email),
+            avatar: Option::from(user.avatar_url),
+            roles: vec![],
+            iss: "auth-service".to_string(),
+            aud: "api".to_string(),
+            ver: 0,
         },
-        configuration.token[ACCESS_TOKEN] as i64,
+        configuration.token[ACCESS_TOKEN],
     )?;
 
     tx.commit().await?;

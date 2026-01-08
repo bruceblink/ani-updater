@@ -30,9 +30,8 @@ async fn auth_token_refresh(req: HttpRequest, app_state: web::Data<AppState>) ->
         .ok_or_else(|| ApiError::Unauthorized("缺少 refresh token".into()))?;
     let old_refresh_token = old_refresh_cookie.value();
 
-    let new_refresh_token =
-        generate_refresh_token(app_state.configuration.token[REFRESH_TOKEN] as i64)
-            .map_err(|_| ApiError::Internal("refresh_token 生成失败".into()))?;
+    let new_refresh_token = generate_refresh_token(app_state.configuration.token[REFRESH_TOKEN])
+        .map_err(|_| ApiError::Internal("refresh_token 生成失败".into()))?;
 
     let rec = sqlx::query_as::<_, UserWithIdentity>(
         r#"
@@ -80,19 +79,20 @@ async fn auth_token_refresh(req: HttpRequest, app_state: web::Data<AppState>) ->
                 sub: u.username.unwrap_or_default(), // 用户名允许为空
                 uid,
                 avatar: u.avatar_url,
+                roles: vec![],
+                iss: "auth-service".to_string(),
+                aud: "api".to_string(),
                 name: u.display_name,
                 email: u.email,
                 r#type: u.provider.unwrap_or_default(),
+                ver: 0,
             }
         }
         None => return Err(ApiError::Unauthorized("refresh token 无效或已过期".into())),
     };
 
-    let new_access_token = generate_jwt(
-        &common_user,
-        app_state.configuration.token[ACCESS_TOKEN] as i64,
-    )
-    .map_err(|_| ApiError::Unauthorized("refresh token 无效或已过期".into()))?;
+    let new_access_token = generate_jwt(&common_user, app_state.configuration.token[ACCESS_TOKEN])
+        .map_err(|_| ApiError::Unauthorized("refresh token 无效或已过期".into()))?;
 
     let access_cookie = Cookie::build(ACCESS_TOKEN, new_access_token.token.clone())
         .http_only(true)
