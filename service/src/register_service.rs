@@ -1,9 +1,9 @@
-use common::dto::UserDto;
 use common::utils::AccessToken;
 use common::utils::CommonUser;
 use common::utils::{GithubUser, RefreshToken, generate_jwt, generate_refresh_token};
 use common::{ACCESS_TOKEN, REFRESH_TOKEN};
 use infra::Setting;
+use infra::{find_or_create_user_by_github, insert_refresh_token};
 use sqlx::PgPool;
 
 /**
@@ -26,6 +26,8 @@ pub async fn github_user_register(
     // 3. refresh_token 入库
     insert_refresh_token(&mut tx, user.id, &refresh).await?;
 
+    tx.commit().await?;
+
     // 4. 生成 access_token
     let access = generate_jwt(
         &CommonUser {
@@ -44,24 +46,5 @@ pub async fn github_user_register(
         configuration.token[ACCESS_TOKEN],
     )?;
 
-    tx.commit().await?;
-
     Ok((access, refresh))
-}
-
-/// Function to find or create a user based on GitHub information
-pub async fn find_or_create_user_by_github(
-    _tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    _github_user: &GithubUser,
-) -> anyhow::Result<UserDto> {
-    todo!()
-}
-
-/// Insert the refresh token into the database
-async fn insert_refresh_token(
-    _tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    _user_id: i64,
-    _refresh_token: &RefreshToken,
-) -> anyhow::Result<()> {
-    todo!()
 }

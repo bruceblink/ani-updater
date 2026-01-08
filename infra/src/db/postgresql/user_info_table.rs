@@ -1,6 +1,7 @@
 use chrono_tz::Asia::Shanghai;
 use common::dto::{NewUser, UserDto, UserIdentityDto};
 use common::po::UserInfo;
+use common::utils::{GithubUser, RefreshToken};
 use sqlx::{PgPool, Row};
 
 /// 根据email名查询用户信息
@@ -131,4 +132,21 @@ pub async fn upsert_user_with_third_part(
     let user_id: i64 = row.get("user_id");
     let refresh_token: String = row.get("token");
     Ok((user_id, refresh_token))
+}
+
+/// Function to find or create a user based on GitHub information
+pub async fn find_or_create_user_by_github(
+    _tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    _github_user: &GithubUser,
+) -> anyhow::Result<UserDto> {
+    todo!()
+}
+
+/// Insert the refresh token into the database
+pub async fn insert_refresh_token(
+    _tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    _user_id: i64,
+    _refresh_token: &RefreshToken,
+) -> anyhow::Result<()> {
+    todo!()
 }
