@@ -112,12 +112,21 @@ async fn auth_github_callback(
     app_state: web::Data<AppState>,
     query: web::Query<HashMap<String, String>>,
 ) -> ApiResult {
-    let code = query.get("code").cloned().unwrap_or_default();
-    let state_jwt = query.get("state").cloned().unwrap_or_default();
+    // 1. 取 code
+    let code = query
+        .get("code")
+        .cloned()
+        .ok_or_else(|| ApiError::BadRequest("missing code".into()))?;
+
+    // 2. 取 state
+    let state = query
+        .get("state")
+        .cloned()
+        .ok_or_else(|| ApiError::BadRequest("missing state".into()))?;
 
     // 解码 state JWT
     let token_data = jsonwebtoken::decode::<StateClaims>(
-        &state_jwt,
+        &state,
         &jsonwebtoken::DecodingKey::from_secret(app_state.oauth_config.jwt_secret.as_ref()),
         &jsonwebtoken::Validation::default(),
     )
