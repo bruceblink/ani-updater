@@ -48,7 +48,7 @@ pub async fn github_user_register(
             name: Option::from(user.clone().display_name),
             email: Option::from(user.clone().email),
             avatar: user.avatar_url,
-            roles: vec![],
+            roles: user.roles,
             iss: "auth-service".to_string(),
             aud: "api".to_string(),
             ver: 0,
