@@ -1,8 +1,9 @@
 use chrono_tz::Asia::Shanghai;
 use common::dto::{NewUser, UserDto, UserIdentityDto};
 use common::po::UserInfo;
-use common::utils::{GithubUser, RefreshToken};
-use sqlx::{PgPool, Row};
+use serde::Deserialize;
+use sqlx::FromRow;
+use sqlx::PgPool;
 
 /// 根据email名查询用户信息
 pub async fn get_user_by_email(email: String, db_pool: &PgPool) -> anyhow::Result<Option<UserDto>> {
@@ -16,7 +17,14 @@ pub async fn get_user_by_email(email: String, db_pool: &PgPool) -> anyhow::Resul
                     display_name,
                     avatar_url,
                     created_at,
-                    updated_at
+                    updated_at,
+                    tenant_id,
+                    org_id,
+                    plan,
+                    token_version,
+                    status,
+                    locked_until,
+                    failed_login_attempts
                 FROM user_info
                 WHERE
                   email = $1
@@ -37,6 +45,13 @@ pub async fn get_user_by_email(email: String, db_pool: &PgPool) -> anyhow::Resul
         updated_at: user
             .updated_at
             .map(|dt| dt.with_timezone(&Shanghai).to_rfc3339()),
+        tenant_id: user.tenant_id,
+        org_id: user.org_id,
+        plan: user.plan,
+        token_version: user.token_version,
+        status: user.status,
+        locked_until: user.locked_until,
+        failed_login_attempts: user.failed_login_attempts,
     });
     Ok(dto)
 }
@@ -82,46 +97,95 @@ pub async fn insert_users(users: &[NewUser], pool: &PgPool) -> anyhow::Result<()
     Ok(())
 }
 
+#[derive(FromRow, Debug, Deserialize, Clone)]
+pub struct UserInfoWithTokenDTO {
+    pub user_id: i64,
+    pub token: String,
+    pub expires_at: Option<chrono::NaiveDateTime>,
+    pub email: String,
+    pub username: String,
+    pub display_name: String,
+    pub avatar_url: Option<String>,
+    pub created_at: chrono::NaiveDateTime,
+    pub updated_at: chrono::NaiveDateTime,
+    pub tenant_id: String,
+    pub org_id: Option<String>,
+    pub plan: String,
+    pub token_version: i64,
+    pub status: String,
+    pub locked_until: Option<chrono::NaiveDateTime>,
+    pub failed_login_attempts: i32,
+}
+
 /// 新增第三方登录用户 <br>
 /// 返回 <br>
 /// (user_id, refresh_token)
 pub async fn upsert_user_with_third_part(
     user: &UserIdentityDto,
     pool: &PgPool,
-) -> anyhow::Result<(i64, String)> {
-    let row = sqlx::query(
+) -> anyhow::Result<UserInfoWithTokenDTO> {
+    let row: UserInfoWithTokenDTO = sqlx::query_as(
         r#"
-            WITH upsert_user AS (
-                INSERT INTO user_info (email, username, display_name, avatar_url)
-                VALUES ($1, $2, $3, $4)
-                ON CONFLICT (email) DO UPDATE
-                    SET username = EXCLUDED.username,
-                        display_name = EXCLUDED.display_name,
-                        avatar_url = EXCLUDED.avatar_url
-                RETURNING id
-            ),
-            ins_identity AS (
-                INSERT INTO user_identities (user_id, provider, provider_uid, access_token, token_expires_at)
-                SELECT id, $5, $6, $7, now() + interval '30 days'
-                FROM upsert_user
-                ON CONFLICT (provider, provider_uid) DO NOTHING
-                RETURNING user_id
-            )
-            INSERT INTO refresh_tokens (user_id, token, expires_at)
-            SELECT id, $8, $9
-            FROM upsert_user
-            RETURNING user_id, token;
-            "#
+                WITH upsert_user AS (
+                    INSERT INTO user_info (email, username, display_name, avatar_url)
+                    VALUES ($1, $2, $3, $4)
+                    ON CONFLICT (email) DO UPDATE
+                        SET username = EXCLUDED.username,
+                            display_name = EXCLUDED.display_name,
+                            avatar_url = EXCLUDED.avatar_url
+                    RETURNING id, email, username, display_name, avatar_url, created_at, updated_at, tenant_id, org_id, plan, token_version, status, locked_until, failed_login_attempts
+                ),
+                ins_identity AS (
+                    INSERT INTO user_identities (user_id, provider, provider_uid, access_token, token_expires_at)
+                    SELECT id, $5, $6, $7, $9
+                    FROM upsert_user
+                    ON CONFLICT (provider, provider_uid) DO NOTHING
+                    RETURNING user_id
+                ),
+                insert_refresh_token AS (
+                    INSERT INTO refresh_tokens (user_id, token, expires_at)
+                    SELECT id, $8, $9
+                    FROM upsert_user
+                    RETURNING user_id, token, expires_at
+                ),
+                insert_roles AS (
+                    INSERT INTO user_roles (user_id, role_id)
+                    SELECT u.id, r.id
+                    FROM upsert_user u
+                    CROSS JOIN roles r
+                    WHERE r.name = 'user'  -- 默认角色设为 'user'
+                    RETURNING user_id
+                )
+                SELECT
+                    u.id AS user_id,
+                    r.token,
+                    r.expires_at,
+                    u.email,
+                    u.username,
+                    u.display_name,
+                    u.avatar_url,
+                    u.created_at,
+                    u.updated_at,
+                    u.tenant_id,
+                    u.org_id,
+                    u.plan,
+                    u.token_version,
+                    u.status,
+                    u.locked_until,
+                    u.failed_login_attempts
+                FROM upsert_user u
+                LEFT JOIN insert_refresh_token r ON u.id = r.user_id;
+        "#
         )
-        .bind(&user.email)
-        .bind(&user.username)
-        .bind(&user.display_name)
-        .bind(&user.avatar_url)
-        .bind(&user.provider)
-        .bind(&user.provider_user_id)
-        .bind(user.access_token.as_deref())
-        .bind(&user.refresh_token)
-        .bind(user.expires_at)
+        .bind(&user.email)       // 用户邮箱
+        .bind(&user.username)    // 用户名
+        .bind(&user.display_name) // 显示名
+        .bind(&user.avatar_url)   // 头像
+        .bind(&user.provider)     // 登录提供商（如GitHub）
+        .bind(&user.provider_user_id) // 第三方用户唯一ID
+        .bind(user.access_token.as_deref()) // access_token
+        .bind(&user.refresh_token)         // refresh_token
+        .bind(user.expires_at)            // refresh_token的过期时间
         .fetch_one(pool)
         .await
         .map_err(|e| {
@@ -129,24 +193,5 @@ pub async fn upsert_user_with_third_part(
             anyhow::anyhow!(e)
         })?;
 
-    let user_id: i64 = row.get("user_id");
-    let refresh_token: String = row.get("token");
-    Ok((user_id, refresh_token))
-}
-
-/// Function to find or create a user based on GitHub information
-pub async fn find_or_create_user_by_github(
-    _tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    _github_user: &GithubUser,
-) -> anyhow::Result<UserDto> {
-    todo!()
-}
-
-/// Insert the refresh token into the database
-pub async fn insert_refresh_token(
-    _tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    _user_id: i64,
-    _refresh_token: &RefreshToken,
-) -> anyhow::Result<()> {
-    todo!()
+    Ok(row)
 }
