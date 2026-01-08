@@ -136,7 +136,7 @@ pub async fn upsert_user_with_third_part(
                             avatar_url = EXCLUDED.avatar_url
                     RETURNING id, email, username, display_name, avatar_url, created_at, updated_at, tenant_id, org_id, plan, token_version, status, locked_until, failed_login_attempts
                 ),
-                ins_identity AS (
+                insert_identity AS (
                     INSERT INTO user_identities (user_id, provider, provider_uid, access_token, token_expires_at)
                     SELECT id, $5, $6, $7, $9
                     FROM upsert_user
@@ -153,50 +153,45 @@ pub async fn upsert_user_with_third_part(
                     INSERT INTO user_roles (user_id, role_id)
                     SELECT u.id, r.id
                     FROM upsert_user u
-                    CROSS JOIN roles r
-                    WHERE r.name = 'user'  -- 默认角色设为 'user'
+                    JOIN roles r ON r.name = 'user'  -- 默认角色设为 'user'
                     RETURNING user_id
                 ),
-                user_roles_info AS (
-                    SELECT u.id, array_agg(r.name) AS roles
-                    FROM user_info u
-                    LEFT JOIN user_roles ur ON ur.user_id = u.id
-                    LEFT JOIN roles r ON r.id = ur.role_id
-                    WHERE u.id = (SELECT id FROM upsert_user)
-                    GROUP BY u.id
-                )
-                SELECT
-                    u.id AS user_id,
-                    r.token,
-                    r.expires_at,
-                    u.email,
-                    u.username,
-                    u.display_name,
-                    u.avatar_url,
-                    u.created_at,
-                    u.updated_at,
-                    u.tenant_id,
-                    u.org_id,
-                    u.plan,
-                    u.token_version,
-                    u.status,
-                    u.locked_until,
-                    u.failed_login_attempts,
-                    ur.roles
-                FROM upsert_user u
-                LEFT JOIN insert_refresh_token r ON u.id = r.user_id
-                LEFT JOIN user_roles_info ur ON u.id = ur.id;
+                user_info_with_roles AS (
+                        SELECT u.id AS user_id,
+                               u.email,
+                               u.username,
+                               u.display_name,
+                               u.avatar_url,
+                               u.created_at,
+                               u.updated_at,
+                               u.tenant_id,
+                               u.org_id,
+                               u.plan,
+                               u.token_version,
+                               u.status,
+                               u.locked_until,
+                               u.failed_login_attempts,
+                               r.token,
+                               r.expires_at,
+                               array_agg(role.name) AS roles
+                        FROM upsert_user u
+                        LEFT JOIN insert_refresh_token r ON u.id = r.user_id
+                        LEFT JOIN user_roles ur ON ur.user_id = u.id
+                        LEFT JOIN roles role ON role.id = ur.role_id
+                        GROUP BY u.id, r.token, r.expires_at
+                    )
+                    SELECT * FROM user_info_with_roles;
         "#
-        )
-        .bind(&user.email)       // 用户邮箱
-        .bind(&user.username)    // 用户名
-        .bind(&user.display_name) // 显示名
-        .bind(&user.avatar_url)   // 头像
-        .bind(&user.provider)     // 登录提供商（如GitHub）
+    )
+        .bind(&user.email)         // 用户邮箱
+        .bind(&user.username)      // 用户名
+        .bind(&user.display_name)  // 显示名
+        .bind(&user.avatar_url)    // 头像
+        .bind(&user.provider)      // 登录提供商（如GitHub）
         .bind(&user.provider_user_id) // 第三方用户唯一ID
         .bind(user.access_token.as_deref()) // access_token
-        .bind(&user.refresh_token)         // refresh_token
-        .bind(user.expires_at)            // refresh_token的过期时间
+        .bind(&user.refresh_token) // refresh_token
+        .bind(user.expires_at)     // refresh_token的过期时间
         .fetch_one(pool)
         .await
         .map_err(|e| {
