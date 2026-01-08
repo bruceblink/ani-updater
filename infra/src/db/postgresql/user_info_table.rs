@@ -154,6 +154,7 @@ pub async fn upsert_user_with_third_part(
                     SELECT u.id, r.id
                     FROM upsert_user u
                     JOIN roles r ON r.name = 'user'  -- 默认角色设为 'user'
+                    ON CONFLICT (user_id, role_id) DO NOTHING
                     RETURNING user_id
                 ),
                 user_info_with_roles AS (
