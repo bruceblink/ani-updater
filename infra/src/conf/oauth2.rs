@@ -42,7 +42,7 @@ impl OAuthConfig {
         let token_url = TokenUrl::new("https://github.com/login/oauth/access_token".to_string())
             .context("Invalid token URL")?;
 
-        let redirect_url = RedirectUrl::new(format!("{base_url}/auth/github/callback"))
+        let redirect_url = RedirectUrl::new(format!("{base_url}/auth/oauth/github/callback"))
             .context("Invalid redirect URL")?;
 
         Ok(Self {
@@ -57,13 +57,13 @@ impl OAuthConfig {
 }
 
 /// 创建 OAuth 配置
-pub async fn create_oauth_config(configuration: Setting) -> anyhow::Result<OAuthConfig> {
+pub async fn create_oauth_config(configuration: Setting) -> Result<OAuthConfig> {
     OAuthConfig::from_configuration(configuration)
         .context("Failed to load OAuth configuration from environment variables")
 }
 
 /// 创建 OAuth 客户端
-pub fn create_oauth_client(config: &OAuthConfig) -> anyhow::Result<BasicClient> {
+pub fn create_oauth_client(config: &OAuthConfig) -> Result<BasicClient> {
     let client = BasicClient::new(
         config.client_id.clone(),
         Some(config.client_secret.clone()),
