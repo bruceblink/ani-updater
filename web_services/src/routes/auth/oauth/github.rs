@@ -125,51 +125,49 @@ async fn auth_github_callback(
         .cloned()
         .ok_or_else(|| ApiError::BadRequest("missing state".into()))?;
 
-    // 解码 state JWT
+    // ✅ 严格校验 state.exp
+    let mut validation = jsonwebtoken::Validation::default();
+    validation.validate_exp = true;
+
     let token_data = jsonwebtoken::decode::<StateClaims>(
         &state,
         &jsonwebtoken::DecodingKey::from_secret(app_state.oauth_config.jwt_secret.as_ref()),
-        &jsonwebtoken::Validation::default(),
+        &validation,
     )
-    .map_err(|_| ApiError::Internal("Invalid state".into()))?;
+    .map_err(|_| ApiError::Unauthorized("Invalid state".into()))?;
 
     let pkce_verifier = PkceCodeVerifier::new(token_data.claims.pkce_verifier);
-    // 3. 换取GitHub access_token
-    let github_token =
+    // 换取GitHub access_token
+    let github_access_token =
         exchange_github_access_token(&app_state.oauth_client, code, pkce_verifier).await?;
-    // 4. 获取GitHub的用户信息
-    let user = get_github_user_info(github_token).await?;
-
+    // 获取GitHub的用户信息
+    let github_user = get_github_user_info(github_access_token).await?;
     // 注册“使用GitHub登录的用户”为系统用户
-    let (access_token, refresh_token) = github_user_register(
-        &app_state.db_pool.clone(),
-        &app_state.configuration,
-        user.clone(),
-    )
-    .await
-    .map_err(|_| ApiError::Internal("github用户注册为系统用户失败".into()))?;
+    let (access_token, refresh_token) =
+        github_user_register(&app_state.db_pool, &app_state.configuration, github_user)
+            .await
+            .map_err(|_| ApiError::Internal("github用户注册为系统用户失败".into()))?;
 
+    let is_prod = app_state.configuration.is_production;
     // 生成 access_token的cookie
-    let access_cookie = Cookie::build(ACCESS_TOKEN, access_token.clone().token)
+    let access_cookie = Cookie::build(ACCESS_TOKEN, access_token.token)
         .http_only(true)
-        .secure(true) // 生产环境必须 https
+        .secure(is_prod) // 生产环境必须 https
         .path("/")
         .same_site(actix_web::cookie::SameSite::None) // 为None时可以跨站点请求携带 Cookie
+        .max_age(time::Duration::minutes(15))
         .finish();
     // 生成 refresh_token的cookie
     let refresh_cookie = Cookie::build(REFRESH_TOKEN, refresh_token.token)
         .http_only(true)
-        .secure(true) // 生产环境必须 https
+        .secure(is_prod)
         .path("/")
-        .same_site(actix_web::cookie::SameSite::None) // 为None时可以跨站点请求携带 Cookie
+        .same_site(actix_web::cookie::SameSite::None)
+        .max_age(time::Duration::days(30))
         .finish();
-    // 为了保险，防止浏览器(例如firefox的权限就比较严格，不一定会携带access_cookie)不携带access_cookie，
-    // 最终重定向到前端传来的 redirect_uri
-    let redirect_uri = token_data.claims.redirect_uri;
-    let final_redirect_url = format!("{redirect_uri}?token={}", access_token.token);
 
     Ok(HttpResponse::Found()
-        .append_header(("Location", final_redirect_url))
+        .append_header(("Location", token_data.claims.redirect_uri))
         .cookie(access_cookie)
         .cookie(refresh_cookie)
         .finish())

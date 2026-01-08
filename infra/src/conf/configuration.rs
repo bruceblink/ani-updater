@@ -17,6 +17,7 @@ pub struct Setting {
     pub github_client_secret: Option<String>,
     pub oauth_base_url: Option<String>,
     pub jwt_secret: Option<String>,
+    pub is_production: bool,
 }
 
 ///---------------------- 各类配置项 ----------------------
