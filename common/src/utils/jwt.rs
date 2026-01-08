@@ -10,22 +10,10 @@ use std::env;
 static JWT_SECRET: Lazy<Result<String>> =
     Lazy::new(|| env::var("JWT_SECRET").context("环境变量 JWT_SECRET 未设置"));
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Claims {
-    pub id: i64,                // 系统用户id
-    pub sub: String,            // GitHub login
-    pub uid: u64,               // GitHub ID
-    pub exp: usize,             // 过期时间戳
-    pub r#type: String,         //登录类型
-    pub name: Option<String>,   // 用户名
-    pub email: Option<String>,  // 邮箱
-    pub avatar: Option<String>, // 图像
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GithubUser {
     pub login: String,
-    pub id: u64,
+    pub id: i64,
     pub avatar_url: Option<String>,
     pub name: Option<String>,
     pub email: Option<String>,
@@ -35,11 +23,58 @@ pub struct GithubUser {
 pub struct CommonUser {
     pub id: i64,                // 系统用户id
     pub sub: String,            // 第三方登录用户名
-    pub uid: u64,               // 第三方登录 ID
+    pub uid: i64,               // 第三方登录 ID
     pub r#type: String,         // 登录类型
     pub name: Option<String>,   // 用户名
     pub email: Option<String>,  // 邮箱
     pub avatar: Option<String>, // 图像
+    pub roles: Vec<String>,     // 角色
+    pub iss: String,            // 签发方
+    pub aud: String,            // audience：使用方 / 接收方
+    pub ver: i64,               // token 版本号
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct JwtClaims {
+    /* ========= JWT 标准字段（通用 / 安全 / 跨服务） ========= */
+    /// subject：JWT 所代表的主体
+    /// 通常使用 user_id 的字符串形式
+    /// 👉 JWT 规范字段，很多中间件/网关默认依赖它
+    pub sub: String,
+
+    /// expiration time：过期时间（Unix 时间戳，秒）
+    /// 👉 强制 token 生命周期，防止长期泄露风险
+    pub exp: i64,
+
+    /// issued at：签发时间（Unix 时间戳，秒）
+    /// 👉 用于审计、风控、排查 token 异常
+    pub iat: i64,
+
+    /// issuer：签发方
+    /// 👉 标识 token 是由哪个鉴权服务签发的
+    /// 例如："auth-service"
+    pub iss: String,
+
+    /// audience：使用方 / 接收方
+    /// 👉 防止 token 被“拿错地方用”
+    /// 例如："api"、"internal"
+    pub aud: String,
+
+    /* ========= 业务字段（与你的系统强相关） ========= */
+    /// 系统用户 ID（数值型）
+    /// 👉 冗余字段，避免每次从 sub 再解析
+    /// 👉 方便数据库查询与日志记录
+    pub uid: i64,
+
+    /// RBAC 角色列表
+    /// 👉 角色相对稳定，适合放在 JWT 中
+    /// 👉 用于服务端快速鉴权（是否允许访问接口）
+    pub roles: Vec<String>,
+
+    /// token 版本号（非常关键）
+    /// 👉 用于主动失效 token
+    /// 👉 密钥泄露 / 用户被禁用 / 角色变更时递增
+    pub ver: i64,
 }
 
 /// refresh_token的结构
@@ -63,9 +98,9 @@ fn jwt_secret() -> Result<&'static String> {
 }
 
 /// 校验 JWT
-pub fn verify_jwt(token: &str) -> Result<Claims> {
+pub fn verify_jwt(token: &str) -> Result<JwtClaims> {
     let secret = jwt_secret()?;
-    let decoded = decode::<Claims>(
+    let decoded = decode::<JwtClaims>(
         // decode函数里有具体的validation实现包含用户信息，过期时间等的校验，
         token,
         &DecodingKey::from_secret(secret.as_ref()),
@@ -84,15 +119,15 @@ pub fn generate_jwt(user: &CommonUser, exp_minutes: i64) -> Result<AccessToken> 
     let secret = jwt_secret()?;
     let exp = Utc::now() + Duration::minutes(exp_minutes);
 
-    let claims = Claims {
-        id: user.id,
+    let claims = JwtClaims {
         sub: user.sub.clone(),
         uid: user.uid,
-        exp: exp.timestamp() as usize,
-        r#type: user.r#type.to_string(),
-        name: user.name.clone(),
-        email: user.email.clone(),
-        avatar: user.avatar.clone(),
+        roles: user.roles.clone(),
+        exp: exp.timestamp(),
+        iat: Utc::now().timestamp(),
+        iss: user.iss.clone(),
+        aud: user.aud.clone(),
+        ver: user.ver,
     };
 
     let token = encode(
@@ -125,9 +160,9 @@ pub fn generate_refresh_token(exp_days: i64) -> Result<RefreshToken> {
 }
 
 // 解析 Access Token
-pub fn decode_jwt(token: &str) -> Result<Claims> {
+pub fn decode_jwt(token: &str) -> Result<JwtClaims> {
     let secret = jwt_secret()?;
-    let token_data = decode::<Claims>(
+    let token_data = decode::<JwtClaims>(
         token,
         &DecodingKey::from_secret(secret.as_ref()),
         &Validation::default(),

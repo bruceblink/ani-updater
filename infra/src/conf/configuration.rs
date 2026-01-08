@@ -4,7 +4,7 @@ use sqlx::postgres::{PgConnectOptions, PgSslMode};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-pub type TokenConfig = HashMap<String, i16>;
+pub type TokenConfig = HashMap<String, i64>;
 
 ///---------------------- 顶层 Setting ----------------------
 #[derive(serde::Deserialize, Clone, Debug)]

@@ -48,7 +48,7 @@ async fn sync_me_post(
                     data = EXCLUDED.data;
             "#,
         )
-        .bind(claims.id)
+        .bind(claims.uid)
         .bind(body.setting_type)
         .bind(body.data)
         .fetch_optional(&app_state.db_pool)

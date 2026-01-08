@@ -49,7 +49,7 @@ async fn sync_me_get(
             WHERE us.id = $1 AND us.setting_type = $2;
         "#,
         )
-        .bind(claims.id)
+        .bind(claims.uid)
         .bind(setting_type)
         .fetch_optional(&app_state.db_pool)
         .await
