@@ -146,7 +146,10 @@ async fn auth_github_callback(
     let (access_token, refresh_token) =
         github_user_register(&app_state.db_pool, &app_state.configuration, github_user)
             .await
-            .map_err(|_| ApiError::Internal("github用户注册为系统用户失败".into()))?;
+            .map_err(|e| {
+                error!("github用户注册为系统用户失败: {e}");
+                ApiError::Internal("github用户注册为系统用户失败".into())
+            })?;
 
     let is_prod = app_state.configuration.is_production;
     // 生成 access_token的cookie
