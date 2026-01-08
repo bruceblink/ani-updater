@@ -5,7 +5,7 @@ use actix_web::{
     dev::{Service, ServiceRequest, ServiceResponse, Transform},
 };
 use common::api::ApiResponse;
-use common::utils::decode_jwt;
+use common::utils::verify_jwt;
 use futures::future::{LocalBoxFuture, Ready, ok};
 use std::rc::Rc;
 
@@ -55,7 +55,7 @@ where
         Box::pin(async move {
             let token_opt = req.get_access_token();
             match token_opt {
-                Some(token) => match decode_jwt(&token) {
+                Some(token) => match verify_jwt(&token) {
                     Ok(claims) => {
                         req.extensions_mut().insert(claims);
                         srv.call(req).await

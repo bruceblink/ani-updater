@@ -78,12 +78,7 @@ async fn auth_token_refresh(req: HttpRequest, app_state: web::Data<AppState>) ->
                 id: u.id,
                 sub: u.username.unwrap_or_default(), // 用户名允许为空
                 uid,
-                avatar: u.avatar_url,
                 roles: vec![],
-                iss: "auth-service".to_string(),
-                aud: "api".to_string(),
-                name: u.display_name,
-                email: u.email,
                 r#type: u.provider.unwrap_or_default(),
                 ver: 0,
             }

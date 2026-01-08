@@ -7,8 +7,12 @@ use rand::distr::Alphanumeric;
 use serde::{Deserialize, Serialize};
 use std::env;
 
+/* ================= JWT SECRET ================= */
+
 static JWT_SECRET: Lazy<Result<String>> =
     Lazy::new(|| env::var("JWT_SECRET").context("环境变量 JWT_SECRET 未设置"));
+
+/* ================= 用户模型 ================= */
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GithubUser {
@@ -21,18 +25,15 @@ pub struct GithubUser {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CommonUser {
-    pub id: i64,                // 系统用户id
-    pub sub: String,            // 第三方登录用户名
-    pub uid: i64,               // 第三方登录 ID
-    pub r#type: String,         // 登录类型
-    pub name: Option<String>,   // 用户名
-    pub email: Option<String>,  // 邮箱
-    pub avatar: Option<String>, // 图像
-    pub roles: Vec<String>,     // 角色
-    pub iss: String,            // 签发方
-    pub aud: String,            // audience：使用方 / 接收方
-    pub ver: i64,               // token 版本号
+    pub id: i64,            // 系统用户id
+    pub sub: String,        // 第三方登录用户名
+    pub uid: i64,           // 第三方登录 ID
+    pub r#type: String,     // 登录类型
+    pub roles: Vec<String>, // 角色
+    pub ver: i64,           // token 版本号
 }
+
+/* ================= JWT Claims ================= */
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JwtClaims {
@@ -49,16 +50,6 @@ pub struct JwtClaims {
     /// issued at：签发时间（Unix 时间戳，秒）
     /// 👉 用于审计、风控、排查 token 异常
     pub iat: i64,
-
-    /// issuer：签发方
-    /// 👉 标识 token 是由哪个鉴权服务签发的
-    /// 例如："auth-service"
-    pub iss: String,
-
-    /// audience：使用方 / 接收方
-    /// 👉 防止 token 被“拿错地方用”
-    /// 例如："api"、"internal"
-    pub aud: String,
 
     /* ========= 业务字段（与你的系统强相关） ========= */
     /// 系统用户 ID（数值型）
@@ -77,6 +68,8 @@ pub struct JwtClaims {
     pub ver: i64,
 }
 
+/* ================= Token Struct ================= */
+
 /// refresh_token的结构
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RefreshToken {
@@ -84,6 +77,7 @@ pub struct RefreshToken {
     pub expires_at: chrono::DateTime<Utc>,
 }
 
+/// access_token的结构
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AccessToken {
     pub token: String,
@@ -97,43 +91,27 @@ fn jwt_secret() -> Result<&'static String> {
         .map_err(|e| anyhow::anyhow!(e.to_string()))
 }
 
-/// 校验 JWT
-pub fn verify_jwt(token: &str) -> Result<JwtClaims> {
-    let secret = jwt_secret()?;
-    let decoded = decode::<JwtClaims>(
-        // decode函数里有具体的validation实现包含用户信息，过期时间等的校验，
-        token,
-        &DecodingKey::from_secret(secret.as_ref()),
-        &Validation::default(),
-    )
-    .context("JWT 验证失败")?;
-
-    Ok(decoded.claims)
-}
-
-// 生成 Access Token
-/// 生成 JWT
+/// 生成 Access Token
 /// `exp_minutes` 过期时间，单位分钟
 /// 例如：60 * 2 表示 2 小时
 pub fn generate_jwt(user: &CommonUser, exp_minutes: i64) -> Result<AccessToken> {
     let secret = jwt_secret()?;
-    let exp = Utc::now() + Duration::minutes(exp_minutes);
+    let now = Utc::now();
+    let exp = now + Duration::minutes(exp_minutes);
 
     let claims = JwtClaims {
         sub: user.sub.clone(),
-        uid: user.uid,
+        uid: user.id,
         roles: user.roles.clone(),
+        iat: now.timestamp(),
         exp: exp.timestamp(),
-        iat: Utc::now().timestamp(),
-        iss: user.iss.clone(),
-        aud: user.aud.clone(),
         ver: user.ver,
     };
 
     let token = encode(
-        &Header::default(),
+        &Header::default(), // HS256
         &claims,
-        &EncodingKey::from_secret(secret.as_ref()),
+        &EncodingKey::from_secret(secret.as_bytes()),
     )
     .context("JWT 生成失败")?;
 
@@ -159,15 +137,18 @@ pub fn generate_refresh_token(exp_days: i64) -> Result<RefreshToken> {
     Ok(RefreshToken { token, expires_at })
 }
 
-// 解析 Access Token
-pub fn decode_jwt(token: &str) -> Result<JwtClaims> {
+/// 校验 + 解析 JWT（统一用这个）
+pub fn verify_jwt(token: &str) -> Result<JwtClaims> {
     let secret = jwt_secret()?;
-    let token_data = decode::<JwtClaims>(
-        token,
-        &DecodingKey::from_secret(secret.as_ref()),
-        &Validation::default(),
-    )
-    .context("JWT 解析失败")?;
 
-    Ok(token_data.claims)
+    let validation = Validation::default(); // 校验 exp / alg
+
+    let data = decode::<JwtClaims>(
+        token,
+        &DecodingKey::from_secret(secret.as_bytes()),
+        &validation,
+    )
+    .context("JWT 验证失败")?;
+
+    Ok(data.claims)
 }
