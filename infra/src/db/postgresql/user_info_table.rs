@@ -1,3 +1,4 @@
+use chrono::Utc;
 use chrono_tz::Asia::Shanghai;
 use common::dto::{NewUser, UserDto, UserIdentityDto};
 use common::po::UserInfo;
@@ -101,19 +102,19 @@ pub async fn insert_users(users: &[NewUser], pool: &PgPool) -> anyhow::Result<()
 pub struct UserInfoWithTokenDTO {
     pub user_id: i64,
     pub token: String,
-    pub expires_at: Option<chrono::NaiveDateTime>,
+    pub expires_at: Option<chrono::DateTime<Utc>>,
     pub email: String,
     pub username: String,
     pub display_name: String,
     pub avatar_url: Option<String>,
-    pub created_at: chrono::NaiveDateTime,
-    pub updated_at: chrono::NaiveDateTime,
+    pub created_at: chrono::DateTime<Utc>,
+    pub updated_at: chrono::DateTime<Utc>,
     pub tenant_id: String,
     pub org_id: Option<String>,
     pub plan: String,
     pub token_version: i64,
     pub status: String,
-    pub locked_until: Option<chrono::NaiveDateTime>,
+    pub locked_until: Option<chrono::DateTime<Utc>>,
     pub failed_login_attempts: i32,
     pub roles: Vec<String>,
 }
