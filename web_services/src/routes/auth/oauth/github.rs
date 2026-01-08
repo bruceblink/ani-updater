@@ -158,7 +158,9 @@ async fn auth_github_callback(
         .secure(is_prod) // 生产环境必须 https
         .path("/")
         .same_site(actix_web::cookie::SameSite::None) // 为None时可以跨站点请求携带 Cookie
-        .max_age(time::Duration::minutes(15))
+        .max_age(time::Duration::minutes(
+            app_state.configuration.token[ACCESS_TOKEN],
+        ))
         .finish();
     // 生成 refresh_token的cookie
     let refresh_cookie = Cookie::build(REFRESH_TOKEN, refresh_token.token)
@@ -166,7 +168,9 @@ async fn auth_github_callback(
         .secure(is_prod)
         .path("/")
         .same_site(actix_web::cookie::SameSite::None)
-        .max_age(time::Duration::days(30))
+        .max_age(time::Duration::days(
+            app_state.configuration.token[REFRESH_TOKEN],
+        ))
         .finish();
 
     Ok(HttpResponse::Found()
