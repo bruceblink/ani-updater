@@ -178,7 +178,7 @@ pub async fn upsert_user_with_third_part(
                         LEFT JOIN insert_refresh_token r ON u.id = r.user_id
                         LEFT JOIN user_roles ur ON ur.user_id = u.id
                         LEFT JOIN roles role ON role.id = ur.role_id
-                        GROUP BY u.id, r.token, r.expires_at
+                        GROUP BY u.id, u.email, u.username, u.display_name, u.avatar_url, u.created_at, u.updated_at, u.tenant_id, u.org_id, u.plan, u.token_version, u.status, u.locked_until, u.failed_login_attempts, r.token, r.expires_at
                     )
                     SELECT * FROM user_info_with_roles;
         "#
