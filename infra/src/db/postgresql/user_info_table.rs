@@ -115,6 +115,7 @@ pub struct UserInfoWithTokenDTO {
     pub status: String,
     pub locked_until: Option<chrono::NaiveDateTime>,
     pub failed_login_attempts: i32,
+    pub roles: Vec<String>,
 }
 
 /// 新增第三方登录用户 <br>
@@ -155,6 +156,14 @@ pub async fn upsert_user_with_third_part(
                     CROSS JOIN roles r
                     WHERE r.name = 'user'  -- 默认角色设为 'user'
                     RETURNING user_id
+                ),
+                user_roles_info AS (
+                    SELECT u.id, array_agg(r.name) AS roles
+                    FROM user_info u
+                    LEFT JOIN user_roles ur ON ur.user_id = u.id
+                    LEFT JOIN roles r ON r.id = ur.role_id
+                    WHERE u.id = (SELECT id FROM upsert_user)
+                    GROUP BY u.id
                 )
                 SELECT
                     u.id AS user_id,
@@ -172,9 +181,11 @@ pub async fn upsert_user_with_third_part(
                     u.token_version,
                     u.status,
                     u.locked_until,
-                    u.failed_login_attempts
+                    u.failed_login_attempts,
+                    ur.roles
                 FROM upsert_user u
-                LEFT JOIN insert_refresh_token r ON u.id = r.user_id;
+                LEFT JOIN insert_refresh_token r ON u.id = r.user_id
+                LEFT JOIN user_roles_info ur ON u.id = ur.id;
         "#
         )
         .bind(&user.email)       // 用户邮箱
