@@ -77,27 +77,24 @@ async fn auth_github_login(
 pub async fn get_github_authorization_url(
     oauth_client: &BasicClient,
     redirect_uri: &str,
-    jwt_secret: &String,
+    state_jwt_secret: &str,
 ) -> anyhow::Result<String> {
     let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
 
-    // 生成 JWT state
-    let exp = chrono::Utc::now().timestamp() as usize + 300; // 5分钟过期
     let claims = StateClaims {
         redirect_uri: redirect_uri.to_string(),
         pkce_verifier: pkce_verifier.secret().to_string(),
-        exp,
+        exp: (chrono::Utc::now().timestamp() + 300) as usize,
     };
 
     let state_jwt = jsonwebtoken::encode(
         &jsonwebtoken::Header::default(),
         &claims,
-        &jsonwebtoken::EncodingKey::from_secret(jwt_secret.as_ref()),
+        &jsonwebtoken::EncodingKey::from_secret(state_jwt_secret.as_ref()),
     )?;
 
-    // 获取授权 URL
     let (auth_url, _) = oauth_client
-        .authorize_url(move || CsrfToken::new(state_jwt))
+        .authorize_url(|| CsrfToken::new(state_jwt))
         .add_scope(Scope::new("read:user".into()))
         .add_scope(Scope::new("user:email".into()))
         .set_pkce_challenge(pkce_challenge)
