@@ -48,11 +48,11 @@ async fn auth_github_login(
         .get("redirect_uri")
         .map(|s| s.trim())
         .filter(|s| !s.is_empty())
-        .filter(|uri| {
+        /*        .filter(|uri| {
             ALLOWED_REDIRECT_URIS
                 .iter()
                 .any(|allowed| uri.starts_with(allowed))
-        })
+        })*/
         .ok_or_else(|| ApiError::BadRequest("Invalid redirect_uri".into()))?;
 
     // 2. 生成 GitHub 授权地址
