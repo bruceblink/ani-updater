@@ -53,39 +53,40 @@ pub async fn login(
 
 #[post("/logout")]
 async fn logout(app_state: web::Data<AppState>, req: HttpRequest) -> impl Responder {
-    if let Some(token) = req.get_refresh_token() {
-        let _ = sqlx::query(
+    // 1️⃣ 注销 refresh_token（数据库标记为 revoked）
+    if let Some(refresh_token) = req.get_refresh_token() {
+        if let Err(e) = sqlx::query(
             r#"
-            UPDATE refresh_tokens SET revoked = true WHERE token = $1;
+                UPDATE refresh_tokens SET revoked = true WHERE token = $1;
             "#,
         )
-        .bind(token.clone())
+        .bind(refresh_token.clone())
         .execute(&app_state.db_pool)
         .await
-        .map_err(|e| tracing::error!("token {token:?} 注销失败: {e}"));
+        {
+            tracing::error!("注销 refresh_token {refresh_token:?} 失败: {e}");
+        }
     } else {
-        tracing::warn!("用户登出时没有携带 access_token");
+        tracing::warn!("用户登出时未携带 refresh_token");
     }
 
-    // 设置一个同名 cookie，立即过期， 浏览器会自动删除该cookie
-    let access_cookie = Cookie::build("access_token", "")
-        .path("/")
-        .http_only(true)
-        .secure(true)
-        .same_site(SameSite::None)
-        .max_age(time::Duration::seconds(0))
-        .finish();
+    // 2️⃣ 清空 access_token 和 refresh_token cookie
+    let expired_cookie = |name: String| {
+        Cookie::build(name, "")
+            .path("/")
+            .http_only(true)
+            .secure(true)
+            .same_site(SameSite::None)
+            .expires(time::OffsetDateTime::now_utc() - time::Duration::seconds(1))
+            .finish()
+    };
 
-    let refresh_cookie = Cookie::build("refresh_token", "")
-        .path("/")
-        .http_only(true)
-        .secure(true)
-        .same_site(SameSite::None)
-        .max_age(time::Duration::seconds(0))
-        .finish();
+    let access_cookie = expired_cookie("access_token".to_string());
+    let refresh_cookie = expired_cookie("refresh_token".to_string());
 
-    HttpResponse::Ok()
+    // 3️⃣ 返回 204 No Content 更语义化
+    HttpResponse::NoContent()
         .cookie(access_cookie)
         .cookie(refresh_cookie)
-        .body("logged out")
+        .finish()
 }
