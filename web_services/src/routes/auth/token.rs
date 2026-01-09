@@ -1,6 +1,7 @@
 use crate::common::AppState;
 use actix_web::cookie::Cookie;
 use actix_web::{HttpRequest, HttpResponse, post, web};
+use chrono::Utc;
 use common::api::{ApiError, ApiResponse};
 use common::po::ApiResult;
 use common::utils::{CommonUser, generate_jwt, generate_refresh_token};
@@ -17,6 +18,12 @@ struct UserWithIdentity {
     avatar_url: Option<String>,
     provider: Option<String>,
     provider_uid: Option<String>,
+}
+
+#[derive(Debug, Serialize, FromRow)]
+struct RefreshTokens {
+    user_id: i64,
+    session_expires_at: chrono::DateTime<Utc>,
 }
 
 ///
@@ -37,7 +44,7 @@ async fn auth_token_refresh(req: HttpRequest, app_state: web::Data<AppState>) ->
     })?;
 
     // 1️⃣ 校验并消费旧 refresh_token
-    let rec = sqlx::query!(
+    let rec = sqlx::query_as::<_, RefreshTokens>(
         r#"
             SELECT user_id, session_expires_at
             FROM refresh_tokens
@@ -47,8 +54,8 @@ async fn auth_token_refresh(req: HttpRequest, app_state: web::Data<AppState>) ->
               AND session_expires_at > now()
             FOR UPDATE
         "#,
-        old_refresh_token
     )
+    .bind(old_refresh_token)
     .fetch_optional(&mut *tx)
     .await
     .map_err(|e| {
@@ -68,14 +75,14 @@ async fn auth_token_refresh(req: HttpRequest, app_state: web::Data<AppState>) ->
     let session_expires_at = rec.session_expires_at;
 
     // 2️⃣ 立即吊销旧 token（防并发重放）
-    sqlx::query!(
+    sqlx::query(
         r#"
             UPDATE refresh_tokens
             SET revoked = true
             WHERE token = $1
         "#,
-        old_refresh_token
     )
+    .bind(old_refresh_token)
     .execute(&mut *tx)
     .await
     .map_err(|e| {
@@ -85,7 +92,7 @@ async fn auth_token_refresh(req: HttpRequest, app_state: web::Data<AppState>) ->
 
     // 3️⃣ 生成新 refresh_token（滑动窗口 + 终点）
     let refresh_window_days = app_state.configuration.token[REFRESH_TOKEN];
-    let now = chrono::Utc::now();
+    let now = Utc::now();
 
     let mut new_expires_at = now + chrono::Duration::days(refresh_window_days);
     if new_expires_at > session_expires_at {
@@ -95,18 +102,18 @@ async fn auth_token_refresh(req: HttpRequest, app_state: web::Data<AppState>) ->
     let new_refresh_token = generate_refresh_token(refresh_window_days)
         .map_err(|_| ApiError::Internal("refresh_token 生成失败".into()))?;
 
-    sqlx::query!(
+    sqlx::query(
         r#"
             INSERT INTO refresh_tokens
                 (user_id, token, expires_at, session_expires_at)
             VALUES
                 ($1, $2, $3, $4)
         "#,
-        user_id,
-        new_refresh_token.token,
-        new_expires_at,
-        session_expires_at
     )
+    .bind(user_id)
+    .bind(new_refresh_token.clone().token)
+    .bind(new_expires_at)
+    .bind(session_expires_at)
     .execute(&mut *tx)
     .await
     .map_err(|e| {
