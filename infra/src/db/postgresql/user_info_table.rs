@@ -145,8 +145,8 @@ pub async fn upsert_user_with_third_part(
                     RETURNING user_id
                 ),
                 insert_refresh_token AS (
-                    INSERT INTO refresh_tokens (user_id, token, expires_at)
-                    SELECT id, $8, $9
+                    INSERT INTO refresh_tokens (user_id, token, expires_at, session_expires_at)
+                    SELECT id, $8, $9, $10
                     FROM upsert_user
                     RETURNING user_id, token, expires_at
                 ),
@@ -194,6 +194,7 @@ pub async fn upsert_user_with_third_part(
         .bind(user.access_token.as_deref()) // access_token
         .bind(&user.refresh_token) // refresh_token
         .bind(user.expires_at)     // refresh_token的过期时间
+        .bind(user.expires_at)     // session_expires_at的过期时间, 用户注册时就是refresh_token
         .fetch_one(pool)
         .await
         .map_err(|e| {
