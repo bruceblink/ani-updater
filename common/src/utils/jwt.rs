@@ -25,12 +25,14 @@ pub struct GithubUser {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CommonUser {
-    pub id: i64,            // 系统用户id
-    pub sub: String,        // 第三方登录用户名
-    pub uid: i64,           // 第三方登录 ID
-    pub r#type: String,     // 登录类型
-    pub roles: Vec<String>, // 角色
-    pub ver: i64,           // token 版本号
+    pub id: i64,                    // 系统用户id
+    pub sub: String,                // 第三方登录用户名
+    pub uid: i64,                   // 第三方登录 ID
+    pub email: Option<String>,      // 邮箱
+    pub avatar_url: Option<String>, // 图像
+    pub r#type: String,             // 登录类型
+    pub roles: Vec<String>,         // 角色
+    pub ver: i64,                   // token 版本号
 }
 
 /* ================= JWT Claims ================= */
@@ -57,6 +59,9 @@ pub struct JwtClaims {
     /// 👉 方便数据库查询与日志记录
     pub uid: i64,
 
+    pub email: Option<String>,
+
+    pub avatar: Option<String>,
     /// RBAC 角色列表
     /// 👉 角色相对稳定，适合放在 JWT 中
     /// 👉 用于服务端快速鉴权（是否允许访问接口）
@@ -102,6 +107,8 @@ pub fn generate_jwt(user: &CommonUser, exp_minutes: i64) -> Result<AccessToken> 
     let claims = JwtClaims {
         sub: user.sub.clone(),
         uid: user.id,
+        email: user.email.clone(),
+        avatar: user.avatar_url.clone(),
         roles: user.roles.clone(),
         iat: now.timestamp(),
         exp: exp.timestamp(),

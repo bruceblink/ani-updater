@@ -44,6 +44,8 @@ pub async fn github_user_register(
             id: user.user_id,
             sub: github_user.clone().login,
             uid: github_user.id,
+            email: github_user.email,
+            avatar_url: github_user.avatar_url,
             r#type: "github".to_string(),
             roles: user.roles,
             ver: 0,

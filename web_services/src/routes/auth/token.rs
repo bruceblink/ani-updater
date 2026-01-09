@@ -169,9 +169,11 @@ async fn auth_token_refresh(req: HttpRequest, app_state: web::Data<AppState>) ->
         id: user.id,
         sub: user.username.unwrap_or_default(),
         uid,
+        email: user.email,
         roles,
         r#type: user.provider.unwrap_or_default(),
         ver: 0,
+        avatar_url: user.avatar_url,
     };
 
     let access_token = generate_jwt(&common_user, app_state.configuration.token[ACCESS_TOKEN])
