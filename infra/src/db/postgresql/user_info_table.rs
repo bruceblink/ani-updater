@@ -175,7 +175,7 @@ pub async fn upsert_user_with_third_part(
                                u.failed_login_attempts,
                                r.token,
                                r.expires_at,
-                               array_agg(role.name) AS roles
+                               COALESCE(array_agg(role.name), '{}') AS roles
                         FROM upsert_user u
                         LEFT JOIN insert_refresh_token r ON u.id = r.user_id
                         LEFT JOIN user_roles ur ON ur.user_id = u.id
