@@ -25,6 +25,22 @@ struct RefreshTokens {
     user_id: i64,
     session_expires_at: chrono::DateTime<Utc>,
 }
+/// 会话 / 状态类 API（所有客户端）<br>
+/// 用途:  判断「当前是否已登录」 <br>
+/// GET /v1/auth/session <br>
+/// Cookie: refresh_token=... <br>
+/// {
+///   "authenticated": true,<br>
+///   "user": {
+///     "id": "u_xxx",
+///     "email": "a@b.com",
+///     "name": "kanug"
+///   }
+/// }
+#[post("/auth/session")]
+async fn auth_session(_req: HttpRequest, _app_state: web::Data<AppState>) -> ApiResult {
+    todo!()
+}
 
 ///
 /// 刷新access_token的API，cookie中携带refresh token获取access_token <br>
