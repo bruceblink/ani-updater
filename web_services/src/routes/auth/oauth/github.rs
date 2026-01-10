@@ -33,11 +33,11 @@ struct StateClaims {
     exp: usize, // UNIX timestamp
 }
 
-/**
-    GitHub 第三方登录的 API <br>
-    /auth/github/login Get 请求 <br>
-    url请求参数:  redirect_uri=xxxx
-*/
+///
+///    GitHub 第三方登录的 API <br>
+///    /auth/github/login Get 请求 <br>
+///    url请求参数:  redirect_uri=xxxx
+///
 #[get("/auth/oauth/github/login")]
 async fn auth_github_login(
     app_state: web::Data<AppState>,
@@ -73,41 +73,11 @@ async fn auth_github_login(
         .finish())
 }
 
-/// 生成 GitHub 授权地址
-pub async fn get_github_authorization_url(
-    oauth_client: &BasicClient,
-    redirect_uri: &str,
-    state_jwt_secret: &str,
-) -> anyhow::Result<String> {
-    let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
-
-    let claims = StateClaims {
-        redirect_uri: redirect_uri.to_string(),
-        pkce_verifier: pkce_verifier.secret().to_string(),
-        exp: (chrono::Utc::now().timestamp() + 300) as usize,
-    };
-
-    let state_jwt = jsonwebtoken::encode(
-        &jsonwebtoken::Header::default(),
-        &claims,
-        &jsonwebtoken::EncodingKey::from_secret(state_jwt_secret.as_ref()),
-    )?;
-
-    let (auth_url, _) = oauth_client
-        .authorize_url(|| CsrfToken::new(state_jwt))
-        .add_scope(Scope::new("read:user".into()))
-        .add_scope(Scope::new("user:email".into()))
-        .set_pkce_challenge(pkce_challenge)
-        .url();
-
-    Ok(auth_url.to_string())
-}
-
-/**
-    GitHub 第三方登录的回调 API <br>
-    /auth/oauth/github/callback Get 请求 <br>
-    url请求参数:  code=xxxx&state=xxxx
-*/
+///
+///    GitHub 第三方登录的回调 API <br>
+///    /auth/oauth/github/callback Get 请求 <br>
+///    url请求参数:  code=xxxx&state=xxxx
+///
 #[get("/auth/oauth/github/callback")]
 async fn auth_github_callback(
     app_state: web::Data<AppState>,
@@ -180,6 +150,36 @@ async fn auth_github_callback(
         .finish())
 }
 
+/// 生成 GitHub 授权地址
+async fn get_github_authorization_url(
+    oauth_client: &BasicClient,
+    redirect_uri: &str,
+    state_jwt_secret: &str,
+) -> anyhow::Result<String> {
+    let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
+
+    let claims = StateClaims {
+        redirect_uri: redirect_uri.to_string(),
+        pkce_verifier: pkce_verifier.secret().to_string(),
+        exp: (chrono::Utc::now().timestamp() + 300) as usize,
+    };
+
+    let state_jwt = jsonwebtoken::encode(
+        &jsonwebtoken::Header::default(),
+        &claims,
+        &jsonwebtoken::EncodingKey::from_secret(state_jwt_secret.as_ref()),
+    )?;
+
+    let (auth_url, _) = oauth_client
+        .authorize_url(|| CsrfToken::new(state_jwt))
+        .add_scope(Scope::new("read:user".into()))
+        .add_scope(Scope::new("user:email".into()))
+        .set_pkce_challenge(pkce_challenge)
+        .url();
+
+    Ok(auth_url.to_string())
+}
+
 /// 换取github的access_token
 async fn exchange_github_access_token(
     oauth_client: &BasicClient,
@@ -197,7 +197,7 @@ async fn exchange_github_access_token(
 }
 
 /// 获取GitHub用户信息
-pub async fn get_github_user_info(access_token: String) -> anyhow::Result<GithubUser> {
+async fn get_github_user_info(access_token: String) -> anyhow::Result<GithubUser> {
     let mut user: GithubUser = HTTP
         .get("https://api.github.com/user")
         .bearer_auth(access_token.clone())
