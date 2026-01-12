@@ -128,6 +128,7 @@ mod tests {
     use super::*;
     use crate::task::{Task, TaskAction, TaskResult};
     use common::po::{NewsInfo, TaskItem};
+    use std::collections::HashSet;
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use tokio::sync::mpsc;
@@ -143,7 +144,7 @@ mod tests {
         async fn run(
             &self,
         ) -> Result<
-            common::api::ApiResponse<std::collections::HashMap<String, Vec<TaskItem>>>,
+            common::api::ApiResponse<std::collections::HashMap<String, HashSet<TaskItem>>>,
             String,
         > {
             use chrono::Local;
@@ -161,14 +162,13 @@ mod tests {
 
             // 构造一个假的结果数据
             let mut map = HashMap::new();
-            map.insert(
-                "mock".into(),
-                vec![TaskItem::News(NewsInfo {
-                    id: "baidu".to_string(),
-                    name: "百度".to_string(),
-                    items: vec![],
-                })],
-            );
+            let mut set = HashSet::new();
+            set.insert(TaskItem::News(NewsInfo {
+                id: "baidu".to_string(),
+                name: "百度".to_string(),
+                items: vec![],
+            }));
+            map.insert("mock".into(), set);
 
             Ok(ApiResponse {
                 status: "".to_string(),
