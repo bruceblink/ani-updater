@@ -57,19 +57,19 @@ async fn fetch_single_news_source(
         .header("Referer", url)
         .send()
         .await
-        .with_context(|| format!("请求新闻源: {} 失败", &api_url))?;
+        .with_context(|| format!("请求新闻源 {} 失败", &api_url))?;
 
     // 检查HTTP状态码
     if !response.status().is_success() {
-        anyhow::bail!("HTTP错误: {} - 状态码: {}", &api_url, response.status());
+        anyhow::bail!("请求 {} 错误 (状态码: {})", &api_url, response.status());
     }
     // 将响应解析成json
     let json_value: serde_json::Value = response
         .json()
         .await
-        .with_context(|| format!("解析JSON响应失败: {}", &api_url))?;
+        .with_context(|| format!("解析 {} 的JSON响应失败", &api_url))?;
 
-    from_value(json_value).with_context(|| format!("反序列化NewsItem失败: {}", &api_url))
+    from_value(json_value).with_context(|| format!("{} 的响应反序列化NewsItem失败", &api_url))
 }
 
 #[cfg(test)]
