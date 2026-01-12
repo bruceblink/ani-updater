@@ -17,6 +17,7 @@ use std::sync::Arc;
 pub struct TaskMeta {
     pub name: String,
     pub cmd: String,
+    pub url: String,
     pub arg: String,
     pub cron_expr: String,
     pub retry_times: u8,
@@ -83,6 +84,7 @@ pub fn build_tasks_from_meta(
         // 提前克隆需要的字段，避免闭包借用局部变量
         let name = meta.name.clone();
         let cmd = meta.cmd.clone();
+        let url = meta.url.clone();
         let arg = meta.arg.clone();
         let cron_expr = meta.cron_expr.clone();
         let retry_times = meta.retry_times;
@@ -90,6 +92,7 @@ pub fn build_tasks_from_meta(
         if let Some(cmd_fn) = cmd_map.get(&cmd) {
             // 找到命令：把 cmd_fn 和 arg 克隆到闭包里
             let cmd_fn = cmd_fn.clone();
+            let url_for_closure = url.clone();
             let arg_for_closure = arg.clone();
             let db_pool = db_pool.clone();
             // 构造 Task
@@ -97,18 +100,21 @@ pub fn build_tasks_from_meta(
                 &TaskMeta {
                     name: name.clone(),
                     cmd: cmd.clone(),
-                    arg: arg.clone(),
+                    url,
+                    arg,
                     cron_expr: cron_expr.clone(),
                     retry_times,
                 },
                 move || {
                     let cmd_fn = cmd_fn.clone();
+                    let urls = url_for_closure.clone();
                     let args = arg_for_closure.clone();
                     let name_for_log = name.clone(); // 如果闭包里要用 name 做日志
                     let db_pool = db_pool.clone();
                     async move {
                         // 调用命令函数
                         let input = CommandInput {
+                            urls: Some(urls),
                             args,
                             db: Option::from(db_pool), // 后续可传 Arc<PgPool>
                         };
@@ -128,6 +134,7 @@ pub fn build_tasks_from_meta(
                 &TaskMeta {
                     name: name.clone(),
                     cmd: cmd.clone(),
+                    url,
                     arg: arg.clone(),
                     cron_expr: cron_expr.clone(),
                     retry_times,

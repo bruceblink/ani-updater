@@ -22,6 +22,7 @@ use sqlx::PgPool;
 /// 通用命令输入参数，可以传任意 JSON 数据，也可传数据库连接
 #[derive(Clone)]
 pub struct CommandInput {
+    pub urls: Option<String>,
     pub args: String,
     pub db: Option<Arc<PgPool>>, // 可选数据库连接
 }
@@ -77,7 +78,10 @@ pub fn build_cmd_map() -> HashMap<String, CmdFn> {
 
     map.insert(
         "fetch_latest_news_data".to_string(),
-        Arc::new(|input: CommandInput| Box::pin(fetch_latest_news_data(input.args))),
+        Arc::new(|input: CommandInput| {
+            let urls = input.urls.unwrap_or("".to_string());
+            Box::pin(fetch_latest_news_data(urls, input.args))
+        }),
     );
 
     map.insert(

@@ -102,11 +102,13 @@ impl TaskManager {
             .iter()
             .map(|task| {
                 let cmd = task.params["cmd"].as_str().unwrap_or("").to_string();
+                let url = task.params["url"].as_str().unwrap_or("").to_string();
                 let arg = task.params["arg"].as_str().unwrap_or("").to_string();
 
                 TaskMeta {
                     name: task.name.clone(),
                     cmd,
+                    url,
                     arg,
                     cron_expr: task.cron.clone(),
                     retry_times: task.retry_times,

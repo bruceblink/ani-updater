@@ -8,7 +8,11 @@ use tokio::task::JoinSet;
 use tracing::{error, warn};
 
 /// 获取最新新闻的数据
-pub async fn fetch_latest_news_data(args: String) -> Result<ApiResponse<ItemResult>, String> {
+pub async fn fetch_latest_news_data(
+    api_urls: String,
+    args: String,
+) -> Result<ApiResponse<ItemResult>, String> {
+    let urls: Vec<&str> = api_urls.split(';').map(|s| s.trim()).collect();
     let sources: Vec<&str> = args.split(',').map(|s| s.trim()).collect();
     let mut result: ItemResult = HashMap::new();
     let client = reqwest::Client::new();
@@ -16,11 +20,14 @@ pub async fn fetch_latest_news_data(args: String) -> Result<ApiResponse<ItemResu
 
     let mut join_set = JoinSet::new();
 
-    // 添加所有任务到 JoinSet
-    for arg in sources {
-        let client = client.clone();
-        let arg = arg.to_string();
-        join_set.spawn(async move { fetch_single_news_source(&client, &arg).await });
+    for url in urls.clone() {
+        // 添加所有任务到 JoinSet
+        for arg in sources.clone() {
+            let client = client.clone();
+            let url = url.to_string();
+            let arg = arg.to_string();
+            join_set.spawn(async move { fetch_single_news_source(&client, &url, &arg).await });
+        }
     }
 
     // 收集所有结果
@@ -36,15 +43,19 @@ pub async fn fetch_latest_news_data(args: String) -> Result<ApiResponse<ItemResu
     Ok(ApiResponse::ok(result))
 }
 
-async fn fetch_single_news_source(client: &reqwest::Client, arg: &str) -> Result<NewsInfo> {
-    let url = format!("https://news.likanug.top/api/s?id={}", arg);
+async fn fetch_single_news_source(
+    client: &reqwest::Client,
+    url: &str,
+    arg: &str,
+) -> Result<NewsInfo> {
+    let api_url = format!("{url}/api/s?id={arg}");
 
     let response = client
-        .get(&url)
-        .header("Referer", "https://news.likanug.top/")
+        .get(&api_url)
+        .header("Referer", url)
         .send()
         .await
-        .with_context(|| format!("请求新闻源失败: {}", arg))?;
+        .with_context(|| format!("请求新闻源: {} 失败", &api_url))?;
 
     // 检查HTTP状态码
     if !response.status().is_success() {
@@ -64,9 +75,22 @@ mod test {
     use crate::spider::news::fetch_latest_news_data;
 
     #[tokio::test]
-    async fn test_fetch_douban_image() {
+    async fn test_fetch_latest_news() {
+        let urls = "https://news.likanug.top;https://latest-news-pink.vercel.app";
         let args = "v2ex-share,36kr,kuaishou,bilibili-hot-video,bilibili-ranking,36kr-quick,bilibili,bilibili-hot-search,sputniknewscn";
-        let result = fetch_latest_news_data(args.to_string()).await.unwrap();
+        let result = fetch_latest_news_data(urls.to_string(), args.to_string())
+            .await
+            .unwrap();
+        println!("{:?}", result.data)
+    }
+
+    #[tokio::test]
+    async fn test_fetch_latest_news_with_empty_url() {
+        let urls = "";
+        let args = "v2ex-share,36kr,kuaishou,bilibili-hot-video,bilibili-ranking,36kr-quick,bilibili,bilibili-hot-search,sputniknewscn";
+        let result = fetch_latest_news_data(urls.to_string(), args.to_string())
+            .await
+            .unwrap();
         println!("{:?}", result.data)
     }
 }
