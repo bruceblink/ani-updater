@@ -61,15 +61,15 @@ async fn fetch_single_news_source(
 
     // 检查HTTP状态码
     if !response.status().is_success() {
-        anyhow::bail!("HTTP错误: {} - 状态码: {}", arg, response.status());
+        anyhow::bail!("HTTP错误: {} - 状态码: {}", &api_url, response.status());
     }
     // 将响应解析成json
     let json_value: serde_json::Value = response
         .json()
         .await
-        .with_context(|| format!("解析JSON响应失败: {}", arg))?;
+        .with_context(|| format!("解析JSON响应失败: {}", &api_url))?;
 
-    from_value(json_value).with_context(|| format!("反序列化NewsItem失败: {}", arg))
+    from_value(json_value).with_context(|| format!("反序列化NewsItem失败: {}", &api_url))
 }
 
 #[cfg(test)]
