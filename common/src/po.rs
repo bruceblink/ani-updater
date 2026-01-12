@@ -99,17 +99,17 @@ pub struct VideoInfo {
     pub base: BaseVideo, // 继承 BaseVideo
     pub original_title: String,
     pub intro: String,
-    pub director: serde_json::Value,
-    pub screenwriter: Option<serde_json::Value>,
-    pub actors: Option<serde_json::Value>,
-    pub category: Option<serde_json::Value>, // 分类
-    pub genres: Option<serde_json::Value>,
-    pub production_country: Option<serde_json::Value>,
+    pub director: Value,
+    pub screenwriter: Option<Value>,
+    pub actors: Option<Value>,
+    pub category: Option<Value>, // 分类
+    pub genres: Option<Value>,
+    pub production_country: Option<Value>,
     pub language: Option<String>,
     pub release_year: Option<i32>,
-    pub release_date: Option<serde_json::Value>,
-    pub duration: serde_json::Value,
-    pub aka: Option<serde_json::Value>,
+    pub release_date: Option<Value>,
+    pub duration: Value,
+    pub aka: Option<Value>,
     pub imdb: Option<String>,
 }
 
@@ -214,7 +214,7 @@ pub struct ScheduledTasks {
     pub id: i64,
     pub name: String,
     pub cron: String,
-    pub params: serde_json::Value,
+    pub params: Value,
     pub is_enabled: bool,
     pub retry_times: i16,
     pub last_run: Option<chrono::DateTime<Utc>>,
