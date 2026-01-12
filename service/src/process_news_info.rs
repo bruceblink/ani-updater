@@ -3,6 +3,7 @@ use common::po::{HealthItem, ItemResult, TaskItem};
 use common::utils::date_utils::get_today_weekday;
 use serde_json::json;
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 pub async fn extract_news_item(api_url: String) -> anyhow::Result<ApiResponse<ItemResult>, String> {
     let mut result: ItemResult = HashMap::new();
@@ -29,11 +30,11 @@ pub async fn extract_news_item(api_url: String) -> anyhow::Result<ApiResponse<It
     }
     // 将响应解析成json
     let json_value: serde_json::Value = response.json().await.map_err(|e| e.to_string())?;
-
-    let all_items: Vec<TaskItem> = vec![TaskItem::ExtractNewsItem(HealthItem {
+    let mut all_items: HashSet<TaskItem> = HashSet::new();
+    all_items.insert(TaskItem::ExtractNewsItem(HealthItem {
         url: api_url.to_string(),
         result: json_value,
-    })];
+    }));
     result.insert(weekday, all_items);
     Ok(ApiResponse::ok(result))
 }
@@ -67,10 +68,11 @@ pub async fn extract_news_keywords(
     // 将响应解析成json
     let json_value: serde_json::Value = response.json().await.map_err(|e| e.to_string())?;
 
-    let all_items: Vec<TaskItem> = vec![TaskItem::ExtractNewsNewsKeywords(HealthItem {
+    let mut all_items: HashSet<TaskItem> = HashSet::new();
+    all_items.insert(TaskItem::ExtractNewsNewsKeywords(HealthItem {
         url: api_url.to_string(),
         result: json_value,
-    })];
+    }));
     result.insert(weekday, all_items);
     Ok(ApiResponse::ok(result))
 }
@@ -103,10 +105,11 @@ pub async fn extract_news_event(
     // 将响应解析成json
     let json_value: serde_json::Value = response.json().await.map_err(|e| e.to_string())?;
 
-    let all_items: Vec<TaskItem> = vec![TaskItem::ExtractNewsEvent(HealthItem {
+    let mut all_items: HashSet<TaskItem> = HashSet::new();
+    all_items.insert(TaskItem::ExtractNewsEvent(HealthItem {
         url: api_url.to_string(),
         result: json_value,
-    })];
+    }));
     result.insert(weekday, all_items);
     Ok(ApiResponse::ok(result))
 }
@@ -139,10 +142,11 @@ pub async fn merge_cross_day_news_events(
     // 将响应解析成json
     let json_value: serde_json::Value = response.json().await.map_err(|e| e.to_string())?;
 
-    let all_items: Vec<TaskItem> = vec![TaskItem::MergeNewsItem(HealthItem {
+    let mut all_items: HashSet<TaskItem> = HashSet::new();
+    all_items.insert(TaskItem::MergeNewsItem(HealthItem {
         url: api_url.to_string(),
         result: json_value,
-    })];
+    }));
     result.insert(weekday, all_items);
     Ok(ApiResponse::ok(result))
 }

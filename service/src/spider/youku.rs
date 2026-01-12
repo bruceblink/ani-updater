@@ -9,6 +9,7 @@ use reqwest::{Url, header};
 use scraper::{Html, Selector};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use tracing::{debug, info};
 
 /// 全局 HTTP 客户端复用
@@ -117,8 +118,8 @@ fn extract_initial_data(html: &str) -> Result<Value> {
 }
 
 /// 处理模块列表，提取 "每日更新" 项
-fn process_module_list(modules: &[Value]) -> Result<Vec<TaskItem>> {
-    let mut found = Vec::new();
+fn process_module_list(modules: &[Value]) -> Result<HashSet<TaskItem>> {
+    let mut found = HashSet::new();
     let mut seen = HashMap::new();
 
     let weekday = get_today_weekday().num_from_mon as usize;
@@ -144,7 +145,7 @@ fn process_module_list(modules: &[Value]) -> Result<Vec<TaskItem>> {
 
             if seen.insert(ani.title.clone(), ()).is_none() {
                 info!("识别到更新: {} {}", ani.title, ani.update_info);
-                found.push(TaskItem::Ani(ani));
+                found.insert(TaskItem::Ani(ani));
             }
         }
     }

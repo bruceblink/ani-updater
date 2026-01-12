@@ -5,7 +5,7 @@ use common::po::{AniItem, ItemResult, TaskItem};
 use common::utils::date_utils::{get_today_slash, get_today_weekday};
 use common::utils::{clean_text, extract_number};
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use tracing::{error, info};
 
 pub async fn fetch_iqiyi_image(url: String) -> Result<String, String> {
@@ -90,7 +90,7 @@ fn process_json_value(json_value: &Value) -> ItemResult {
 
     match today_data {
         Some(list) if !list.is_empty() => {
-            let items: Vec<TaskItem> = list
+            let items: HashSet<TaskItem> = list
                 .iter()
                 .filter_map(parse_item)
                 .inspect(|res| {
@@ -104,7 +104,7 @@ fn process_json_value(json_value: &Value) -> ItemResult {
         Some(_) => {
             // 空数组
             info!("今日没有更新");
-            result.insert(weekday_str, vec![]);
+            result.insert(weekday_str, HashSet::new());
         }
         None => {
             error!("未找到今日追番数据，当前星期索引: {}", current_weekday);

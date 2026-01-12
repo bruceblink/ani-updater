@@ -5,6 +5,7 @@ use common::utils::date_utils::{get_today_slash, get_today_weekday};
 use reqwest::Url;
 use scraper::{Html, Selector};
 use std::collections::HashMap;
+use std::collections::HashSet;
 use tracing::{debug, info};
 
 pub async fn fetch_mikanani_image(url: String) -> Result<String, String> {
@@ -63,7 +64,7 @@ pub async fn fetch_mikanani_ani_data(url: String) -> Result<ApiResponse<ItemResu
     // 今天的日期，比如 "2025/07/13"
     let today_date = get_today_slash();
     // 动漫aniitem的列表
-    let mut comics: Vec<TaskItem> = Vec::new();
+    let mut comics: HashSet<TaskItem> = HashSet::new();
     // 过滤出符合条件的 <li>
     for li in document.select(&li_sel) {
         // 必须有 <div class="num-node text-center">
@@ -87,7 +88,7 @@ pub async fn fetch_mikanani_ani_data(url: String) -> Result<ApiResponse<ItemResu
         // 构建 Ani 并加入结果
         if let Some(item) = build_mikanani_item(&base_url, &li) {
             info!("识别到更新：{} {}", item.title, item.update_info);
-            comics.push(TaskItem::Ani(item));
+            comics.insert(TaskItem::Ani(item));
         }
     }
     info!("成功提取到 {} 部今日更新的动漫", comics.len());

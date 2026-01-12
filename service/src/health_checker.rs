@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use common::api::ApiResponse;
 use common::po::{HealthItem, ItemResult, TaskItem};
 use common::utils::date_utils::get_today_weekday;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use tokio::task::JoinSet;
 use tracing::{error, warn};
 
@@ -24,10 +24,12 @@ pub async fn health_check(args: String) -> Result<ApiResponse<ItemResult>, Strin
     }
 
     // 收集所有结果
-    let mut all_items: Vec<TaskItem> = Vec::new();
+    let mut all_items: HashSet<TaskItem> = HashSet::new();
     while let Some(task_result) = join_set.join_next().await {
         match task_result {
-            Ok(Ok(item)) => all_items.push(TaskItem::Health(item)),
+            Ok(Ok(item)) => {
+                all_items.insert(TaskItem::Health(item));
+            }
             Ok(Err(e)) => warn!("获取检测的url失败: {}", e),
             Err(e) => error!("任务执行失败: {}", e),
         }

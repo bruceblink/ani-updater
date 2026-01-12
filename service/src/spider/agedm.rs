@@ -6,6 +6,7 @@ use common::utils::extract_number;
 use common::utils::http_client::http_client;
 use scraper::{Html, Selector};
 use std::collections::HashMap;
+use std::collections::HashSet;
 use tracing::{debug, info};
 
 pub async fn fetch_agedm_image(url: String) -> Result<String, String> {
@@ -84,7 +85,7 @@ pub async fn fetch_agedm_ani_data(url: String) -> Result<ApiResponse<ItemResult>
     // 今天的日期，比如 "2025/07/13"
     let today_date = get_today_slash();
     // 动漫aniitem的列表
-    let mut comics: Vec<TaskItem> = Vec::new();
+    let mut comics: HashSet<TaskItem> = HashSet::new();
     // 过滤出符合条件的 <div class="col g-2 position-relative">
     for col in today_box.select(&col_sel) {
         // 封面
@@ -131,7 +132,7 @@ pub async fn fetch_agedm_ani_data(url: String) -> Result<ApiResponse<ItemResult>
             .unwrap_or_default();
 
         info!("识别到更新：{} {}", title, update_info);
-        comics.push(TaskItem::Ani(AniItem {
+        comics.insert(TaskItem::Ani(AniItem {
             title,
             detail_url,
             update_time: today_date.clone(),

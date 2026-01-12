@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::FromRow;
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 #[derive(Debug, Clone, FromRow, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -150,9 +151,9 @@ pub struct PageData<T> {
     pub total_pages: u32,   // 总页数
 }
 
-pub type ItemResult = HashMap<String, Vec<TaskItem>>;
+pub type ItemResult = HashMap<String, HashSet<TaskItem>>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub enum TaskItem {
     Ani(AniItem),
     Video(VideoItem),
@@ -164,7 +165,7 @@ pub enum TaskItem {
     MergeNewsItem(HealthItem),
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, Hash, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct AniItem {
     pub title: String,
@@ -176,7 +177,7 @@ pub struct AniItem {
     pub platform: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, Hash, PartialEq)]
 pub struct BaseVideo {
     pub id: String,                    // id
     pub title: String,                 // 标题
@@ -191,7 +192,7 @@ pub struct BaseVideo {
 
 pub type VideoItem = BaseVideo;
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, Hash, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct NewsInfo {
     pub id: String,
@@ -200,7 +201,7 @@ pub struct NewsInfo {
 }
 
 /// 健康检测返回的结果集
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, Hash, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct HealthItem {
     pub url: String,

@@ -5,6 +5,7 @@ use common::utils::date_utils::{get_today_slash, get_today_weekday};
 use common::utils::{clean_text, extract_number};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use tracing::{error, info};
 
 pub async fn fetch_bilibili_image(url: String) -> Result<String, String> {
@@ -82,7 +83,7 @@ fn process_json_value(json_value: &Value) -> ItemResult {
 
     // 4. 处理剧集数据
     let weekday = get_today_weekday().name_cn.to_string();
-    let mut comics: Vec<TaskItem> = Vec::new();
+    let mut comics: HashSet<TaskItem> = HashSet::new();
 
     if let Some(eps) = today.get("episodes").and_then(Value::as_array) {
         for ep in eps
@@ -91,7 +92,7 @@ fn process_json_value(json_value: &Value) -> ItemResult {
         {
             let item = parse_item(ep);
             info!("识别到更新：{} {}", item.title, item.update_info);
-            comics.push(TaskItem::Ani(item));
+            comics.insert(TaskItem::Ani(item));
         }
     }
 
@@ -107,7 +108,7 @@ fn process_json_value(json_value: &Value) -> ItemResult {
 fn create_empty_result() -> ItemResult {
     let weekday = get_today_weekday().name_cn.to_string();
     let mut result = HashMap::new();
-    result.insert(weekday, Vec::new());
+    result.insert(weekday, HashSet::new());
     result
 }
 /// 根据单个 episode JSON 构建 AniItem

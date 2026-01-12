@@ -4,6 +4,7 @@ use common::po::{ItemResult, TaskItem, VideoItem};
 use common::utils::date_utils::get_today_weekday;
 use serde_json::{Value, from_value};
 use std::collections::HashMap;
+use std::collections::HashSet;
 use tracing::{error, info, warn};
 
 pub async fn fetch_douban_image(url: String) -> Result<String, String> {
@@ -60,12 +61,12 @@ fn process_json_value(json_value: &Value) -> ItemResult {
     };
     info!("成功获取电影数据");
 
-    let mut videos: Vec<TaskItem> = Vec::new();
+    let mut videos: HashSet<TaskItem> = HashSet::new();
 
     for item in items {
         match from_value::<VideoItem>(item.clone()) {
             Ok(it) => {
-                videos.push(TaskItem::Video(it.clone()));
+                videos.insert(TaskItem::Video(it.clone()));
                 info!("识别到更新：{} {:?}", it.title, it.card_subtitle);
             }
             Err(e) => warn!("解析失败: {e}"),

@@ -9,6 +9,7 @@ use reqwest::Client;
 use scraper::{Html, Selector};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::error::Error;
 use tracing::{debug, info, warn};
 
@@ -86,10 +87,10 @@ pub async fn fetch_qq_ani_data(url: String) -> Result<ApiResponse<ItemResult>, S
         .unwrap_or_default();
 
     // 4. 构建结果并记录日志
-    let mut comics: Vec<TaskItem> = Vec::new();
+    let mut comics: HashSet<TaskItem> = HashSet::new();
     for item in today_videos.iter().filter_map(build_aniitem) {
         info!("识别到更新：{}, {}", item.title, item.update_info);
-        comics.push(TaskItem::Ani(item));
+        comics.insert(TaskItem::Ani(item));
     }
 
     // 5. 存储并返回
