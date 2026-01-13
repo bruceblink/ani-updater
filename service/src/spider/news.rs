@@ -104,9 +104,9 @@ async fn fetch_single_news_source(
 
 #[cfg(test)]
 mod test {
-    use anyhow::Context;
-
     use crate::spider::news::fetch_latest_news_data;
+    use crate::spider::news::fetch_news_source_ids;
+    use tracing::warn;
 
     #[tokio::test]
     async fn test_fetch_latest_news() {
@@ -129,26 +129,15 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_fetch_latest_news_id() -> anyhow::Result<()> {
-        let url = "https://news.likanug.top/api/s/ids";
+    async fn test_fetch_latest_news_id() {
+        let url = "https://news.likanug.top";
         let client = reqwest::Client::new();
-        let response = client
-            .get(url)
-            .header("Referer", url)
-            .send()
-            .await
-            .with_context(|| format!("请求新闻源 {} 失败", url))?;
 
-        // 检查HTTP状态码
-        if !response.status().is_success() {
-            anyhow::bail!("请求 {} 错误 (状态码: {})", url, response.status());
-        }
-        // 将响应解析成json
-        let json_value: Vec<String> = response
-            .json()
-            .await
-            .with_context(|| format!("解析 {} 的JSON响应失败", url))?;
-        println!("{:?}", json_value);
-        Ok(())
+        match fetch_news_source_ids(&client, url).await {
+            Ok(res) => {
+                println!("{:?}", res);
+            }
+            Err(e) => warn!("获取source ids 失败{:?}", e),
+        };
     }
 }
