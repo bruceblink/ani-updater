@@ -20,9 +20,16 @@ pub async fn fetch_latest_news_data(
     let mut join_set = JoinSet::new();
 
     for url in urls.clone() {
-        let source_ids = fetch_news_source_ids(&client, &url).await;
+        // 获取 source IDs
+        let source_ids = match fetch_news_source_ids(&client, &url).await {
+            Ok(ids) => ids,
+            Err(e) => {
+                warn!("获取 {} 的 source_ids 失败: {} 使用默认配置", url, e);
+                sources.clone()
+            }
+        };
         // 添加所有任务到 JoinSet
-        for arg in source_ids.unwrap_or(sources.clone()) {
+        for arg in source_ids {
             let client = client.clone();
             let url = url.clone();
             let arg = arg.clone();
