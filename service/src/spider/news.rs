@@ -2,7 +2,6 @@ use anyhow::{Context, Result};
 use common::api::ApiResponse;
 use common::po::{ItemResult, NewsInfo, TaskItem};
 use common::utils::date_utils::get_today_weekday;
-use serde_json::from_value;
 use std::collections::{HashMap, HashSet};
 use tokio::task::JoinSet;
 use tracing::{error, warn};
@@ -12,8 +11,8 @@ pub async fn fetch_latest_news_data(
     api_urls: String,
     args: String,
 ) -> Result<ApiResponse<ItemResult>, String> {
-    let urls: Vec<&str> = api_urls.split(';').map(|s| s.trim()).collect();
-    let sources: Vec<&str> = args.split(',').map(|s| s.trim()).collect();
+    let urls: Vec<String> = api_urls.split(';').map(|s| s.trim().to_string()).collect();
+    let sources: Vec<String> = args.split(',').map(|s| s.trim().to_string()).collect();
     let mut result: ItemResult = HashMap::new();
     let client = reqwest::Client::new();
     let weekday = get_today_weekday().name_cn.to_string();
@@ -21,11 +20,12 @@ pub async fn fetch_latest_news_data(
     let mut join_set = JoinSet::new();
 
     for url in urls.clone() {
+        let source_ids = fetch_news_source_ids(&client, &url).await;
         // 添加所有任务到 JoinSet
-        for arg in sources.clone() {
+        for arg in source_ids.unwrap_or(sources.clone()) {
             let client = client.clone();
-            let url = url.to_string();
-            let arg = arg.to_string();
+            let url = url.clone();
+            let arg = arg.clone();
             join_set.spawn(async move { fetch_single_news_source(&client, &url, &arg).await });
         }
     }
@@ -43,6 +43,29 @@ pub async fn fetch_latest_news_data(
     }
     result.insert(weekday, all_news);
     Ok(ApiResponse::ok(result))
+}
+
+async fn fetch_news_source_ids(client: &reqwest::Client, url: &str) -> Result<Vec<String>> {
+    let api_url = format!("{url}/api/s/ids");
+
+    let response = client
+        .get(&api_url)
+        .header("Referer", url)
+        .send()
+        .await
+        .with_context(|| format!("请求新闻源 {} 失败", &api_url))?;
+
+    // 检查HTTP状态码
+    if !response.status().is_success() {
+        anyhow::bail!("请求 {} 错误 (状态码: {})", &api_url, response.status());
+    }
+    // 将响应解析成json
+    let json_value: Vec<String> = response
+        .json()
+        .await
+        .with_context(|| format!("解析 {} 的JSON响应失败", &api_url))?;
+
+    Ok(json_value)
 }
 
 async fn fetch_single_news_source(
@@ -64,16 +87,18 @@ async fn fetch_single_news_source(
         anyhow::bail!("请求 {} 错误 (状态码: {})", &api_url, response.status());
     }
     // 将响应解析成json
-    let json_value: serde_json::Value = response
+    let news_info: NewsInfo = response
         .json()
         .await
         .with_context(|| format!("解析 {} 的JSON响应失败", &api_url))?;
 
-    from_value(json_value).with_context(|| format!("{} 的响应反序列化NewsItem失败", &api_url))
+    Ok(news_info)
 }
 
 #[cfg(test)]
 mod test {
+    use anyhow::Context;
+
     use crate::spider::news::fetch_latest_news_data;
 
     #[tokio::test]
@@ -94,5 +119,29 @@ mod test {
             .await
             .unwrap();
         println!("{:?}", result.data)
+    }
+
+    #[tokio::test]
+    async fn test_fetch_latest_news_id() -> anyhow::Result<()> {
+        let url = "https://news.likanug.top/api/s/ids";
+        let client = reqwest::Client::new();
+        let response = client
+            .get(url)
+            .header("Referer", url)
+            .send()
+            .await
+            .with_context(|| format!("请求新闻源 {} 失败", url))?;
+
+        // 检查HTTP状态码
+        if !response.status().is_success() {
+            anyhow::bail!("请求 {} 错误 (状态码: {})", url, response.status());
+        }
+        // 将响应解析成json
+        let json_value: Vec<String> = response
+            .json()
+            .await
+            .with_context(|| format!("解析 {} 的JSON响应失败", url))?;
+        println!("{:?}", json_value);
+        Ok(())
     }
 }
