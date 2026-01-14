@@ -46,7 +46,7 @@ async fn sync_me_get(
             r#"
             SELECT us.id, us.user_id, us.setting_type, us.data, us.updated_at
             FROM user_setting us
-            WHERE us.id = $1 AND us.setting_type = $2;
+            WHERE us.user_id = $1 AND us.setting_type = $2;
         "#,
         )
         .bind(claims.uid)
