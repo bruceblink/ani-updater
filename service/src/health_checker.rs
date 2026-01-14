@@ -38,26 +38,26 @@ pub async fn health_check(args: String) -> Result<ApiResponse<ItemResult>, Strin
     Ok(ApiResponse::ok(result))
 }
 
-async fn health_check_single(client: &reqwest::Client, arg: &str) -> Result<HealthItem> {
+async fn health_check_single(client: &reqwest::Client, url: &str) -> Result<HealthItem> {
     let response = client
-        .get(arg)
-        .header("Referer", arg)
+        .get(url)
+        .header("Referer", url)
         .send()
         .await
-        .with_context(|| format!("请求待检测url {arg} 失败"))?;
+        .with_context(|| format!("请求待检测url {url} 失败"))?;
 
     // 检查HTTP状态码
     if !response.status().is_success() {
-        anyhow::bail!("请求 {arg} 错误- 状态码: {}", response.status());
+        anyhow::bail!("请求 {url} 错误- 状态码: {}", response.status());
     }
     // 将响应解析成json
     let json_value: serde_json::Value = response
         .json()
         .await
-        .with_context(|| format!("解析 {arg} 的JSON响应失败: "))?;
+        .with_context(|| format!("解析 {url} 的JSON响应失败"))?;
 
     Ok(HealthItem {
-        url: arg.to_string(),
+        url: url.to_string(),
         result: json_value,
     })
 }
