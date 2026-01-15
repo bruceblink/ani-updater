@@ -2,7 +2,7 @@ use crate::common::AppState;
 use actix_web::{HttpRequest, get, post, web};
 use common::po::ApiResult;
 
-/// POST /oauth/github/authorize <br>
+/// POST /v1/oauth/github/authorize <br>
 /// 用途 获取 GitHub 授权 URL
 ///
 #[post("/oauth/github/authorize")]
