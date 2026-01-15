@@ -10,3 +10,4 @@ pub use admin::*;
 pub use api::*;
 pub use auth::*;
 pub use login::*;
+pub use v1::*;

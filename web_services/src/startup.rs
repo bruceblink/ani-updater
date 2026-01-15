@@ -1,5 +1,10 @@
 use crate::common::AppState;
 use crate::middleware::{AuthMiddleware, CharsetMiddleware};
+use crate::routes::auth_logout;
+use crate::routes::auth_me;
+use crate::routes::auth_session;
+use crate::routes::auth_token;
+use crate::routes::github_authorize;
 use crate::routes::register::register;
 use crate::routes::{auth_github_callback, auth_github_login, auth_token_refresh};
 use crate::routes::{get_ani, get_anis};
@@ -114,6 +119,16 @@ async fn create_server(
                     .service(scheduled_tasks_get)
                     .route("/anis", web::get().to(get_anis))
                     .route("/anis/{id}", web::get().to(get_ani)),
+            )
+            .service(
+                web::scope("/api/v1")
+                    .wrap(AuthMiddleware)
+                    .service(auth_token)
+                    .service(auth_session)
+                    .service(auth_logout)
+                    .service(auth_me)
+                    .service(github_authorize)
+                    .service(auth_github_callback),
             )
             // 管理员路由
             .service(
