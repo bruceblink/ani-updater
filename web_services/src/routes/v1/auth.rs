@@ -13,21 +13,21 @@ async fn auth_session(_req: HttpRequest, _app_state: web::Data<AppState>) -> Api
 /// POST /v1/auth/logout <br>
 /// 用途: 撤销当前 session <br>
 /// 行为: 吊销 refresh_token, 清空cookie
-#[post("/v1/auth/logout")]
+#[post("/auth/logout")]
 async fn auth_logout(_req: HttpRequest, _app_state: web::Data<AppState>) -> ApiResult {
     todo!()
 }
 
 /// POST /v1/auth/token
 /// 用途: token签发的统一入口
-#[post("/v1/auth/token")]
+#[post("/auth/token")]
 async fn auth_token(_req: HttpRequest, _app_state: web::Data<AppState>) -> ApiResult {
     todo!()
 }
 
 /// GET /v1/auth/me
 /// 用途: 用于返回用户信息
-#[get("/v1/auth/me")]
+#[get("/auth/me")]
 async fn auth_me(_req: HttpRequest, _app_state: web::Data<AppState>) -> ApiResult {
     todo!()
 }
