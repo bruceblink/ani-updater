@@ -10,7 +10,7 @@ use oauth2::{
     AuthorizationCode, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, Scope, TokenResponse,
 };
 use once_cell::sync::Lazy;
-use reqwest::Client;
+use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
 use service::register_service::github_user_register;
 use std::collections::HashMap;
@@ -46,19 +46,13 @@ async fn auth_github_login(
     // 1. 校验 redirect_uri
     let redirect_uri = query
         .get("redirect_uri")
-        .map(|s| s.trim())
-        .filter(|s| !s.is_empty())
-        /*        .filter(|uri| {
-            ALLOWED_REDIRECT_URIS
-                .iter()
-                .any(|allowed| uri.starts_with(allowed))
-        })*/
-        .ok_or_else(|| ApiError::BadRequest("Invalid redirect_uri".into()))?;
+        .ok_or_else(|| ApiError::BadRequest("Invalid redirect_uri".into()))
+        .and_then(|uri| validate_redirect_uri(uri))?;
 
     // 2. 生成 GitHub 授权地址
     let auth_url = get_github_authorization_url(
         &app_state.oauth_client,
-        redirect_uri,
+        &redirect_uri,
         &app_state.oauth_config.jwt_secret,
     )
     .await
@@ -106,6 +100,9 @@ async fn auth_github_callback(
     )
     .map_err(|_| ApiError::Unauthorized("Invalid state".into()))?;
 
+    let redirect_uri = validate_redirect_uri(&token_data.claims.redirect_uri)
+        .map_err(|_| ApiError::Unauthorized("Invalid redirect_uri".into()))?;
+
     let pkce_verifier = PkceCodeVerifier::new(token_data.claims.pkce_verifier);
     // 换取GitHub access_token
     let github_access_token =
@@ -144,10 +141,34 @@ async fn auth_github_callback(
         .finish();
 
     Ok(HttpResponse::Found()
-        .append_header(("Location", token_data.claims.redirect_uri))
+        .append_header(("Location", redirect_uri))
         .cookie(access_cookie)
         .cookie(refresh_cookie)
         .finish())
+}
+
+fn validate_redirect_uri(input: &str) -> Result<String, ApiError> {
+    let redirect_uri = input.trim();
+    if redirect_uri.is_empty() {
+        return Err(ApiError::BadRequest("Invalid redirect_uri".into()));
+    }
+
+    let redirect_url = Url::parse(redirect_uri)
+        .map_err(|_| ApiError::BadRequest("Invalid redirect_uri".into()))?;
+
+    let is_allowed = ALLOWED_REDIRECT_URIS.iter().any(|allowed| {
+        Url::parse(allowed).ok().is_some_and(|allowed_url| {
+            redirect_url.scheme() == allowed_url.scheme()
+                && redirect_url.host_str() == allowed_url.host_str()
+                && redirect_url.port_or_known_default() == allowed_url.port_or_known_default()
+        })
+    });
+
+    if !is_allowed {
+        return Err(ApiError::BadRequest("Invalid redirect_uri".into()));
+    }
+
+    Ok(redirect_url.into())
 }
 
 /// 生成 GitHub 授权地址
