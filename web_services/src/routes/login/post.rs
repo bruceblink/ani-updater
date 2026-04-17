@@ -22,11 +22,12 @@ async fn logout(app_state: web::Data<AppState>, req: HttpRequest) -> impl Respon
     }
 
     // 2️⃣ 清空 access_token 和 refresh_token cookie
+    let is_prod = app_state.configuration.is_production;
     let expired_cookie = |name: String| {
         Cookie::build(name, "")
             .path("/")
             .http_only(true)
-            .secure(true)
+            .secure(is_prod)
             .same_site(SameSite::None)
             .expires(time::OffsetDateTime::now_utc() - time::Duration::seconds(1))
             .finish()

@@ -155,7 +155,10 @@ async fn auth_token_refresh(req: HttpRequest, app_state: web::Data<AppState>) ->
     .await
     .unwrap_or_default();
 
-    tx.commit().await.ok();
+    tx.commit().await.map_err(|e| {
+        tracing::error!("commit tx failed: {e}");
+        ApiError::Internal("服务器错误".into())
+    })?;
 
     // 5️⃣ 生成 access_token
     let uid = user
@@ -180,16 +183,17 @@ async fn auth_token_refresh(req: HttpRequest, app_state: web::Data<AppState>) ->
         .map_err(|_| ApiError::Internal("access token 生成失败".into()))?;
 
     // 6️⃣ 写入 Cookie
+    let is_prod = app_state.configuration.is_production;
     let access_cookie = Cookie::build(ACCESS_TOKEN, access_token.token.clone())
         .http_only(true)
-        .secure(true)
+        .secure(is_prod)
         .same_site(actix_web::cookie::SameSite::None)
         .path("/")
         .finish();
 
     let refresh_cookie = Cookie::build(REFRESH_TOKEN, new_refresh_token.token)
         .http_only(true)
-        .secure(true)
+        .secure(is_prod)
         .same_site(actix_web::cookie::SameSite::None)
         .path("/")
         .finish();
