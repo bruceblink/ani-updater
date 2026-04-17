@@ -6,7 +6,7 @@ use crate::routes::{get_ani, get_anis};
 use crate::routes::{
     get_sensor_history, logout, news_get, proxy_image, scheduled_tasks_get, sse_sensor, task_reload,
 };
-use crate::routes::{login, me, sync_me_get, sync_me_post, sync_task_source};
+use crate::routes::{me, sync_me_get, sync_me_post, sync_task_source};
 use actix_web::dev::Server;
 use actix_web::{App, HttpServer, web};
 use anyhow::{Context, Result};
@@ -100,7 +100,6 @@ async fn create_server(
             .service(get_sensor_history)
             .service(register)
             .service(auth_token_refresh)
-            .route("/login", web::post().to(login))
             // 需要认证的 API 路由
             .service(
                 web::scope("/api")
