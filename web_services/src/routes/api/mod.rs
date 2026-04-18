@@ -12,5 +12,4 @@ pub use me::*;
 pub use news::*;
 pub use proxy::*;
 pub use scheduled_tasks::*;
-pub use sse::*;
 pub use sync::*;
