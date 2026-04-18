@@ -128,3 +128,60 @@ pub struct ToggleScheduledTaskDTO {
 fn default_retry_times() -> u8 {
     3
 }
+
+/// 收藏番剧的请求体
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateAniCollectDTO {
+    pub ani_item_id: i64,
+    pub ani_title: String,
+}
+
+/// 标记番剧观看状态的请求体
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WatchedAniCollectDTO {
+    pub is_watched: bool,
+}
+
+/// 番剧收藏 Response DTO
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AniCollectDTO {
+    pub id: i64,
+    pub ani_item_id: i64,
+    pub ani_title: String,
+    pub collect_time: chrono::DateTime<chrono::Utc>,
+    pub is_watched: bool,
+}
+
+/// 新闻条目 Response DTO
+#[derive(Debug, serde::Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct NewsItemResponseDTO {
+    pub id: i64,
+    pub item_id: String,
+    pub title: String,
+    pub url: String,
+    pub source: Option<String>,
+    pub published_at: chrono::NaiveDate,
+    pub cluster_id: Option<i64>,
+    pub extracted: bool,
+    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// 新闻热点事件 Response DTO
+#[derive(Debug, serde::Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct NewsEventDTO {
+    pub id: i64,
+    pub event_date: chrono::NaiveDate,
+    pub cluster_id: i64,
+    pub title: Option<String>,
+    pub summary: Option<String>,
+    pub news_count: i32,
+    pub score: Option<f32>,
+    pub status: i16,
+    pub parent_event_id: Option<i64>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}

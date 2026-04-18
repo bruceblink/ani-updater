@@ -25,3 +25,29 @@ pub struct TaskFilter {
     pub cmd: Option<String>,
     pub is_enabled: Option<bool>,
 }
+
+/// 定义番剧收藏的查询参数结构
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AniCollectFilter {
+    pub ani_title: Option<String>,
+    pub is_watched: Option<bool>,
+}
+
+/// 定义新闻条目的查询参数结构
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NewsItemFilter {
+    pub source: Option<String>,
+    pub published_at: Option<String>,
+    pub cluster_id: Option<i64>,
+    pub extracted: Option<bool>,
+}
+
+/// 定义新闻热点事件的查询参数结构
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NewsEventFilter {
+    pub event_date: Option<String>,
+    pub status: Option<i16>,
+}
