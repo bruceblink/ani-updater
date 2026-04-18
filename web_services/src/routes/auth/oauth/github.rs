@@ -17,12 +17,8 @@ use tracing::error;
 
 static HTTP: Lazy<Client> = Lazy::new(Client::new);
 
-static ALLOWED_REDIRECT_URIS: Lazy<Vec<&'static str>> = Lazy::new(|| {
-    vec![
-        "http://localhost:5173",
-        "http://localhost:3039",
-    ]
-});
+static ALLOWED_REDIRECT_URIS: Lazy<Vec<&'static str>> =
+    Lazy::new(|| vec!["http://localhost:5173", "http://localhost:3039"]);
 
 #[derive(Debug, Serialize, Deserialize)]
 struct StateClaims {
