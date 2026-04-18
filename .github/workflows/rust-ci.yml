@@ -144,6 +144,9 @@ jobs:
             | grep -q 1 || \
           PGPASSWORD="password" psql -U "postgres" -h "localhost" \
             -c "CREATE DATABASE ${APP_DB_NAME} OWNER ${APP_USER};"
+          # PostgreSQL 15+ 默认移除了 public schema 的写权限，需显式授予
+          PGPASSWORD="password" psql -U "postgres" -h "localhost" -d "${APP_DB_NAME}" \
+            -c "GRANT ALL ON SCHEMA public TO ${APP_USER};"
 
       # 7️⃣.2 安装 vector 扩展 (Superuser)
       - name: Install vector Extension
