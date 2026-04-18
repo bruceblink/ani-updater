@@ -3,7 +3,7 @@
 DROP TABLE IF EXISTS news_keywords;
 DROP TABLE IF EXISTS news_item;
 -- 更新 news_info 中数据的提取状态
-UPDATE newsletter.public.news_info set extracted=false;
+UPDATE public.news_info set extracted=false;
 
 
 -- 重新创建表
