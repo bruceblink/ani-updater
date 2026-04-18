@@ -2,7 +2,9 @@ use actix_web::web;
 use chrono::Utc;
 use common::TaskFilter;
 use common::api::ApiError;
-use common::dto::{CreateScheduledTaskDTO, ScheduledTasksDTO, ToggleScheduledTaskDTO, UpdateScheduledTaskDTO};
+use common::dto::{
+    CreateScheduledTaskDTO, ScheduledTasksDTO, ToggleScheduledTaskDTO, UpdateScheduledTaskDTO,
+};
 use common::po::{PageData, QueryPage, ScheduledTasks};
 use sqlx::{FromRow, PgPool, Postgres, QueryBuilder};
 
@@ -268,16 +270,15 @@ pub async fn toggle_scheduled_task(
 
 /// 删除定时任务
 pub async fn delete_scheduled_task(id: i64, db_pool: &PgPool) -> anyhow::Result<()> {
-    let rows_affected =
-        sqlx::query(r#"DELETE FROM scheduled_tasks WHERE id = $1"#)
-            .bind(id)
-            .execute(db_pool)
-            .await
-            .map_err(|e| {
-                tracing::error!("删除定时任务 {id} 失败: {e:?}");
-                anyhow::anyhow!("删除定时任务失败")
-            })?
-            .rows_affected();
+    let rows_affected = sqlx::query(r#"DELETE FROM scheduled_tasks WHERE id = $1"#)
+        .bind(id)
+        .execute(db_pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("删除定时任务 {id} 失败: {e:?}");
+            anyhow::anyhow!("删除定时任务失败")
+        })?
+        .rows_affected();
 
     if rows_affected == 0 {
         return Err(anyhow::anyhow!("任务不存在"));
