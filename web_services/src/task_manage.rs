@@ -2,9 +2,7 @@ use actix_web::web;
 use common::TaskFilter;
 use common::po::{ItemResult, QueryPage, TaskItem};
 use common::utils::date_utils::get_today_weekday;
-use infra::{
-    list_all_scheduled_tasks_by_page, upsert_ani_info, upsert_news_info, upsert_video_info,
-};
+use infra::{list_all_scheduled_tasks_by_page, upsert_news_info};
 use service::timer_task_command::{CmdFn, build_cmd_map};
 use sqlx::PgPool;
 use std::collections::HashMap;
@@ -194,12 +192,6 @@ pub async fn run_task_service(item_result: ItemResult, pool: Arc<PgPool>) -> any
 
 async fn handle_item(item: &TaskItem, pool: &PgPool) -> anyhow::Result<()> {
     match item {
-        TaskItem::Ani(ani) => {
-            upsert_ani_info(ani, pool).await?;
-        }
-        TaskItem::Video(video) => {
-            upsert_video_info(video, pool).await?;
-        }
         TaskItem::News(news) => {
             upsert_news_info(news, pool).await?;
         }

@@ -5,42 +5,8 @@ use chrono_tz::Asia::Shanghai;
 use common::AniFilter;
 use common::api::ApiError;
 use common::dto::AniInfoDto;
-use common::po::{AniInfo, AniItem, PageData, QueryPage};
+use common::po::{AniInfo, PageData, QueryPage};
 use sqlx::{FromRow, PgPool, Postgres, QueryBuilder};
-
-/// 动漫信息插入新记录
-pub async fn upsert_ani_info(item: &AniItem, db_pool: &PgPool) -> Result<()> {
-    let _ = sqlx::query(
-        r#"
-        INSERT INTO ani_info (
-            title,
-            update_count,
-            update_info,
-            image_url,
-            detail_url,
-            platform
-        ) VALUES ($1, $2, $3, $4, $5, $6)
-        ON CONFLICT (title, platform, update_count) DO UPDATE SET
-            update_info = EXCLUDED.update_info,
-            image_url = EXCLUDED.image_url,
-            detail_url = EXCLUDED.detail_url
-        "#,
-    )
-    .bind(&item.title)
-    .bind(&item.update_count)
-    .bind(&item.update_info)
-    .bind(&item.image_url)
-    .bind(&item.detail_url)
-    .bind(&item.platform)
-    .execute(db_pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("插入或更新 ani_info {:?} 失败: {}", item, e);
-        anyhow::anyhow!(e)
-    })?;
-
-    Ok(())
-}
 
 /// 根据 id 查询单条
 pub async fn get_ani_info_by_id(id: i64, db_pool: &PgPool) -> Result<Option<AniInfoDto>> {

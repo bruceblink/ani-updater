@@ -93,26 +93,6 @@ pub struct UserInfo {
     pub failed_login_attempts: i64,
 }
 
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct VideoInfo {
-    #[serde(flatten)]
-    pub base: BaseVideo, // 继承 BaseVideo
-    pub original_title: String,
-    pub intro: String,
-    pub director: Value,
-    pub screenwriter: Option<Value>,
-    pub actors: Option<Value>,
-    pub category: Option<Value>, // 分类
-    pub genres: Option<Value>,
-    pub production_country: Option<Value>,
-    pub language: Option<String>,
-    pub release_year: Option<i32>,
-    pub release_date: Option<Value>,
-    pub duration: Value,
-    pub aka: Option<Value>,
-    pub imdb: Option<String>,
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Rating {
     pub value: f64,               // 分数值
@@ -155,8 +135,6 @@ pub type ItemResult = HashMap<String, HashSet<TaskItem>>;
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub enum TaskItem {
-    Ani(AniItem),
-    Video(VideoItem),
     News(NewsInfo),
     Health(HealthItem),
     ExtractNewsItem(HealthItem),
@@ -164,33 +142,6 @@ pub enum TaskItem {
     ExtractNewsEvent(HealthItem),
     MergeNewsItem(HealthItem),
 }
-
-#[derive(Debug, Clone, Deserialize, Serialize, Eq, Hash, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct AniItem {
-    pub title: String,
-    pub update_count: String,
-    pub update_info: String,
-    pub image_url: String,
-    pub detail_url: String,
-    pub update_time: String,
-    pub platform: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, Hash, PartialEq)]
-pub struct BaseVideo {
-    pub id: String,                    // id
-    pub title: String,                 // 标题
-    pub rating: Option<Value>,         // 评分
-    pub pic: Option<Value>,            // 图片
-    pub is_new: Option<bool>,          // 是否新上映
-    pub uri: String,                   // 豆瓣地址
-    pub episodes_info: Option<String>, // 更新集数信息
-    pub card_subtitle: String,         // 副标题
-    pub r#type: String,                // 类型 tv/movie/等   type 是关键字，需加 r#
-}
-
-pub type VideoItem = BaseVideo;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, Hash, PartialEq)]
 #[serde(rename_all = "camelCase")]
