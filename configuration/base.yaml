@@ -6,7 +6,7 @@ database:
   port: 5432
   username: "postgres"
   password: "password"
-  database_name: "newsletter"
+  database_name: "agora"
   require_ssl: false
   max_connections: 10   # 数据库连接池最大连接数
 email_client:
