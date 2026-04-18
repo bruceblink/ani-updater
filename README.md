@@ -1,11 +1,11 @@
-# ani-updater
+# agora
 
 提供多源新闻数据聚合的Web服务。
 
 ## 目录结构
 
 ```
-ani-updater/
+agora/
 ├── common/           # 公共工具库
 ├── configuration/    # 配置文件
 ├── docker/           # Docker 相关文件
@@ -51,13 +51,13 @@ sh scripts/init_db.sh
 
 ### 4. 构建与运行
 
-目前可以使用 [ani-updater-frontend](https://github.com/bruceblink/ani-updater-frontend)作为前端项目用于测试使用
+目前可以使用 [agora-frontend](https://github.com/bruceblink/agora-frontend)作为前端项目用于测试使用
 
 #### 方式一：本地构建
 
 ```bash
 # 启动数据库
-docker-compose -f docker/docker-compose.yml -p ani-updater up -d postgresql
+docker-compose -f docker/docker-compose.yml -p agora up -d postgresql
 # 构建所有子项目
 cargo build --workspace
 # 运行订阅服务
@@ -69,7 +69,7 @@ cargo run -p
 
 ```bash
 # 启动数据库与应用服务
-docker-compose -f docker/docker-compose.yml -p ani-updater up -d
+docker-compose -f docker/docker-compose.yml -p agora up -d
 ```
 使用docker-compose启动时需要在docker-compose.yml中配置相关的环境变量,具体的环境变量配置见[github_oauth2](docs/github_oauth2.md)
 

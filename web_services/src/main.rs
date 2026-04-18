@@ -10,7 +10,7 @@ use web_services::task_manage::initialize_task_manager;
 #[tokio::main]
 async fn main() -> Result<()> {
     // 初始化日志组件
-    let subscriber = get_subscriber("ani-updater".into(), "info".into(), std::io::stdout);
+    let subscriber = get_subscriber("agora".into(), "info".into(), std::io::stdout);
     init_subscriber(subscriber);
     // 读取配置文件
     let configuration = get_configuration(Some(PathBuf::from("./configuration")))

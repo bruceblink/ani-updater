@@ -1,6 +1,6 @@
-# 创建一个ani-updater的桥接网络
+# 创建一个agora的桥接网络
 networks:
-  ani-updater:
+  agora:
     driver: bridge
 
 services:
@@ -15,7 +15,7 @@ services:
       TZ: Asia/Shanghai
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: newsletter
+      POSTGRES_DB: agora
       # 指定数据目录（可选，容器默认也是 /var/lib/postgresql/data）
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
@@ -35,7 +35,7 @@ services:
       "-c", "config_file=/etc/postgresql/postgresql.conf"
     ]
     networks:
-      - ani-updater
+      - agora
 
 #  redis:
 #    image: redis:7.2.3
@@ -51,7 +51,7 @@ services:
 #      - ./redis/logs/:/logs/
 #    command: redis-server /usr/local/redis/config/redis.conf --appendonly yes --requirepass 123456
 #    networks:
-#      - ani-updater  # 加入 ani-updater 网络
+#      - agora  # 加入 agora 网络
   web_services:
     build:
       context: ../          # Dockerfile 相对于 docker-compose.yml 的路径
@@ -65,7 +65,7 @@ services:
     environment:
       TZ: Asia/Shanghai
       APP_ENV: production   # 设置应用环境为生产环境,如果本地改成local
-      DATABASE_URL: postgres://postgres:password@postgresql:5432/newsletter # 配置自己的数据库连接url
+      DATABASE_URL: postgres://postgres:password@postgresql:5432/agora # 配置自己的数据库连接url
       JWT_SECRET: JWT_SECRET@123 # 配置自己的jwt密钥
       GITHUB_CLIENT_ID: xxxx # 配置自己的GitHub 第三方认证的 CLIENT_ID
       GITHUB_CLIENT_SECRET: xxxx # 配置自己的GitHub 第三方认证的 CLIENT_SECRET
@@ -74,5 +74,5 @@ services:
     volumes:
       - ../configuration:/app/configuration:ro  # 配置文件挂载，可按需调整
     networks:
-      - ani-updater
+      - agora
 

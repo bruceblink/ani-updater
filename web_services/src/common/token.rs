@@ -1,6 +1,6 @@
 use actix_web::{HttpRequest, dev::ServiceRequest};
 use common::{ACCESS_TOKEN, REFRESH_TOKEN};
-pub static GITHUB_USER_AGENT: &str = "ani-updater/0.1 (+https://github.com/likanug/ani-updater)";
+pub static GITHUB_USER_AGENT: &str = "agora/0.1 (+https://github.com/bruceblink/agora)";
 
 /// 提取请求中的token
 pub trait ExtractToken {
