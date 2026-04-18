@@ -32,6 +32,13 @@ struct StateClaims {
     exp: usize, // UNIX timestamp
 }
 
+/// 获取 JWT_SECRET 用于 OAuth state 签名
+fn get_jwt_secret() -> Result<String, ApiError> {
+    std::env::var("JWT_SECRET").map_err(|_| {
+        ApiError::Internal("JWT_SECRET 环境变量未设置".into())
+    })
+}
+
 ///
 ///    GitHub 第三方登录的 API <br>
 ///    /auth/github/login Get 请求 <br>
@@ -48,17 +55,17 @@ async fn auth_github_login(
         .ok_or_else(|| ApiError::BadRequest("Invalid redirect_uri".into()))
         .and_then(|uri| validate_redirect_uri(uri))?;
 
+    // 路由仅在 OAuth 已配置时注册，此处 unwrap 安全
+    let oauth_client = app_state.oauth_client.as_ref().unwrap();
+    let jwt_secret = get_jwt_secret()?;
+
     // 2. 生成 GitHub 授权地址
-    let auth_url = get_github_authorization_url(
-        &app_state.oauth_client,
-        &redirect_uri,
-        &app_state.oauth_config.jwt_secret,
-    )
-    .await
-    .map_err(|e| {
-        error!("GitHub auth url generate failed: {:?}", e);
-        ApiError::Internal("生成 GitHub 授权地址失败".into())
-    })?;
+    let auth_url = get_github_authorization_url(oauth_client, &redirect_uri, &jwt_secret)
+        .await
+        .map_err(|e| {
+            error!("GitHub auth url generate failed: {:?}", e);
+            ApiError::Internal("生成 GitHub 授权地址失败".into())
+        })?;
 
     // 3. 302 跳转
     Ok(HttpResponse::Found()
@@ -88,13 +95,15 @@ async fn auth_github_callback(
         .cloned()
         .ok_or_else(|| ApiError::BadRequest("missing state".into()))?;
 
+    let jwt_secret = get_jwt_secret()?;
+
     // ✅ 严格校验 state.exp
     let mut validation = jsonwebtoken::Validation::default();
     validation.validate_exp = true;
 
     let token_data = jsonwebtoken::decode::<StateClaims>(
         &state,
-        &jsonwebtoken::DecodingKey::from_secret(app_state.oauth_config.jwt_secret.as_ref()),
+        &jsonwebtoken::DecodingKey::from_secret(jwt_secret.as_ref()),
         &validation,
     )
     .map_err(|_| ApiError::Unauthorized("Invalid state".into()))?;
@@ -103,9 +112,11 @@ async fn auth_github_callback(
         .map_err(|_| ApiError::Unauthorized("Invalid redirect_uri".into()))?;
 
     let pkce_verifier = PkceCodeVerifier::new(token_data.claims.pkce_verifier);
+    // 路由仅在 OAuth 已配置时注册，此处 unwrap 安全
+    let oauth_client = app_state.oauth_client.as_ref().unwrap();
     // 换取GitHub access_token
     let github_access_token =
-        exchange_github_access_token(&app_state.oauth_client, code, pkce_verifier).await?;
+        exchange_github_access_token(oauth_client, code, pkce_verifier).await?;
     // 获取GitHub的用户信息
     let github_user = get_github_user_info(github_access_token).await?;
     // 注册“使用GitHub登录的用户”为系统用户

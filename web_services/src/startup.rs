@@ -3,14 +3,12 @@ use crate::middleware::{AuthMiddleware, CharsetMiddleware};
 use crate::routes::register::register;
 use crate::routes::{auth_github_callback, auth_github_login, auth_token_refresh};
 use crate::routes::{get_ani, get_anis};
-use crate::routes::{
-    get_sensor_history, logout, news_get, proxy_image, scheduled_tasks_get, sse_sensor, task_reload,
-};
+use crate::routes::{logout, news_get, proxy_image, scheduled_tasks_get, task_reload};
 use crate::routes::{me, sync_me_get, sync_me_post, sync_task_source};
 use actix_web::dev::Server;
 use actix_web::{App, HttpServer, web};
 use anyhow::{Context, Result};
-use infra::{OAuthConfig, Setting, configure_cors, create_oauth_client, create_oauth_config};
+use infra::{OAuthConfig, Setting, configure_cors, create_oauth_client, try_create_oauth_config};
 use oauth2::basic::BasicClient;
 use sqlx::PgPool;
 use std::net::TcpListener;
@@ -18,13 +16,14 @@ use tracing::{info, warn};
 use tracing_actix_web::TracingLogger;
 
 pub async fn run(listener: TcpListener, db_pool: PgPool, configuration: Setting) -> Result<Server> {
-    // 创建 OAuth 配置和客户端
-    let oauth_config = create_oauth_config(configuration.clone())
-        .await
-        .context("Failed to create OAuth configuration")?;
+    // 尝试创建 OAuth 配置（未配置时返回 None，不影响启动）
+    let oauth_config =
+        try_create_oauth_config(&configuration).context("OAuth 配置解析失败")?;
 
-    let oauth_client =
-        create_oauth_client(&oauth_config).context("Failed to create OAuth client")?;
+    let oauth_client = oauth_config
+        .as_ref()
+        .map(|cfg| create_oauth_client(cfg).context("Failed to create OAuth client"))
+        .transpose()?;
 
     // 创建应用状态
     let app_state = create_app_state(db_pool, configuration, oauth_config, oauth_client)
@@ -67,8 +66,8 @@ fn parse_allowed_origins() -> Result<Vec<String>> {
 async fn create_app_state(
     db_pool: PgPool,
     configuration: Setting,
-    oauth_config: OAuthConfig,
-    oauth_client: BasicClient,
+    oauth_config: Option<OAuthConfig>,
+    oauth_client: Option<BasicClient>,
 ) -> Result<web::Data<AppState>> {
     let app_state = AppState::create_app_state(db_pool, configuration, oauth_config, oauth_client)
         .await
@@ -83,21 +82,20 @@ async fn create_server(
     app_state: web::Data<AppState>,
     allowed_origins: Vec<String>,
 ) -> Result<Server> {
+    // 仅在 OAuth 已配置时注册 GitHub 登录路由
+    let has_oauth = app_state.oauth_config.is_some();
+
     let server = HttpServer::new(move || {
         // 在闭包内部创建 CORS 中间件，传递所有权
         let cors = configure_cors(allowed_origins.clone());
 
-        App::new()
+        let mut app = App::new()
             .wrap(TracingLogger::default())
-            .wrap(cors) // 注册 CORS 中间件
-            .wrap(CharsetMiddleware) // 注册字符集中间件
-            .app_data(app_state.clone()) // 注册全局状态
+            .wrap(cors)
+            .wrap(CharsetMiddleware)
+            .app_data(app_state.clone())
             // 公开路由（无需认证）
-            .service(auth_github_login)
-            .service(auth_github_callback)
             .service(logout)
-            .service(sse_sensor)
-            .service(get_sensor_history)
             .service(register)
             .service(auth_token_refresh)
             // 需要认证的 API 路由
@@ -118,7 +116,16 @@ async fn create_server(
                 web::scope("/admin")
                     .wrap(AuthMiddleware)
                     .service(task_reload),
-            )
+            );
+
+        // 仅当 GitHub OAuth 已配置时注册对应路由
+        if has_oauth {
+            app = app
+                .service(auth_github_login)
+                .service(auth_github_callback);
+        }
+
+        app
     })
     .listen(listener)
     .context("Failed to bind to listener")?
@@ -143,3 +150,4 @@ pub async fn start_web_server(configuration: Setting, connection_pool: PgPool) -
 
     server.await.context("Server error during execution")
 }
+
