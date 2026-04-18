@@ -1,9 +1,9 @@
-use crate::common::{AppState, ExtractToken};
-use actix_web::{HttpRequest, HttpResponse, get, web};
+use crate::common::AppState;
+use actix_web::{HttpMessage, HttpRequest, HttpResponse, get, web};
 use chrono::Utc;
 use common::api::ApiError;
 use common::po::ApiResult;
-use common::utils::verify_jwt;
+use common::utils::JwtClaims;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
@@ -35,12 +35,17 @@ async fn sync_me_get(
     query: web::Query<Setting>,
     app_state: web::Data<AppState>,
 ) -> ApiResult {
-    // 获取请求参数
-    let setting_type = &query.setting_type.trim();
+    let claims = req
+        .extensions()
+        .get::<JwtClaims>()
+        .cloned()
+        .ok_or_else(|| ApiError::Unauthorized("未授权".into()))?;
 
-    if let Some(token) = req.get_access_token()
-        && let Ok(claims) = verify_jwt(&token)
-        && !setting_type.is_empty()
+    let setting_type = query.setting_type.trim().to_string();
+    if setting_type.is_empty() {
+        return Err(ApiError::InvalidData("setting_type 不能为空".into()));
+    }
+
     {
         let rec = sqlx::query_as::<_, UserSettings>(
             r#"
@@ -50,7 +55,7 @@ async fn sync_me_get(
         "#,
         )
         .bind(claims.uid)
-        .bind(setting_type)
+        .bind(&setting_type)
         .fetch_optional(&app_state.db_pool)
         .await
         .map_err(|e| {
@@ -64,5 +69,4 @@ async fn sync_me_get(
         });
         return Ok(HttpResponse::Ok().json(user_settings_dto));
     }
-    Err(ApiError::Unauthorized("请求参数不正确".into()))
 }

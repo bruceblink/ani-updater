@@ -1,9 +1,9 @@
-use crate::common::{AppState, ExtractToken};
-use actix_web::{HttpRequest, HttpResponse, post, web};
+use crate::common::AppState;
+use actix_web::{HttpMessage, HttpRequest, HttpResponse, post, web};
 use chrono::Utc;
 use common::api::{ApiError, ApiResponse};
 use common::po::ApiResult;
-use common::utils::verify_jwt;
+use common::utils::JwtClaims;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
@@ -29,13 +29,20 @@ async fn sync_me_post(
     body: web::Json<Setting>,
     app_state: web::Data<AppState>,
 ) -> ApiResult {
-    // 获取请求体
-    let body = body.into_inner();
+    let claims = req
+        .extensions()
+        .get::<JwtClaims>()
+        .cloned()
+        .ok_or_else(|| ApiError::Unauthorized("未授权".into()))?;
 
-    if let Some(token) = req.get_access_token()
-        && let Ok(claims) = verify_jwt(&token)
-        && !body.setting_type.is_empty()
-        && body.data.is_some()
+    let body = body.into_inner();
+    if body.setting_type.is_empty() {
+        return Err(ApiError::InvalidData("setting_type 不能为空".into()));
+    }
+    if body.data.is_none() {
+        return Err(ApiError::InvalidData("data 不能为空".into()));
+    }
+
     {
         let _ = sqlx::query_as::<_, UserSettings>(
             r#"
@@ -59,5 +66,4 @@ async fn sync_me_post(
         })?;
         return Ok(HttpResponse::Ok().json(ApiResponse::ok("数据同步成功")));
     }
-    Err(ApiError::Unauthorized("请求参数不正确".into()))
 }

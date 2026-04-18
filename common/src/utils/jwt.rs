@@ -37,7 +37,7 @@ pub struct CommonUser {
 
 /* ================= JWT Claims ================= */
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct JwtClaims {
     /* ========= JWT 标准字段（通用 / 安全 / 跨服务） ========= */
     /// subject：JWT 所代表的主体

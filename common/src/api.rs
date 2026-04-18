@@ -54,6 +54,10 @@ pub enum ApiError {
     #[error("Unauthorized")]
     Unauthorized(String),
 
+    // 权限不足
+    #[error("Forbidden")]
+    Forbidden(String),
+
     // 客户端请求参数问题
     #[error("Bad Request")]
     BadRequest(String),
@@ -87,6 +91,9 @@ impl ResponseError for ApiError {
                 .json(ApiResponse::<()>::err(format!("数据库错误: {msg}"))),
             ApiError::Unauthorized(msg) => {
                 HttpResponse::Unauthorized().json(ApiResponse::<()>::err(format!("未授权: {msg}")))
+            }
+            ApiError::Forbidden(msg) => {
+                HttpResponse::Forbidden().json(ApiResponse::<()>::err(format!("权限不足: {msg}")))
             }
             ApiError::NotFound(msg) => {
                 HttpResponse::NotFound().json(ApiResponse::<()>::err(format!("资源未找到: {msg}")))

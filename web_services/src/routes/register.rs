@@ -16,6 +16,5 @@ pub async fn register(
     _app_state: web::Data<AppState>,
     _credentials: web::Json<RegisterRequest>,
 ) -> impl Responder {
-    // 查询用户
-    HttpResponse::Ok().json(serde_json::json!({"user_id": 1001}))
+    HttpResponse::NotImplemented().json(serde_json::json!({"message": "注册功能暂未开放"}))
 }

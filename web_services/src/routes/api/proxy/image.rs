@@ -92,8 +92,6 @@ async fn proxy_image(
         resp_builder.insert_header((header::CACHE_CONTROL, "public, max-age=86400"));
     }
 
-    // 跨域头（<img> 一般不需要，但加上更保险）
-    resp_builder.insert_header((header::ACCESS_CONTROL_ALLOW_ORIGIN, "*"));
 
     // 正确的 stream 转换，直接返回 Bytes
     let stream = upstream_resp
