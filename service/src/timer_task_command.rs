@@ -17,14 +17,12 @@ use crate::spider::mikanani::fetch_mikanani_ani_data;
 use crate::spider::news::fetch_latest_news_data;
 use crate::spider::tencent::fetch_qq_ani_data;
 use crate::spider::youku::fetch_youku_ani_data;
-use sqlx::PgPool;
 
-/// 通用命令输入参数，可以传任意 JSON 数据，也可传数据库连接
+/// 通用命令输入参数，可以传任意 JSON 数据
 #[derive(Clone)]
 pub struct CommandInput {
     pub urls: Option<String>,
     pub args: String,
-    pub db: Option<Arc<PgPool>>, // 可选数据库连接
 }
 
 /// CmdFn 表示：接收 CommandInput，返回一个 boxed future，输出为 Result<ApiResponse<ItemResult>, String>

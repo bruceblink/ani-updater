@@ -3,12 +3,13 @@ use common::api::ApiResponse;
 use common::po::ItemResult;
 use cron::Schedule;
 use serde::Deserialize;
-use service::timer_task_command::{CmdFn, CommandInput};
-use sqlx::PgPool;
+use service::timer_task_command::CmdFn;
+use service::timer_task_command::CommandInput;
 use std::collections::HashMap;
 use std::future::Future;
 use std::str::FromStr;
 use std::sync::Arc;
+use tracing::warn;
 
 /// -----------------
 /// 配置层 TaskMeta
@@ -75,9 +76,8 @@ impl Task {
 
 /// 将 TaskMeta 列表和命令表合并，生成运行时 Task 列表
 pub fn build_tasks_from_meta(
-    metas: &Vec<TaskMeta>,
+    metas: &[TaskMeta],
     cmd_map: &HashMap<String, CmdFn>,
-    db_pool: Arc<PgPool>,
 ) -> Vec<Task> {
     let mut tasks = Vec::new();
 
@@ -95,7 +95,6 @@ pub fn build_tasks_from_meta(
             let cmd_fn = cmd_fn.clone();
             let url_for_closure = url.clone();
             let arg_for_closure = arg.clone();
-            let db_pool = db_pool.clone();
             // 构造 Task
             let task = Task::new(
                 &TaskMeta {
@@ -110,14 +109,11 @@ pub fn build_tasks_from_meta(
                     let cmd_fn = cmd_fn.clone();
                     let urls = url_for_closure.clone();
                     let args = arg_for_closure.clone();
-                    let name_for_log = name.clone(); // 如果闭包里要用 name 做日志
-                    let db_pool = db_pool.clone();
+                    let name_for_log = name.clone();
                     async move {
-                        // 调用命令函数
                         let input = CommandInput {
                             urls: Some(urls),
                             args,
-                            db: Option::from(db_pool), // 后续可传 Arc<PgPool>
                         };
                         cmd_fn(input)
                             .await
@@ -128,31 +124,8 @@ pub fn build_tasks_from_meta(
 
             tasks.push(task);
         } else {
-            // cmd 未找到，返回 Err
-            let missing_cmd = cmd.clone();
-            let name_for_log = name.clone();
-            let task = Task::new(
-                &TaskMeta {
-                    name: name.clone(),
-                    cmd: cmd.clone(),
-                    url,
-                    arg: arg.clone(),
-                    cron_expr: cron_expr.clone(),
-                    retry_times,
-                },
-                move || {
-                    let missing_cmd = missing_cmd.clone();
-                    let name_for_log = name_for_log.clone();
-                    async move {
-                        Err(format!(
-                            "cmd '{}' not found for task '{}'",
-                            missing_cmd, name_for_log
-                        ))
-                    }
-                },
-            );
-
-            tasks.push(task);
+            // cmd 未找到，记录警告并跳过
+            warn!("任务 [{}] 命令 '{}' 未在 cmd_map 中找到，跳过", name, cmd);
         }
     }
 

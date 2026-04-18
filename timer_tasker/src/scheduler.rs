@@ -1,8 +1,7 @@
 use crate::task::{Task, TaskResult};
 use chrono::Local;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tokio::sync::{Notify, Semaphore, mpsc};
-use tokio::task::JoinHandle;
 use tokio::time::{Duration, sleep};
 use tracing::{info, warn};
 
@@ -10,7 +9,6 @@ use tracing::{info, warn};
 pub struct Scheduler {
     pub tasks: Vec<Arc<Task>>,
     shutdown: Arc<Notify>,
-    task_handles: Arc<Mutex<Vec<JoinHandle<()>>>>,
     semaphore: Arc<Semaphore>, // 控制并发的信号量
 }
 
@@ -28,7 +26,6 @@ impl Scheduler {
         Self {
             tasks: tasks.into_iter().map(Arc::new).collect(),
             shutdown: Arc::new(Notify::new()),
-            task_handles: Arc::new(Mutex::new(vec![])),
             semaphore: Arc::new(Semaphore::new(max_concurrent_tasks)), // 限制并发任务数
         }
     }
@@ -41,10 +38,9 @@ impl Scheduler {
             let shutdown = self.shutdown.clone();
             let semaphore = self.semaphore.clone();
 
-            let handle = tokio::spawn(async move {
+            tokio::spawn(async move {
                 Self::run_single_task(t, s, semaphore, shutdown).await;
             });
-            self.task_handles.lock().unwrap().push(handle);
         }
     }
 

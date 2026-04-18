@@ -4,7 +4,6 @@ use common::api::ApiError;
 use common::po::ApiResult;
 use common::utils::GithubUser;
 use common::{ACCESS_TOKEN, REFRESH_TOKEN};
-use lazy_static::lazy_static;
 use oauth2::basic::BasicClient;
 use oauth2::{
     AuthorizationCode, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, Scope, TokenResponse,
@@ -18,13 +17,13 @@ use tracing::error;
 
 static HTTP: Lazy<Client> = Lazy::new(Client::new);
 
-lazy_static! {
-    static ref ALLOWED_REDIRECT_URIS: Vec<&'static str> = vec![
+static ALLOWED_REDIRECT_URIS: Lazy<Vec<&'static str>> = Lazy::new(|| {
+    vec![
         "http://localhost:5173",
         "http://localhost:3039",
         "https://app.example.com",
-    ];
-}
+    ]
+});
 
 #[derive(Debug, Serialize, Deserialize)]
 struct StateClaims {

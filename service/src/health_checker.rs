@@ -6,21 +6,21 @@ use std::collections::{HashMap, HashSet};
 use tokio::task::JoinSet;
 use tracing::{error, warn};
 
+use crate::process_news_info::HTTP_CLIENT;
+
 /// 获取健康检测的数据</br>
 /// args: 待检测的url，如果是多个url,使用英文","隔开
 pub async fn health_check(args: String) -> Result<ApiResponse<ItemResult>, String> {
     let sources: Vec<&str> = args.split(',').map(|s| s.trim()).collect();
     let mut result: ItemResult = HashMap::new();
-    let client = reqwest::Client::new();
     let weekday = get_today_weekday().name_cn.to_string();
 
     let mut join_set = JoinSet::new();
 
     // 添加所有任务到 JoinSet
     for arg in sources {
-        let client = client.clone();
         let arg = arg.to_string();
-        join_set.spawn(async move { health_check_single(&client, &arg).await });
+        join_set.spawn(async move { health_check_single(&arg).await });
     }
 
     // 收集所有结果
@@ -38,8 +38,8 @@ pub async fn health_check(args: String) -> Result<ApiResponse<ItemResult>, Strin
     Ok(ApiResponse::ok(result))
 }
 
-async fn health_check_single(client: &reqwest::Client, url: &str) -> Result<HealthItem> {
-    let response = client
+async fn health_check_single(url: &str) -> Result<HealthItem> {
+    let response = HTTP_CLIENT
         .get(url)
         .header("Referer", url)
         .send()
@@ -60,16 +60,4 @@ async fn health_check_single(client: &reqwest::Client, url: &str) -> Result<Heal
         url: url.to_string(),
         result: json_value,
     })
-}
-
-#[cfg(test)]
-mod test {
-    use crate::health_checker::health_check;
-
-    #[tokio::test]
-    async fn test_fetch_douban_image() {
-        let args = "https://agileboot-back-end.onrender.com, https://agileboot-back-end.onrender.com/getConfig";
-        let result = health_check(args.to_string()).await.unwrap();
-        println!("{:?}", result.data)
-    }
 }
