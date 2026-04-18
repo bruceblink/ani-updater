@@ -17,8 +17,26 @@ use tracing::error;
 
 static HTTP: Lazy<Client> = Lazy::new(Client::new);
 
-static ALLOWED_REDIRECT_URIS: Lazy<Vec<&'static str>> =
-    Lazy::new(|| vec!["http://localhost:5173", "http://localhost:3039"]);
+/// 允许的 OAuth redirect_uri 白名单。
+/// 优先读取 `FRONTEND_DOMAINS` 环境变量（分号分隔的完整 origin，如 `https://dash.likanug.top`）；
+/// 若未配置则回退到本地开发默认值。
+static ALLOWED_REDIRECT_URIS: Lazy<Vec<String>> = Lazy::new(|| {
+    let env_value = std::env::var("FRONTEND_DOMAINS").unwrap_or_default();
+    let from_env: Vec<String> = env_value
+        .split(';')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    if from_env.is_empty() {
+        vec![
+            "http://localhost:5173".to_string(),
+            "http://localhost:3039".to_string(),
+        ]
+    } else {
+        from_env
+    }
+});
 
 #[derive(Debug, Serialize, Deserialize)]
 struct StateClaims {
