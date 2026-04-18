@@ -1,5 +1,5 @@
 use common::api::ApiResponse;
-use common::po::{HealthItem, ItemResult, TaskItem};
+use common::po::{HealthItem, ItemResult, NewsInfo, TaskItem};
 use common::utils::date_utils::get_today_weekday;
 use once_cell::sync::Lazy;
 use reqwest::Client;
@@ -86,4 +86,60 @@ pub async fn merge_cross_day_news_events(
         result: json_value,
     });
     Ok(ApiResponse::ok(build_single_item_result(weekday, item)))
+}
+
+/// 从 latestnews 抓取所有新闻源数据，存入 news_info 表
+/// base_url 格式: https://news.likanug.top
+/// 步骤：1. GET /api/s/ids 获取所有 sourceId
+///       2. 并发 GET /api/s?id={sourceId} 获取每个源数据
+pub async fn fetch_all_news(base_url: String) -> anyhow::Result<ApiResponse<ItemResult>, String> {
+    let ids_url = format!("{base_url}/api/s/ids");
+    let ids: Vec<String> = HTTP_CLIENT
+        .get(&ids_url)
+        .send()
+        .await
+        .map_err(|e| format!("获取 ids 失败: {e}"))?
+        .json()
+        .await
+        .map_err(|e| format!("解析 ids 响应失败: {e}"))?;
+
+    let weekday = get_today_weekday().name_cn.to_string();
+    let mut all_items: HashSet<TaskItem> = HashSet::new();
+
+    // 并发抓取所有源
+    let tasks: Vec<_> = ids
+        .into_iter()
+        .map(|id| {
+            let url = format!("{base_url}/api/s?id={id}");
+            let client = HTTP_CLIENT.clone();
+            tokio::spawn(async move {
+                let resp = client.get(&url).send().await.ok()?;
+                if !resp.status().is_success() {
+                    return None;
+                }
+                let json_value: serde_json::Value = resp.json().await.ok()?;
+                let source_id = json_value["id"].as_str()?.to_string();
+                let name = json_value["name"]
+                    .as_str()
+                    .unwrap_or(&source_id)
+                    .to_string();
+                let items = json_value["items"].as_array().cloned().unwrap_or_default();
+                Some(NewsInfo {
+                    id: source_id,
+                    name,
+                    items,
+                })
+            })
+        })
+        .collect();
+
+    for task in tasks {
+        if let Ok(Some(news)) = task.await {
+            all_items.insert(TaskItem::News(news));
+        }
+    }
+
+    let mut result = HashMap::new();
+    result.insert(weekday, all_items);
+    Ok(ApiResponse::ok(result))
 }

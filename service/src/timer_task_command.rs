@@ -7,7 +7,8 @@ use std::sync::Arc;
 
 use crate::health_checker::health_check;
 use crate::process_news_info::{
-    extract_news_event, extract_news_item, extract_news_keywords, merge_cross_day_news_events,
+    extract_news_event, extract_news_item, extract_news_keywords, fetch_all_news,
+    merge_cross_day_news_events,
 };
 
 /// 通用命令输入参数，可以传任意 JSON 数据
@@ -53,6 +54,11 @@ pub fn build_cmd_map() -> HashMap<String, CmdFn> {
     map.insert(
         "merge_cross_day_news_events".to_string(),
         Arc::new(|input: CommandInput| Box::pin(merge_cross_day_news_events(input.args))),
+    );
+
+    map.insert(
+        "fetch_all_news".to_string(),
+        Arc::new(|input: CommandInput| Box::pin(fetch_all_news(input.args))),
     );
 
     map
