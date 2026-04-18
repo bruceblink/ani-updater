@@ -1,2 +1,0 @@
--- Add migration script here
-update public.scheduled_tasks set params = '{"arg": "https://news-analytics-gw35.onrender.com/api/analysis/extract_news", "cmd": "extract_transform_news_info_to_item"}' where id = 11;
