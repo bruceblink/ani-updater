@@ -2,7 +2,7 @@ use actix_web::web;
 use chrono::Utc;
 use common::TaskFilter;
 use common::api::ApiError;
-use common::dto::ScheduledTasksDTO;
+use common::dto::{CreateScheduledTaskDTO, ScheduledTasksDTO, ToggleScheduledTaskDTO, UpdateScheduledTaskDTO};
 use common::po::{PageData, QueryPage, ScheduledTasks};
 use sqlx::{FromRow, PgPool, Postgres, QueryBuilder};
 
@@ -158,4 +158,129 @@ pub async fn list_all_scheduled_tasks_by_page(
     };
     result.total_pages = total_pages;
     Ok(result)
+}
+
+/// 创建新的定时任务
+pub async fn create_scheduled_task(
+    data: &CreateScheduledTaskDTO,
+    db_pool: &PgPool,
+) -> anyhow::Result<ScheduledTasksDTO> {
+    let row: ScheduledTasks = sqlx::query_as(
+        r#"
+        INSERT INTO scheduled_tasks (name, cron, params, is_enabled, retry_times, last_status)
+        VALUES ($1, $2, $3, $4, $5, 'pending')
+        RETURNING id, name, cron, params, is_enabled, retry_times, last_run, next_run, last_status, created_at, updated_at
+        "#,
+    )
+    .bind(&data.name)
+    .bind(&data.cron)
+    .bind(&data.params)
+    .bind(data.is_enabled)
+    .bind(data.retry_times as i16)
+    .fetch_one(db_pool)
+    .await
+    .map_err(|e| {
+        tracing::error!("创建定时任务失败: {e:?}");
+        anyhow::anyhow!("创建定时任务失败")
+    })?;
+
+    Ok(ScheduledTasksDTO {
+        id: row.id,
+        name: row.name,
+        cron: row.cron,
+        params: row.params,
+        is_enabled: row.is_enabled,
+        retry_times: row.retry_times as u8,
+        last_run: row.last_run,
+        next_run: row.next_run,
+        last_status: row.last_status,
+    })
+}
+
+/// 更新定时任务（仅更新非 None 字段）
+pub async fn update_scheduled_task(
+    id: i64,
+    data: &UpdateScheduledTaskDTO,
+    db_pool: &PgPool,
+) -> anyhow::Result<ScheduledTasksDTO> {
+    let row: ScheduledTasks = sqlx::query_as(
+        r#"
+        UPDATE scheduled_tasks
+        SET
+            name        = COALESCE($2, name),
+            cron        = COALESCE($3, cron),
+            params      = COALESCE($4, params),
+            retry_times = COALESCE($5, retry_times),
+            updated_at  = NOW()
+        WHERE id = $1
+        RETURNING id, name, cron, params, is_enabled, retry_times, last_run, next_run, last_status, created_at, updated_at
+        "#,
+    )
+    .bind(id)
+    .bind(&data.name)
+    .bind(&data.cron)
+    .bind(&data.params)
+    .bind(data.retry_times.map(|r| r as i16))
+    .fetch_one(db_pool)
+    .await
+    .map_err(|e| {
+        tracing::error!("更新定时任务 {id} 失败: {e:?}");
+        anyhow::anyhow!("更新定时任务失败或任务不存在")
+    })?;
+
+    Ok(ScheduledTasksDTO {
+        id: row.id,
+        name: row.name,
+        cron: row.cron,
+        params: row.params,
+        is_enabled: row.is_enabled,
+        retry_times: row.retry_times as u8,
+        last_run: row.last_run,
+        next_run: row.next_run,
+        last_status: row.last_status,
+    })
+}
+
+/// 切换定时任务启停状态
+pub async fn toggle_scheduled_task(
+    id: i64,
+    data: &ToggleScheduledTaskDTO,
+    db_pool: &PgPool,
+) -> anyhow::Result<()> {
+    let rows_affected = sqlx::query(
+        r#"UPDATE scheduled_tasks SET is_enabled = $2, updated_at = NOW() WHERE id = $1"#,
+    )
+    .bind(id)
+    .bind(data.is_enabled)
+    .execute(db_pool)
+    .await
+    .map_err(|e| {
+        tracing::error!("切换定时任务 {id} 状态失败: {e:?}");
+        anyhow::anyhow!("切换任务状态失败")
+    })?
+    .rows_affected();
+
+    if rows_affected == 0 {
+        return Err(anyhow::anyhow!("任务不存在"));
+    }
+    Ok(())
+}
+
+/// 删除定时任务
+pub async fn delete_scheduled_task(id: i64, db_pool: &PgPool) -> anyhow::Result<()> {
+    let rows_affected =
+        sqlx::query(r#"DELETE FROM scheduled_tasks WHERE id = $1"#)
+            .bind(id)
+            .execute(db_pool)
+            .await
+            .map_err(|e| {
+                tracing::error!("删除定时任务 {id} 失败: {e:?}");
+                anyhow::anyhow!("删除定时任务失败")
+            })?
+            .rows_affected();
+
+    if rows_affected == 0 {
+        return Err(anyhow::anyhow!("任务不存在"));
+    }
+    Ok(())
 }

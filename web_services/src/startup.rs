@@ -3,7 +3,7 @@ use crate::middleware::{AuthMiddleware, CharsetMiddleware};
 use crate::routes::register::register;
 use crate::routes::{auth_github_callback, auth_github_login, auth_token_refresh};
 use crate::routes::{get_ani, get_anis};
-use crate::routes::{logout, news_get, proxy_image, scheduled_tasks_get, task_reload};
+use crate::routes::{logout, news_get, proxy_image, scheduled_tasks_create, scheduled_tasks_delete, scheduled_tasks_get, scheduled_tasks_toggle, scheduled_tasks_update, task_reload};
 use crate::routes::{me, sync_me_get, sync_me_post, sync_task_source};
 use actix_web::dev::Server;
 use actix_web::{App, HttpServer, web};
@@ -108,6 +108,10 @@ async fn create_server(
                     .service(proxy_image)
                     .service(news_get)
                     .service(scheduled_tasks_get)
+                    .service(scheduled_tasks_create)
+                    .service(scheduled_tasks_update)
+                    .service(scheduled_tasks_toggle)
+                    .service(scheduled_tasks_delete)
                     .route("/anis", web::get().to(get_anis))
                     .route("/anis/{id}", web::get().to(get_ani)),
             )

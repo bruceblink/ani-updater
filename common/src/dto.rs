@@ -94,3 +94,37 @@ pub struct ScheduledTasksDTO {
     pub next_run: Option<chrono::DateTime<Utc>>,
     pub last_status: String,
 }
+
+/// 创建定时任务的请求体
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateScheduledTaskDTO {
+    pub name: String,
+    pub cron: String,
+    pub params: serde_json::Value,
+    #[serde(default = "bool::default")]
+    pub is_enabled: bool,
+    #[serde(default = "default_retry_times")]
+    pub retry_times: u8,
+}
+
+/// 更新定时任务的请求体（所有字段均可选）
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateScheduledTaskDTO {
+    pub name: Option<String>,
+    pub cron: Option<String>,
+    pub params: Option<serde_json::Value>,
+    pub retry_times: Option<u8>,
+}
+
+/// 切换定时任务启停状态的请求体
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ToggleScheduledTaskDTO {
+    pub is_enabled: bool,
+}
+
+fn default_retry_times() -> u8 {
+    3
+}
