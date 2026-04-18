@@ -67,6 +67,6 @@ async fn sync_me_get(
             data: setting.data,
             updated_time: setting.updated_at.timestamp() as u64,
         });
-        return Ok(HttpResponse::Ok().json(user_settings_dto));
+        Ok(HttpResponse::Ok().json(user_settings_dto))
     }
 }

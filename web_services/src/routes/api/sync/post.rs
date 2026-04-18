@@ -64,6 +64,6 @@ async fn sync_me_post(
             tracing::error!("同步用户配置失败: {e}");
             ApiError::Internal("服务器内部错误".into())
         })?;
-        return Ok(HttpResponse::Ok().json(ApiResponse::ok("数据同步成功")));
+        Ok(HttpResponse::Ok().json(ApiResponse::ok("数据同步成功")))
     }
 }
