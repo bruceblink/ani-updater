@@ -1,5 +1,5 @@
 use crate::common::AppState;
-use actix_web::{get, web, HttpResponse};
+use actix_web::{HttpResponse, get, web};
 use futures_util::stream;
 use serde::Serialize;
 use sqlx::PgPool;
@@ -89,7 +89,7 @@ fn row_to_sse_bytes(row: &NewsRow) -> Option<web::Bytes> {
 /// 3. 每次轮询前发送 SSE 心跳注释，防止代理断连
 #[get("/news/stream")]
 pub async fn news_stream_sse(app_state: web::Data<AppState>) -> HttpResponse {
-    let (tx, rx) = mpsc::channel::<Result<web::Bytes, actix_web::Error>>(64);
+    let (tx, rx) = mpsc::channel::<web::Bytes>(64);
     let pool = app_state.db_pool.clone();
 
     tokio::spawn(async move {
@@ -100,10 +100,10 @@ pub async fn news_stream_sse(app_state: web::Data<AppState>) -> HttpResponse {
         let mut last_id: i64 = initial.iter().map(|r| r.id).max().unwrap_or(0);
 
         for row in &initial {
-            if let Some(bytes) = row_to_sse_bytes(row) {
-                if tx.send(Ok(bytes)).await.is_err() {
-                    return; // 客户端已断连
-                }
+            if let Some(bytes) = row_to_sse_bytes(row)
+                && tx.send(bytes).await.is_err()
+            {
+                return; // 客户端已断连
             }
         }
 
@@ -115,21 +115,17 @@ pub async fn news_stream_sse(app_state: web::Data<AppState>) -> HttpResponse {
             interval.tick().await;
 
             // 心跳注释，保持长连接不被代理断开
-            if tx
-                .send(Ok(web::Bytes::from(": ping\n\n")))
-                .await
-                .is_err()
-            {
+            if tx.send(web::Bytes::from(": ping\n\n")).await.is_err() {
                 return;
             }
 
             let new_rows = fetch_new_news(&pool, last_id, 50).await;
             for row in &new_rows {
                 last_id = last_id.max(row.id);
-                if let Some(bytes) = row_to_sse_bytes(row) {
-                    if tx.send(Ok(bytes)).await.is_err() {
-                        return;
-                    }
+                if let Some(bytes) = row_to_sse_bytes(row)
+                    && tx.send(bytes).await.is_err()
+                {
+                    return;
                 }
             }
         }
@@ -137,7 +133,9 @@ pub async fn news_stream_sse(app_state: web::Data<AppState>) -> HttpResponse {
 
     // 将 mpsc::Receiver 转为 Stream
     let sse_stream = stream::unfold(rx, |mut rx| async move {
-        rx.recv().await.map(|item| (item, rx))
+        rx.recv()
+            .await
+            .map(|bytes| (Ok::<_, actix_web::Error>(bytes), rx))
     });
 
     HttpResponse::Ok()

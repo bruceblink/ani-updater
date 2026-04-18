@@ -7,10 +7,9 @@ use crate::routes::{
 use crate::routes::{auth_github_callback, auth_github_login, auth_token_refresh};
 use crate::routes::{get_ani, get_anis};
 use crate::routes::{
-    logout, news_event_items_get, news_events_get, news_get, news_items_get,
-    news_stream_sse, proxy_image,
-    scheduled_tasks_create, scheduled_tasks_delete, scheduled_tasks_get, scheduled_tasks_toggle,
-    scheduled_tasks_update, task_reload,
+    logout, news_event_items_get, news_events_get, news_get, news_items_get, news_stream_sse,
+    proxy_image, scheduled_tasks_create, scheduled_tasks_delete, scheduled_tasks_get,
+    scheduled_tasks_toggle, scheduled_tasks_update, task_reload,
 };
 use crate::routes::{me, sync_me_get, sync_me_post, sync_task_source};
 use actix_web::dev::Server;
@@ -106,10 +105,7 @@ async fn create_server(
             .service(register)
             .service(auth_token_refresh)
             // SSE 公开接口（无需认证，供落地页实时新闻使用）
-            .service(
-                web::scope("/api")
-                    .service(news_stream_sse),
-            )
+            .service(web::scope("/api").service(news_stream_sse))
             // 需要认证的 API 路由
             .service(
                 web::scope("/api")
