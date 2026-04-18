@@ -138,9 +138,12 @@ jobs:
       # 7️⃣.1 创建应用数据库，并让 APP_USER 拥有所有权 (Superuser)
       - name: Create Application Database
         run: |
-          # 创建数据库，并指定 APP_USER 为 Owner
-          CREATE_DB_QUERY="CREATE DATABASE ${APP_DB_NAME} OWNER ${APP_USER};"
-          PGPASSWORD="password" psql -U "postgres" -h "localhost" -c "${CREATE_DB_QUERY}"
+          # 创建数据库，并指定 APP_USER 为 Owner（幂等：已存在则跳过）
+          PGPASSWORD="password" psql -U "postgres" -h "localhost" \
+            -tc "SELECT 1 FROM pg_database WHERE datname = '${APP_DB_NAME}'" \
+            | grep -q 1 || \
+          PGPASSWORD="password" psql -U "postgres" -h "localhost" \
+            -c "CREATE DATABASE ${APP_DB_NAME} OWNER ${APP_USER};"
 
       # 7️⃣.2 安装 vector 扩展 (Superuser)
       - name: Install vector Extension
