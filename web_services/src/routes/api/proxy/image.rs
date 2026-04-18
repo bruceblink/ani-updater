@@ -92,7 +92,6 @@ async fn proxy_image(
         resp_builder.insert_header((header::CACHE_CONTROL, "public, max-age=86400"));
     }
 
-
     // 正确的 stream 转换，直接返回 Bytes
     let stream = upstream_resp
         .bytes_stream()

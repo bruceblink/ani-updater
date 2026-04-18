@@ -8,8 +8,8 @@ use tracing::error;
 
 #[derive(Deserialize)]
 pub struct RegisterRequest {
-    pub username: String,   // 用户名
-    pub password: String,   // 密码
+    pub username: String,      // 用户名
+    pub password: String,      // 密码
     pub email: Option<String>, // 邮箱（可选）
 }
 
@@ -29,12 +29,10 @@ pub async fn register(
 
     // 基本输入校验
     if username.is_empty() {
-        return HttpResponse::BadRequest()
-            .json(ApiResponse::<()>::err("用户名不能为空"));
+        return HttpResponse::BadRequest().json(ApiResponse::<()>::err("用户名不能为空"));
     }
     if password.len() < 8 {
-        return HttpResponse::BadRequest()
-            .json(ApiResponse::<()>::err("密码长度不能少于 8 位"));
+        return HttpResponse::BadRequest().json(ApiResponse::<()>::err("密码长度不能少于 8 位"));
     }
 
     // 对密码进行 bcrypt 哈希
@@ -47,7 +45,11 @@ pub async fn register(
         }
     };
 
-    let email = body.email.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty());
+    let email = body
+        .email
+        .as_deref()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty());
 
     // 在事务中插入用户并分配默认角色
     let result = async {
@@ -170,9 +172,7 @@ pub async fn register(
                     .json(ApiResponse::<()>::err("用户名或邮箱已被注册"));
             }
             error!("注册失败: {e}");
-            HttpResponse::InternalServerError()
-                .json(ApiResponse::<()>::err("服务器内部错误"))
+            HttpResponse::InternalServerError().json(ApiResponse::<()>::err("服务器内部错误"))
         }
     }
 }
-

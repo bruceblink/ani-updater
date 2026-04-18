@@ -38,15 +38,12 @@ impl OAuthConfig {
         let token_url = TokenUrl::new("https://github.com/login/oauth/access_token".to_string())
             .context("GitHub token URL 无效")?;
 
-        let redirect_url =
-            RedirectUrl::new(format!("{base_url}/auth/oauth/github/callback"))
-                .context("OAUTH_BASE_URL 格式无效，无法构造 redirect URL")?;
+        let redirect_url = RedirectUrl::new(format!("{base_url}/auth/oauth/github/callback"))
+            .context("OAUTH_BASE_URL 格式无效，无法构造 redirect URL")?;
 
         Ok(Some(Self {
             client_id: ClientId::new(client_id_str.clone()),
-            client_secret: ClientSecret::new(
-                client_secret.expose_secret().clone(),
-            ),
+            client_secret: ClientSecret::new(client_secret.expose_secret().clone()),
             auth_url,
             token_url,
             redirect_url,

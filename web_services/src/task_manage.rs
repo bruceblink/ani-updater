@@ -169,10 +169,7 @@ impl TaskManager {
     }
 }
 
-pub async fn run_task_service(
-    item_result: ItemResult,
-    pool: Arc<PgPool>,
-) -> anyhow::Result<()> {
+pub async fn run_task_service(item_result: ItemResult, pool: Arc<PgPool>) -> anyhow::Result<()> {
     // 启动定时任务服务
     let weekday = get_today_weekday().name_cn.to_string();
 
@@ -183,7 +180,9 @@ pub async fn run_task_service(
             return Ok(());
         }
         None => {
-            return Err(anyhow::anyhow!("获取更新数据失败：结果中不含 weekday={weekday}"));
+            return Err(anyhow::anyhow!(
+                "获取更新数据失败：结果中不含 weekday={weekday}"
+            ));
         }
     };
 

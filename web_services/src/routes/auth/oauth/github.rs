@@ -34,9 +34,7 @@ struct StateClaims {
 
 /// 获取 JWT_SECRET 用于 OAuth state 签名
 fn get_jwt_secret() -> Result<String, ApiError> {
-    std::env::var("JWT_SECRET").map_err(|_| {
-        ApiError::Internal("JWT_SECRET 环境变量未设置".into())
-    })
+    std::env::var("JWT_SECRET").map_err(|_| ApiError::Internal("JWT_SECRET 环境变量未设置".into()))
 }
 
 ///

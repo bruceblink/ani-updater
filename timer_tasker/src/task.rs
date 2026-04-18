@@ -69,16 +69,17 @@ impl Task {
     }
 
     pub fn schedule(&self) -> Result<Schedule, String> {
-        Schedule::from_str(&self.cron_expr)
-            .map_err(|e| format!("任务 [{}] cron 表达式无效 '{}': {e}", self.name, self.cron_expr))
+        Schedule::from_str(&self.cron_expr).map_err(|e| {
+            format!(
+                "任务 [{}] cron 表达式无效 '{}': {e}",
+                self.name, self.cron_expr
+            )
+        })
     }
 }
 
 /// 将 TaskMeta 列表和命令表合并，生成运行时 Task 列表
-pub fn build_tasks_from_meta(
-    metas: &[TaskMeta],
-    cmd_map: &HashMap<String, CmdFn>,
-) -> Vec<Task> {
+pub fn build_tasks_from_meta(metas: &[TaskMeta], cmd_map: &HashMap<String, CmdFn>) -> Vec<Task> {
     let mut tasks = Vec::new();
 
     for meta in metas {

@@ -17,8 +17,7 @@ use tracing_actix_web::TracingLogger;
 
 pub async fn run(listener: TcpListener, db_pool: PgPool, configuration: Setting) -> Result<Server> {
     // 尝试创建 OAuth 配置（未配置时返回 None，不影响启动）
-    let oauth_config =
-        try_create_oauth_config(&configuration).context("OAuth 配置解析失败")?;
+    let oauth_config = try_create_oauth_config(&configuration).context("OAuth 配置解析失败")?;
 
     let oauth_client = oauth_config
         .as_ref()
@@ -120,9 +119,7 @@ async fn create_server(
 
         // 仅当 GitHub OAuth 已配置时注册对应路由
         if has_oauth {
-            app = app
-                .service(auth_github_login)
-                .service(auth_github_callback);
+            app = app.service(auth_github_login).service(auth_github_callback);
         }
 
         app
@@ -150,4 +147,3 @@ pub async fn start_web_server(configuration: Setting, connection_pool: PgPool) -
 
     server.await.context("Server error during execution")
 }
-

@@ -44,28 +44,46 @@ fn build_single_item_result(weekday: String, item: TaskItem) -> ItemResult {
 pub async fn extract_news_item(api_url: String) -> anyhow::Result<ApiResponse<ItemResult>, String> {
     let json_value = post_and_get_json(&api_url).await?;
     let weekday = get_today_weekday().name_cn.to_string();
-    let item = TaskItem::ExtractNewsItem(HealthItem { url: api_url, result: json_value });
+    let item = TaskItem::ExtractNewsItem(HealthItem {
+        url: api_url,
+        result: json_value,
+    });
     Ok(ApiResponse::ok(build_single_item_result(weekday, item)))
 }
 
 /// 提取新增关键字到 news_keywords 表
-pub async fn extract_news_keywords(api_url: String) -> anyhow::Result<ApiResponse<ItemResult>, String> {
+pub async fn extract_news_keywords(
+    api_url: String,
+) -> anyhow::Result<ApiResponse<ItemResult>, String> {
     let json_value = post_and_get_json(&api_url).await?;
     let weekday = get_today_weekday().name_cn.to_string();
-    let item = TaskItem::ExtractNewsNewsKeywords(HealthItem { url: api_url, result: json_value });
+    let item = TaskItem::ExtractNewsNewsKeywords(HealthItem {
+        url: api_url,
+        result: json_value,
+    });
     Ok(ApiResponse::ok(build_single_item_result(weekday, item)))
 }
 
-pub async fn extract_news_event(api_url: String) -> anyhow::Result<ApiResponse<ItemResult>, String> {
+pub async fn extract_news_event(
+    api_url: String,
+) -> anyhow::Result<ApiResponse<ItemResult>, String> {
     let json_value = post_and_get_json(&api_url).await?;
     let weekday = get_today_weekday().name_cn.to_string();
-    let item = TaskItem::ExtractNewsEvent(HealthItem { url: api_url, result: json_value });
+    let item = TaskItem::ExtractNewsEvent(HealthItem {
+        url: api_url,
+        result: json_value,
+    });
     Ok(ApiResponse::ok(build_single_item_result(weekday, item)))
 }
 
-pub async fn merge_cross_day_news_events(api_url: String) -> anyhow::Result<ApiResponse<ItemResult>, String> {
+pub async fn merge_cross_day_news_events(
+    api_url: String,
+) -> anyhow::Result<ApiResponse<ItemResult>, String> {
     let json_value = post_and_get_json(&api_url).await?;
     let weekday = get_today_weekday().name_cn.to_string();
-    let item = TaskItem::MergeNewsItem(HealthItem { url: api_url, result: json_value });
+    let item = TaskItem::MergeNewsItem(HealthItem {
+        url: api_url,
+        result: json_value,
+    });
     Ok(ApiResponse::ok(build_single_item_result(weekday, item)))
 }
