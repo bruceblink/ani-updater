@@ -144,7 +144,7 @@ async fn auth_token_refresh(req: HttpRequest, app_state: web::Data<AppState>) ->
 
     let roles: Vec<String> = sqlx::query_scalar(
         r#"
-            SELECT r.code
+            SELECT r.name
             FROM roles r
             JOIN user_roles ur ON ur.role_id = r.id
             WHERE ur.user_id = $1
