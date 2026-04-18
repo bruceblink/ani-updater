@@ -31,6 +31,32 @@ env:
   APP_DB_NAME: agora
 
 jobs:
+  # 检测本次推送是否包含需要部署的文件变更
+  detect-changes:
+    name: Detect changed files
+    runs-on: ubuntu-latest
+    outputs:
+      deployable: ${{ steps.filter.outputs.deployable }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            deployable:
+              - 'common/**'
+              - 'infra/**'
+              - 'service/**'
+              - 'timer_tasker/**'
+              - 'web_services/**'
+              - 'migrations/**'
+              - 'configuration/**'
+              - 'scripts/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'Dockerfile'
+              - 'fly.toml'
+
   ci:
     name:  CI fmt, clippy, test
     runs-on: ubuntu-latest
@@ -221,9 +247,10 @@ jobs:
   fly-deploy:
     name: Fly Deploy
     runs-on: ubuntu-latest
-    needs: ci
+    needs: [ci, detect-changes]
     if: |
-      github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) &&
+      needs.detect-changes.outputs.deployable == 'true'
     concurrency: deploy-group
     steps:
       # 1️⃣ 下载仓库代码（完整历史）
