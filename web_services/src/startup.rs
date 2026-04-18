@@ -1,11 +1,15 @@
 use crate::common::AppState;
 use crate::middleware::{AuthMiddleware, CharsetMiddleware};
 use crate::routes::register::register;
+use crate::routes::{
+    ani_collect_create, ani_collect_delete, ani_collect_list, ani_collect_watched,
+};
 use crate::routes::{auth_github_callback, auth_github_login, auth_token_refresh};
 use crate::routes::{get_ani, get_anis};
 use crate::routes::{
-    logout, news_get, proxy_image, scheduled_tasks_create, scheduled_tasks_delete,
-    scheduled_tasks_get, scheduled_tasks_toggle, scheduled_tasks_update, task_reload,
+    logout, news_event_items_get, news_events_get, news_get, news_items_get, proxy_image,
+    scheduled_tasks_create, scheduled_tasks_delete, scheduled_tasks_get, scheduled_tasks_toggle,
+    scheduled_tasks_update, task_reload,
 };
 use crate::routes::{me, sync_me_get, sync_me_post, sync_task_source};
 use actix_web::dev::Server;
@@ -115,6 +119,13 @@ async fn create_server(
                     .service(scheduled_tasks_update)
                     .service(scheduled_tasks_toggle)
                     .service(scheduled_tasks_delete)
+                    .service(ani_collect_list)
+                    .service(ani_collect_create)
+                    .service(ani_collect_delete)
+                    .service(ani_collect_watched)
+                    .service(news_items_get)
+                    .service(news_events_get)
+                    .service(news_event_items_get)
                     .route("/anis", web::get().to(get_anis))
                     .route("/anis/{id}", web::get().to(get_ani)),
             )
