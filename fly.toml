@@ -1,4 +1,4 @@
-app = "agora"
+app = "ani-subs"
 primary_region = "sin"
 
 kill_signal = "SIGINT"
