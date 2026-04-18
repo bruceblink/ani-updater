@@ -21,7 +21,6 @@ static ALLOWED_REDIRECT_URIS: Lazy<Vec<&'static str>> = Lazy::new(|| {
     vec![
         "http://localhost:5173",
         "http://localhost:3039",
-        "https://app.example.com",
     ]
 });
 

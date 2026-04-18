@@ -38,7 +38,7 @@ pub fn format_timestamp_millis2(ts: i64, fmt: &str) -> String {
     Local
         .timestamp_millis_opt(ts)
         .single()
-        .unwrap_or_else(|| Local.timestamp_millis_opt(0).unwrap())
+        .unwrap_or_else(|| DateTime::UNIX_EPOCH.with_timezone(&Local))
         .format(fmt)
         .to_string()
 }
@@ -48,7 +48,7 @@ pub fn format_timestamp_millis(ts: i64) -> String {
     Local
         .timestamp_millis_opt(ts)
         .single()
-        .unwrap_or_else(|| Local.timestamp_millis_opt(0).unwrap())
+        .unwrap_or_else(|| DateTime::UNIX_EPOCH.with_timezone(&Local))
         .format("%Y/%m/%d")
         .to_string()
 }
@@ -108,7 +108,10 @@ pub fn get_unix_timestamp_millis_now() -> i64 {
 
 /// 将秒时间戳转换为本地时间对象
 pub fn unix_seconds_to_timestamp(t: i64) -> DateTime<Local> {
-    Local.timestamp_opt(t, 0).unwrap()
+    Local
+        .timestamp_opt(t, 0)
+        .single()
+        .unwrap_or_else(|| DateTime::UNIX_EPOCH.with_timezone(&Local))
 }
 
 /// 星期信息结构

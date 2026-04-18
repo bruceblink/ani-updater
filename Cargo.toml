@@ -13,7 +13,7 @@ edition = "2024"
 rust-version = "1.88"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/bruceblink/agora"
-version = "0.0.12"
+version = "0.1.0"
 categories = ["web-programming", "development-tools", "network-programming"]
 
 [workspace.dependencies]
