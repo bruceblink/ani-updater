@@ -1,8 +1,11 @@
 -- Add migration script here
-BEGIN;
-ALTER TABLE news_info DROP CONSTRAINT uniq_news_info;
-ALTER TABLE news_info ADD CONSTRAINT uniq_news_info UNIQUE (news_from, news_date);
-COMMIT;
+ALTER TABLE news_info DROP CONSTRAINT IF EXISTS uniq_news_info;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uniq_news_info') THEN
+        ALTER TABLE news_info ADD CONSTRAINT uniq_news_info UNIQUE (news_from, news_date);
+    END IF;
+END $$;
 
 update news_info set name='参考消息' where news_from='cankaoxiaoxi';
 update news_info set name='法布财经' where news_from='fastbull-express';
