@@ -107,32 +107,30 @@ async fn create_server(
             // SSE 公开接口（无需认证，供落地页实时新闻使用）
             // 需要认证的 API 路由
             .service(
-                web::scope("/api")
-                    .service(news_stream_sse)
-                    .service(
-                        web::scope("")
-                            .wrap(AuthMiddleware)
-                            .service(me)
-                            .service(sync_task_source)
-                            .service(sync_me_get)
-                            .service(sync_me_post)
-                            .service(proxy_image)
-                            .service(news_get)
-                            .service(scheduled_tasks_get)
-                            .service(scheduled_tasks_create)
-                            .service(scheduled_tasks_update)
-                            .service(scheduled_tasks_toggle)
-                            .service(scheduled_tasks_delete)
-                            .service(ani_collect_list)
-                            .service(ani_collect_create)
-                            .service(ani_collect_delete)
-                            .service(ani_collect_watched)
-                            .service(news_items_get)
-                            .service(news_events_get)
-                            .service(news_event_items_get)
-                            .route("/anis", web::get().to(get_anis))
-                            .route("/anis/{id}", web::get().to(get_ani)),
-                    ),
+                web::scope("/api").service(news_stream_sse).service(
+                    web::scope("")
+                        .wrap(AuthMiddleware)
+                        .service(me)
+                        .service(sync_task_source)
+                        .service(sync_me_get)
+                        .service(sync_me_post)
+                        .service(proxy_image)
+                        .service(news_get)
+                        .service(scheduled_tasks_get)
+                        .service(scheduled_tasks_create)
+                        .service(scheduled_tasks_update)
+                        .service(scheduled_tasks_toggle)
+                        .service(scheduled_tasks_delete)
+                        .service(ani_collect_list)
+                        .service(ani_collect_create)
+                        .service(ani_collect_delete)
+                        .service(ani_collect_watched)
+                        .service(news_items_get)
+                        .service(news_events_get)
+                        .service(news_event_items_get)
+                        .route("/anis", web::get().to(get_anis))
+                        .route("/anis/{id}", web::get().to(get_ani)),
+                ),
             )
             .service(
                 web::scope("/admin")
