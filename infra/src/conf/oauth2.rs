@@ -2,6 +2,7 @@ use crate::conf::configuration::Setting;
 use anyhow::{Context, Result};
 use oauth2::basic::BasicClient;
 use oauth2::{AuthUrl, ClientId, ClientSecret, RedirectUrl, TokenUrl};
+use secrecy::ExposeSecret;
 
 /// 定义 OAuth2 授权的相关配置
 #[derive(Clone)]
@@ -25,7 +26,9 @@ impl OAuthConfig {
         let client_secret = ClientSecret::new(
             configuration
                 .github_client_secret
-                .context("GITHUB_CLIENT_SECRET 环境变量未设置")?,
+                .context("GITHUB_CLIENT_SECRET 环境变量未设置")?
+                .expose_secret()
+                .clone(),
         );
 
         let base_url = configuration
@@ -34,7 +37,9 @@ impl OAuthConfig {
 
         let jwt_secret = configuration
             .jwt_secret
-            .context("JWT_SECRET 环境变量未设置")?;
+            .context("JWT_SECRET 环境变量未设置")?
+            .expose_secret()
+            .clone();
 
         let auth_url = AuthUrl::new("https://github.com/login/oauth/authorize".to_string())
             .context("Invalid auth URL")?;

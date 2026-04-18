@@ -1,12 +1,10 @@
 use actix_web::web;
 use common::TaskFilter;
-use common::api::ApiResponse;
 use common::po::{ItemResult, QueryPage, TaskItem};
 use common::utils::date_utils::get_today_weekday;
 use infra::{
     list_all_scheduled_tasks_by_page, upsert_ani_info, upsert_news_info, upsert_video_info,
 };
-use serde_json::json;
 use service::timer_task_command::{CmdFn, build_cmd_map};
 use sqlx::PgPool;
 use std::collections::HashMap;
@@ -100,19 +98,22 @@ impl TaskManager {
         let task_metas = timer_tasker
             .items
             .iter()
-            .map(|task| {
+            .filter_map(|task| {
                 let cmd = task.params["cmd"].as_str().unwrap_or("").to_string();
+                if cmd.is_empty() {
+                    warn!("任务 [{}] 缺少 params.cmd 字段，跳过加载", task.name);
+                    return None;
+                }
                 let url = task.params["url"].as_str().unwrap_or("").to_string();
                 let arg = task.params["arg"].as_str().unwrap_or("").to_string();
-
-                TaskMeta {
+                Some(TaskMeta {
                     name: task.name.clone(),
                     cmd,
                     url,
                     arg,
                     cron_expr: task.cron.clone(),
                     retry_times: task.retry_times,
-                }
+                })
             })
             .collect::<Vec<TaskMeta>>();
 
@@ -171,22 +172,25 @@ impl TaskManager {
 pub async fn run_task_service(
     item_result: ItemResult,
     pool: Arc<PgPool>,
-) -> anyhow::Result<ApiResponse, String> {
+) -> anyhow::Result<()> {
     // 启动定时任务服务
     let weekday = get_today_weekday().name_cn.to_string();
 
     let items = match item_result.get(&weekday) {
         Some(v) if !v.is_empty() => v,
-        Some(_) => return Ok(ApiResponse::ok(json!({ "message": "没有可插入的数据" }))),
-        None => return Ok(ApiResponse::err("获取更新数据失败")),
+        Some(_) => {
+            info!("任务结果中今日 ({weekday}) 没有可插入的数据");
+            return Ok(());
+        }
+        None => {
+            return Err(anyhow::anyhow!("获取更新数据失败：结果中不含 weekday={weekday}"));
+        }
     };
 
     for item in items {
-        if let Err(e) = handle_item(item, &pool).await {
-            return Ok(ApiResponse::err(format!("插入或更新失败：{e}")));
-        }
+        handle_item(item, &pool).await?;
     }
-    Ok(ApiResponse::ok(json!({ "message": "upsert success" })))
+    Ok(())
 }
 
 async fn handle_item(item: &TaskItem, pool: &PgPool) -> anyhow::Result<()> {

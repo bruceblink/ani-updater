@@ -2651,6 +2651,7 @@ dependencies = [
  "chrono",
  "common",
  "infra",
+ "once_cell",
  "reqwest 0.12.23",
  "scraper",
  "serde_json",

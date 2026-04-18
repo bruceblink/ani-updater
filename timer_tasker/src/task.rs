@@ -67,8 +67,9 @@ impl Task {
         }
     }
 
-    pub fn schedule(&self) -> Schedule {
-        Schedule::from_str(&self.cron_expr).expect("Invalid cron expression")
+    pub fn schedule(&self) -> Result<Schedule, String> {
+        Schedule::from_str(&self.cron_expr)
+            .map_err(|e| format!("任务 [{}] cron 表达式无效 '{}': {e}", self.name, self.cron_expr))
     }
 }
 

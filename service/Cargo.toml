@@ -17,6 +17,7 @@ tokio.workspace = true
 chrono = { workspace = true }
 tracing = { workspace = true }
 reqwest = { workspace = true }
+once_cell = { workspace = true }
 base64 = { workspace = true }
 serde_json = { workspace = true }
 scraper = { workspace = true }

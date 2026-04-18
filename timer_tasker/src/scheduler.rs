@@ -55,7 +55,13 @@ impl Scheduler {
         semaphore: Arc<Semaphore>,
         shutdown: Arc<Notify>,
     ) {
-        let schedule = task.schedule();
+        let schedule = match task.schedule() {
+            Ok(s) => s,
+            Err(e) => {
+                warn!("{e}，跳过调度");
+                return;
+            }
+        };
 
         loop {
             let mut upcoming = schedule.upcoming(Local);
@@ -71,14 +77,20 @@ impl Scheduler {
             tokio::select! {
                 _ = sleep(duration) => {
                     // 获取信号量许可
-                    let permit = semaphore.clone().acquire_owned().await.unwrap();
-                    // 执行任务
-                    let t = task.clone();
-                    let s = sender.clone();
-                    tokio::spawn(async move {
-                        let _permit = permit; // 确保在任务执行期间保持许可有效
-                        Self::execute_task(t, s).await;
-                    });
+                    match semaphore.clone().acquire_owned().await {
+                        Ok(permit) => {
+                            let t = task.clone();
+                            let s = sender.clone();
+                            tokio::spawn(async move {
+                                let _permit = permit; // 确保在任务执行期间保持许可有效
+                                Self::execute_task(t, s).await;
+                            });
+                        }
+                        Err(e) => {
+                            warn!("任务 [{}] 信号量已关闭: {e}，退出调度", task.name);
+                            break;
+                        }
+                    }
                 }
                 _ = shutdown.notified() => {
                     warn!("任务 [{}] 收到停止信号，退出调度", task.name);

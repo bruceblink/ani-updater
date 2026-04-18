@@ -1,13 +1,18 @@
 use common::api::ApiResponse;
 use common::po::{HealthItem, ItemResult, TaskItem};
 use common::utils::date_utils::get_today_weekday;
+use once_cell::sync::Lazy;
+use reqwest::Client;
 use serde_json::json;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
+/// 全局共享的 HTTP client（内部已 Arc 化，clone() 代价极低）
+static HTTP_CLIENT: Lazy<Client> = Lazy::new(Client::new);
+
 pub async fn extract_news_item(api_url: String) -> anyhow::Result<ApiResponse<ItemResult>, String> {
     let mut result: ItemResult = HashMap::new();
-    let client = reqwest::Client::new();
+    let client = HTTP_CLIENT.clone();
     let weekday = get_today_weekday().name_cn.to_string();
     //  构建空的请求体 JSON 数据，使用默认请求参数
     let request_body = json!({});
@@ -44,7 +49,7 @@ pub async fn extract_news_keywords(
     api_url: String,
 ) -> anyhow::Result<ApiResponse<ItemResult>, String> {
     let mut result: ItemResult = HashMap::new();
-    let client = reqwest::Client::new();
+    let client = HTTP_CLIENT.clone();
     let weekday = get_today_weekday().name_cn.to_string();
     //  构建空的请求体 JSON 数据，使用默认请求参数
     let request_body = json!({});
@@ -81,7 +86,7 @@ pub async fn extract_news_event(
     api_url: String,
 ) -> anyhow::Result<ApiResponse<ItemResult>, String> {
     let mut result: ItemResult = HashMap::new();
-    let client = reqwest::Client::new();
+    let client = HTTP_CLIENT.clone();
     let weekday = get_today_weekday().name_cn.to_string();
     //  构建空的请求体 JSON 数据，使用默认请求参数
     let request_body = json!({});
@@ -118,7 +123,7 @@ pub async fn merge_cross_day_news_events(
     api_url: String,
 ) -> anyhow::Result<ApiResponse<ItemResult>, String> {
     let mut result: ItemResult = HashMap::new();
-    let client = reqwest::Client::new();
+    let client = HTTP_CLIENT.clone();
     let weekday = get_today_weekday().name_cn.to_string();
     //  构建空的请求体 JSON 数据，使用默认请求参数
     let request_body = json!({});
