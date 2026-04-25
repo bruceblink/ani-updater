@@ -19,8 +19,21 @@ fn parse_retry_times(retry_times: i32) -> Result<i16, ApiError> {
     Ok(i16::from(retry_times))
 }
 
+fn validate_task_req(req: &TaskReq) -> Result<(), ApiError> {
+    if req.name.trim().is_empty() {
+        return Err(ApiError::BadRequest("name 不能为空".into()));
+    }
+
+    if req.cron.trim().is_empty() {
+        return Err(ApiError::BadRequest("cron 不能为空".into()));
+    }
+
+    Ok(())
+}
+
 #[post("/sync/task_source")]
 async fn sync_task_source(req: web::Json<TaskReq>, app_state: web::Data<AppState>) -> ApiResult {
+    validate_task_req(&req)?;
     let retry_times = parse_retry_times(req.retry_times)?;
 
     sqlx::query(
@@ -56,7 +69,16 @@ async fn sync_task_source(req: web::Json<TaskReq>, app_state: web::Data<AppState
 
 #[cfg(test)]
 mod tests {
-    use super::parse_retry_times;
+    use super::{TaskReq, parse_retry_times, validate_task_req};
+
+    fn sample_req() -> TaskReq {
+        TaskReq {
+            name: "news_task".to_string(),
+            cron: "0 */5 * * * * *".to_string(),
+            params: serde_json::json!({"arg": "x"}),
+            retry_times: 3,
+        }
+    }
 
     #[test]
     fn parse_retry_times_accepts_u8_range() {
@@ -68,5 +90,25 @@ mod tests {
     fn parse_retry_times_rejects_out_of_range_values() {
         assert!(parse_retry_times(-1).is_err());
         assert!(parse_retry_times(256).is_err());
+    }
+
+    #[test]
+    fn validate_task_req_accepts_non_empty_name_and_cron() {
+        let req = sample_req();
+        assert!(validate_task_req(&req).is_ok());
+    }
+
+    #[test]
+    fn validate_task_req_rejects_blank_name() {
+        let mut req = sample_req();
+        req.name = "   ".to_string();
+        assert!(validate_task_req(&req).is_err());
+    }
+
+    #[test]
+    fn validate_task_req_rejects_blank_cron() {
+        let mut req = sample_req();
+        req.cron = "\t".to_string();
+        assert!(validate_task_req(&req).is_err());
     }
 }
