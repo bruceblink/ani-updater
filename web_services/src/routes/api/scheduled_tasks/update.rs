@@ -1,5 +1,5 @@
 use crate::common::AppState;
-use actix_web::{HttpResponse, put, web};
+use actix_web::{HttpRequest, HttpResponse, put, web};
 use common::api::{ApiError, ApiResponse};
 use common::dto::UpdateScheduledTaskDTO;
 use common::po::ApiResult;
@@ -31,10 +31,12 @@ fn into_update_dto(req: UpdateScheduledTaskReq) -> Result<UpdateScheduledTaskDTO
 
 #[put("/scheduledTasks/{id}")]
 async fn scheduled_tasks_update(
+    req: HttpRequest,
     path: web::Path<i64>,
     body: web::Json<UpdateScheduledTaskReq>,
     app_state: web::Data<AppState>,
 ) -> ApiResult {
+    super::ensure_admin_access(&req, &app_state).await?;
     let id = path.into_inner();
     let dto = into_update_dto(body.into_inner())?;
 

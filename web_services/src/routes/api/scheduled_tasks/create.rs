@@ -1,5 +1,5 @@
 use crate::common::AppState;
-use actix_web::{HttpResponse, post, web};
+use actix_web::{HttpRequest, HttpResponse, post, web};
 use common::api::{ApiError, ApiResponse};
 use common::dto::CreateScheduledTaskDTO;
 use common::po::ApiResult;
@@ -39,9 +39,11 @@ fn into_create_dto(req: CreateScheduledTaskReq) -> Result<CreateScheduledTaskDTO
 
 #[post("/scheduledTasks")]
 async fn scheduled_tasks_create(
+    req: HttpRequest,
     body: web::Json<CreateScheduledTaskReq>,
     app_state: web::Data<AppState>,
 ) -> ApiResult {
+    super::ensure_admin_access(&req, &app_state).await?;
     let dto = into_create_dto(body.into_inner())?;
 
     match create_scheduled_task(&dto, &app_state.db_pool).await {
