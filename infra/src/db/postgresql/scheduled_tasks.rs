@@ -27,6 +27,11 @@ struct ScheduledTasksWithTotal {
     pub total_count: i64,
 }
 
+fn normalize_retry_times(retry_times: i16) -> anyhow::Result<u8> {
+    u8::try_from(retry_times)
+        .map_err(|_| anyhow::anyhow!("定时任务重试次数超出范围: {retry_times}"))
+}
+
 pub async fn list_all_scheduled_tasks(db_pool: &PgPool) -> anyhow::Result<Vec<ScheduledTasksDTO>> {
     let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
         r#"
@@ -47,18 +52,20 @@ pub async fn list_all_scheduled_tasks(db_pool: &PgPool) -> anyhow::Result<Vec<Sc
     // 转换数据库数据为前端需要的的DTO数据
     let data: Vec<ScheduledTasksDTO> = rows
         .iter()
-        .map(|task| ScheduledTasksDTO {
-            id: task.id,
-            name: task.name.clone(),
-            cron: task.cron.clone(),
-            params: task.params.clone(),
-            is_enabled: task.is_enabled,
-            retry_times: task.retry_times as u8,
-            last_run: task.last_run,
-            next_run: task.next_run,
-            last_status: task.last_status.clone(),
+        .map(|task| {
+            Ok(ScheduledTasksDTO {
+                id: task.id,
+                name: task.name.clone(),
+                cron: task.cron.clone(),
+                params: task.params.clone(),
+                is_enabled: task.is_enabled,
+                retry_times: normalize_retry_times(task.retry_times)?,
+                last_run: task.last_run,
+                next_run: task.next_run,
+                last_status: task.last_status.clone(),
+            })
         })
-        .collect::<Vec<ScheduledTasksDTO>>();
+        .collect::<anyhow::Result<Vec<ScheduledTasksDTO>>>()?;
     Ok(data)
 }
 
@@ -91,12 +98,12 @@ pub async fn list_all_scheduled_tasks_by_page(
         // 查询json字段params 中的arg key
         if let Some(arg) = &filter.arg {
             query_builder.push(" AND params ->> 'arg' LIKE ");
-            query_builder.push_bind(arg);
+            query_builder.push_bind(format!("%{arg}%"));
         }
         // 查询json字段params 中的arg key
         if let Some(cmd) = &filter.cmd {
             query_builder.push(" AND params ->> 'cmd' LIKE ");
-            query_builder.push_bind(cmd);
+            query_builder.push_bind(format!("%{cmd}%"));
         }
 
         if let Some(is_enabled) = &filter.is_enabled {
@@ -130,18 +137,20 @@ pub async fn list_all_scheduled_tasks_by_page(
     // 转换数据库数据为前端需要的的DTO数据
     let data: Vec<ScheduledTasksDTO> = rows
         .iter()
-        .map(|task| ScheduledTasksDTO {
-            id: task.id,
-            name: task.name.clone(),
-            cron: task.cron.clone(),
-            params: task.params.clone(),
-            is_enabled: task.is_enabled,
-            retry_times: task.retry_times as u8,
-            last_run: task.last_run,
-            next_run: task.next_run,
-            last_status: task.last_status.clone(),
+        .map(|task| {
+            Ok(ScheduledTasksDTO {
+                id: task.id,
+                name: task.name.clone(),
+                cron: task.cron.clone(),
+                params: task.params.clone(),
+                is_enabled: task.is_enabled,
+                retry_times: normalize_retry_times(task.retry_times)?,
+                last_run: task.last_run,
+                next_run: task.next_run,
+                last_status: task.last_status.clone(),
+            })
         })
-        .collect::<Vec<ScheduledTasksDTO>>();
+        .collect::<anyhow::Result<Vec<ScheduledTasksDTO>>>()?;
 
     result.items = data;
     let total_count = if rows.is_empty() {
