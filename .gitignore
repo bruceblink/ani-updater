@@ -5,3 +5,4 @@
 /postgresql/data
 /postgresql/logs
 .env
+.claude/

@@ -75,3 +75,36 @@ where
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::{App, HttpResponse, body::to_bytes, http::StatusCode, test, web};
+    use serde_json::Value;
+
+    async fn protected() -> HttpResponse {
+        HttpResponse::Ok().finish()
+    }
+
+    #[actix_web::test]
+    async fn auth_middleware_rejects_missing_token() {
+        let app = test::init_service(
+            App::new().service(
+                web::scope("/api")
+                    .wrap(AuthMiddleware)
+                    .route("/protected", web::get().to(protected)),
+            ),
+        )
+        .await;
+
+        let req = test::TestRequest::get().uri("/api/protected").to_request();
+        let resp = test::call_service(&app, req).await;
+
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+
+        let body = to_bytes(resp.into_body()).await.unwrap();
+        let data: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(data["status"], "error");
+        assert_eq!(data["message"], "Missing token");
+    }
+}
