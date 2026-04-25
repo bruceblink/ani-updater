@@ -1,5 +1,5 @@
 use crate::common::AppState;
-use actix_web::{HttpResponse, post, web};
+use actix_web::{HttpRequest, HttpResponse, post, web};
 use common::api::{ApiError, ApiResponse};
 use common::po::ApiResult;
 use cron::Schedule;
@@ -47,7 +47,12 @@ fn validate_task_req(req: &TaskReq) -> Result<(), ApiError> {
 }
 
 #[post("/sync/task_source")]
-async fn sync_task_source(req: web::Json<TaskReq>, app_state: web::Data<AppState>) -> ApiResult {
+async fn sync_task_source(
+    http_req: HttpRequest,
+    req: web::Json<TaskReq>,
+    app_state: web::Data<AppState>,
+) -> ApiResult {
+    crate::routes::api::scheduled_tasks::ensure_admin_access(&http_req, &app_state).await?;
     validate_task_req(&req)?;
     let retry_times = parse_retry_times(req.retry_times)?;
 
@@ -145,6 +150,13 @@ mod tests {
     fn validate_task_req_rejects_blank_cmd() {
         let mut req = sample_req();
         req.params = serde_json::json!({"arg": "x", "cmd": "   "});
+        assert!(validate_task_req(&req).is_err());
+    }
+
+    #[test]
+    fn validate_task_req_rejects_non_string_cmd() {
+        let mut req = sample_req();
+        req.params = serde_json::json!({"arg": "x", "cmd": 123});
         assert!(validate_task_req(&req).is_err());
     }
 }
