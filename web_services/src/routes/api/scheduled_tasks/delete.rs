@@ -1,11 +1,16 @@
 use crate::common::AppState;
-use actix_web::{HttpResponse, delete, web};
+use actix_web::{HttpRequest, HttpResponse, delete, web};
 use common::api::{ApiError, ApiResponse};
 use common::po::ApiResult;
 use infra::delete_scheduled_task;
 
 #[delete("/scheduledTasks/{id}")]
-async fn scheduled_tasks_delete(path: web::Path<i64>, app_state: web::Data<AppState>) -> ApiResult {
+async fn scheduled_tasks_delete(
+    req: HttpRequest,
+    path: web::Path<i64>,
+    app_state: web::Data<AppState>,
+) -> ApiResult {
+    super::ensure_admin_access(&req, &app_state).await?;
     let id = path.into_inner();
     match delete_scheduled_task(id, &app_state.db_pool).await {
         Ok(()) => {

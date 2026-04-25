@@ -1,9 +1,11 @@
 use crate::common::AppState;
-use actix_web::{HttpResponse, post, web};
+use actix_web::{HttpRequest, HttpResponse, post, web};
 use common::api::{ApiError, ApiResponse};
 use common::po::ApiResult;
+use cron::Schedule;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::str::FromStr;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TaskReq {
@@ -13,10 +15,46 @@ pub struct TaskReq {
     pub retry_times: i32,
 }
 
+fn parse_retry_times(retry_times: i32) -> Result<i16, ApiError> {
+    let retry_times = u8::try_from(retry_times)
+        .map_err(|_| ApiError::BadRequest("retryTimes 超出范围，必须在 0-255 之间".into()))?;
+    Ok(i16::from(retry_times))
+}
+
+fn validate_task_req(req: &TaskReq) -> Result<(), ApiError> {
+    if req.name.trim().is_empty() {
+        return Err(ApiError::BadRequest("name 不能为空".into()));
+    }
+
+    if req.cron.trim().is_empty() {
+        return Err(ApiError::BadRequest("cron 不能为空".into()));
+    }
+
+    Schedule::from_str(req.cron.trim())
+        .map_err(|_| ApiError::BadRequest("cron 表达式不合法".into()))?;
+
+    let cmd = req
+        .params
+        .get("cmd")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .unwrap_or("");
+    if cmd.is_empty() {
+        return Err(ApiError::BadRequest("params.cmd 不能为空".into()));
+    }
+
+    Ok(())
+}
+
 #[post("/sync/task_source")]
-async fn sync_task_source(req: web::Json<TaskReq>, app_state: web::Data<AppState>) -> ApiResult {
-    let retry_times = i16::try_from(req.retry_times)
-        .map_err(|_| ApiError::BadRequest("retryTimes 超出范围，必须在 0-32767 之间".into()))?;
+async fn sync_task_source(
+    http_req: HttpRequest,
+    req: web::Json<TaskReq>,
+    app_state: web::Data<AppState>,
+) -> ApiResult {
+    crate::routes::api::scheduled_tasks::ensure_admin_access(&http_req, &app_state).await?;
+    validate_task_req(&req)?;
+    let retry_times = parse_retry_times(req.retry_times)?;
 
     sqlx::query(
         r#"
@@ -47,4 +85,78 @@ async fn sync_task_source(req: web::Json<TaskReq>, app_state: web::Data<AppState
     Ok(HttpResponse::Ok().json(ApiResponse::ok(serde_json::json!({
         "message": "同步成功",
     }))))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{TaskReq, parse_retry_times, validate_task_req};
+
+    fn sample_req() -> TaskReq {
+        TaskReq {
+            name: "news_task".to_string(),
+            cron: "0 */5 * * * * *".to_string(),
+            params: serde_json::json!({"arg": "x", "cmd": "sync_news"}),
+            retry_times: 3,
+        }
+    }
+
+    #[test]
+    fn parse_retry_times_accepts_u8_range() {
+        assert_eq!(parse_retry_times(0).unwrap(), 0);
+        assert_eq!(parse_retry_times(255).unwrap(), 255);
+    }
+
+    #[test]
+    fn parse_retry_times_rejects_out_of_range_values() {
+        assert!(parse_retry_times(-1).is_err());
+        assert!(parse_retry_times(256).is_err());
+    }
+
+    #[test]
+    fn validate_task_req_accepts_non_empty_name_and_cron() {
+        let req = sample_req();
+        assert!(validate_task_req(&req).is_ok());
+    }
+
+    #[test]
+    fn validate_task_req_rejects_blank_name() {
+        let mut req = sample_req();
+        req.name = "   ".to_string();
+        assert!(validate_task_req(&req).is_err());
+    }
+
+    #[test]
+    fn validate_task_req_rejects_blank_cron() {
+        let mut req = sample_req();
+        req.cron = "\t".to_string();
+        assert!(validate_task_req(&req).is_err());
+    }
+
+    #[test]
+    fn validate_task_req_rejects_invalid_cron() {
+        let mut req = sample_req();
+        req.cron = "invalid cron".to_string();
+        assert!(validate_task_req(&req).is_err());
+    }
+
+    #[test]
+    fn validate_task_req_rejects_missing_cmd() {
+        let mut req = sample_req();
+        req.params = serde_json::json!({"arg": "x"});
+        assert!(validate_task_req(&req).is_err());
+    }
+
+    #[test]
+    fn validate_task_req_rejects_blank_cmd() {
+        let mut req = sample_req();
+        req.params = serde_json::json!({"arg": "x", "cmd": "   "});
+        assert!(validate_task_req(&req).is_err());
+    }
+
+    #[test]
+    fn validate_task_req_rejects_non_string_cmd() {
+        let mut req = sample_req();
+        req.params = serde_json::json!({"arg": "x", "cmd": 123});
+        assert!(validate_task_req(&req).is_err());
+    }
 }

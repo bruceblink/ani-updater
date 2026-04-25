@@ -1,8 +1,8 @@
 use crate::task::{Task, TaskResult};
-use chrono::{Local, Utc};
+use chrono::Utc;
 use std::sync::Arc;
 use tokio::sync::{Notify, Semaphore, mpsc};
-use tokio::time::{Duration, sleep};
+use tokio::time::{Duration, Instant, sleep};
 use tracing::{info, warn};
 
 #[derive(Clone)]
@@ -37,6 +37,11 @@ impl Scheduler {
         }
     }
 
+    fn next_run_delay(schedule: &cron::Schedule, now: chrono::DateTime<Utc>) -> Option<Duration> {
+        let next_time = schedule.after(&now).next()?;
+        Some((next_time - now).to_std().unwrap_or(Duration::from_secs(0)))
+    }
+
     async fn run_single_task(
         task: Arc<Task>,
         sender: mpsc::Sender<TaskResult>,
@@ -46,21 +51,16 @@ impl Scheduler {
         let schedule = match task.schedule() {
             Ok(s) => s,
             Err(e) => {
-                warn!("{e}，跳过调度");
+                warn!(task_name = %task.name, error = %e, "cron 表达式无效，跳过调度");
                 return;
             }
         };
 
         loop {
-            let mut upcoming = schedule.upcoming(Local);
-            let Some(next_time) = upcoming.next() else {
-                warn!("任务 [{}] 无下次运行时间，结束调度", task.name);
+            let Some(duration) = Self::next_run_delay(&schedule, Utc::now()) else {
+                warn!(task_name = %task.name, "无下次运行时间，结束调度");
                 break;
             };
-
-            let duration = (next_time - Local::now())
-                .to_std()
-                .unwrap_or(Duration::from_secs(0));
 
             tokio::select! {
                 _ = sleep(duration) => {
@@ -74,13 +74,13 @@ impl Scheduler {
                             });
                         }
                         Err(e) => {
-                            warn!("任务 [{}] 信号量已关闭: {e}，退出调度", task.name);
+                            warn!(task_name = %task.name, error = %e, "信号量已关闭，退出调度");
                             break;
                         }
                     }
                 }
                 _ = shutdown.notified() => {
-                    warn!("任务 [{}] 收到停止信号，退出调度", task.name);
+                    warn!(task_name = %task.name, "收到停止信号，退出调度");
                     break;
                 }
             }
@@ -91,18 +91,27 @@ impl Scheduler {
         let schedule = match task.schedule() {
             Ok(s) => s,
             Err(e) => {
-                warn!("{}", e);
+                warn!(task_name = %task.name, error = %e, "cron 表达式无效，跳过执行");
                 return;
             }
         };
 
+        let started_at = Instant::now();
         let last_run = Utc::now();
         let next_run = schedule.upcoming(Utc).next();
+        let max_attempts = task.retry_times + 1;
 
         for attempt in 0..=task.retry_times {
+            let current_try = attempt + 1;
             match task.action.run().await {
                 Ok(resp) => {
-                    info!("任务 [{}] 执行成功", task.name);
+                    info!(
+                        task_name = %task.name,
+                        attempt = current_try,
+                        max_attempts,
+                        elapsed_ms = started_at.elapsed().as_millis() as u64,
+                        "任务执行成功"
+                    );
                     let result = TaskResult {
                         name: task.name.clone(),
                         result: Some(resp.data.unwrap_or_default()),
@@ -114,23 +123,24 @@ impl Scheduler {
                     return;
                 }
                 Err(e) => {
-                    let current_try = attempt + 1;
                     if attempt < task.retry_times {
                         warn!(
-                            "任务 [{}] 执行失败: {}, 将重试 {}/{}",
-                            task.name,
-                            e,
-                            current_try,
-                            task.retry_times + 1
+                            task_name = %task.name,
+                            attempt = current_try,
+                            max_attempts,
+                            error = %e,
+                            elapsed_ms = started_at.elapsed().as_millis() as u64,
+                            "任务执行失败，准备重试"
                         );
                         sleep(Duration::from_secs(5)).await;
                     } else {
                         warn!(
-                            "任务 [{}] 执行失败: {}, 已达到最大重试次数 {}/{}",
-                            task.name,
-                            e,
-                            current_try,
-                            task.retry_times + 1
+                            task_name = %task.name,
+                            attempt = current_try,
+                            max_attempts,
+                            error = %e,
+                            elapsed_ms = started_at.elapsed().as_millis() as u64,
+                            "任务执行失败，达到最大重试次数"
                         );
                     }
                 }
@@ -156,8 +166,11 @@ impl Scheduler {
 mod tests {
     use super::*;
     use crate::task::{Task, TaskAction, TaskResult};
-    use common::po::{NewsInfo, TaskItem};
+    use chrono::{Duration as ChronoDuration, TimeZone, Utc};
+    use common::api::ApiResponse;
+    use common::po::{ItemResult, NewsInfo, TaskItem};
     use std::collections::HashSet;
+    use std::str::FromStr;
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use tokio::sync::mpsc;
@@ -176,7 +189,6 @@ mod tests {
             String,
         > {
             use chrono::Local;
-            use common::api::ApiResponse;
             use std::collections::HashMap;
 
             let count = self.counter.fetch_add(1, Ordering::SeqCst) + 1;
@@ -203,6 +215,91 @@ mod tests {
                 message: None,
             })
         }
+    }
+
+    struct FlakyAction {
+        counter: Arc<AtomicUsize>,
+        succeed_on: usize,
+    }
+
+    #[async_trait::async_trait]
+    impl TaskAction for FlakyAction {
+        async fn run(&self) -> Result<ApiResponse<ItemResult>, String> {
+            let current = self.counter.fetch_add(1, Ordering::SeqCst) + 1;
+            if current >= self.succeed_on {
+                Ok(ApiResponse {
+                    status: "".to_string(),
+                    data: Some(Default::default()),
+                    message: None,
+                })
+            } else {
+                Err(format!("attempt {current} failed"))
+            }
+        }
+    }
+
+    struct AlwaysFailAction {
+        counter: Arc<AtomicUsize>,
+    }
+
+    #[async_trait::async_trait]
+    impl TaskAction for AlwaysFailAction {
+        async fn run(&self) -> Result<ApiResponse<ItemResult>, String> {
+            self.counter.fetch_add(1, Ordering::SeqCst);
+            Err("always fail".to_string())
+        }
+    }
+
+    #[test]
+    fn test_next_run_delay_uses_utc_baseline() {
+        let schedule = cron::Schedule::from_str("0 */5 * * * * *").unwrap();
+        let now = Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 2).unwrap();
+
+        let delay = Scheduler::next_run_delay(&schedule, now).unwrap();
+
+        assert_eq!(delay, ChronoDuration::seconds(298).to_std().unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_execute_task_retries_until_success() {
+        let attempts = Arc::new(AtomicUsize::new(0));
+        let task = Arc::new(Task {
+            name: "flaky-success".into(),
+            cron_expr: "*/5 * * * * * *".into(),
+            retry_times: 2,
+            action: Arc::new(FlakyAction {
+                counter: attempts.clone(),
+                succeed_on: 3,
+            }),
+        });
+
+        let (tx, mut rx) = mpsc::channel::<TaskResult>(8);
+        Scheduler::execute_task(task, tx).await;
+
+        let result = rx.recv().await.unwrap();
+        assert_eq!(result.last_status, "success");
+        assert_eq!(attempts.load(Ordering::SeqCst), 3);
+    }
+
+    #[tokio::test]
+    async fn test_execute_task_reports_failed_after_max_retries() {
+        let attempts = Arc::new(AtomicUsize::new(0));
+        let task = Arc::new(Task {
+            name: "always-fail".into(),
+            cron_expr: "*/5 * * * * * *".into(),
+            retry_times: 2,
+            action: Arc::new(AlwaysFailAction {
+                counter: attempts.clone(),
+            }),
+        });
+
+        let (tx, mut rx) = mpsc::channel::<TaskResult>(8);
+        Scheduler::execute_task(task, tx).await;
+
+        let result = rx.recv().await.unwrap();
+        assert_eq!(result.last_status, "failed");
+        assert!(result.result.is_none());
+        assert_eq!(attempts.load(Ordering::SeqCst), 3);
     }
 
     #[tokio::test]

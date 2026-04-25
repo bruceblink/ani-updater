@@ -32,6 +32,23 @@ fn normalize_retry_times(retry_times: i16) -> anyhow::Result<u8> {
         .map_err(|_| anyhow::anyhow!("定时任务重试次数超出范围: {retry_times}"))
 }
 
+#[cfg(test)]
+mod tests {
+    use super::normalize_retry_times;
+
+    #[test]
+    fn normalize_retry_times_accepts_u8_range() {
+        assert_eq!(normalize_retry_times(0).unwrap(), 0);
+        assert_eq!(normalize_retry_times(255).unwrap(), 255);
+    }
+
+    #[test]
+    fn normalize_retry_times_rejects_invalid_values() {
+        assert!(normalize_retry_times(-1).is_err());
+        assert!(normalize_retry_times(256).is_err());
+    }
+}
+
 pub async fn list_all_scheduled_tasks(db_pool: &PgPool) -> anyhow::Result<Vec<ScheduledTasksDTO>> {
     let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
         r#"
@@ -201,7 +218,7 @@ pub async fn create_scheduled_task(
         cron: row.cron,
         params: row.params,
         is_enabled: row.is_enabled,
-        retry_times: row.retry_times as u8,
+        retry_times: normalize_retry_times(row.retry_times)?,
         last_run: row.last_run,
         next_run: row.next_run,
         last_status: row.last_status,
@@ -245,7 +262,7 @@ pub async fn update_scheduled_task(
         cron: row.cron,
         params: row.params,
         is_enabled: row.is_enabled,
-        retry_times: row.retry_times as u8,
+        retry_times: normalize_retry_times(row.retry_times)?,
         last_run: row.last_run,
         next_run: row.next_run,
         last_status: row.last_status,
