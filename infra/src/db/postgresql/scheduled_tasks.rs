@@ -283,5 +283,42 @@ pub async fn delete_scheduled_task(id: i64, db_pool: &PgPool) -> anyhow::Result<
     if rows_affected == 0 {
         return Err(anyhow::anyhow!("任务不存在"));
     }
+
+    Ok(())
+}
+
+pub async fn update_scheduled_task_runtime(
+    name: &str,
+    last_run: chrono::DateTime<Utc>,
+    next_run: Option<chrono::DateTime<Utc>>,
+    last_status: &str,
+    db_pool: &PgPool,
+) -> anyhow::Result<()> {
+    let rows_affected = sqlx::query(
+        r#"
+        UPDATE scheduled_tasks
+        SET last_run = $2,
+            next_run = $3,
+            last_status = $4,
+            updated_at = NOW()
+        WHERE name = $1
+        "#,
+    )
+    .bind(name)
+    .bind(last_run)
+    .bind(next_run)
+    .bind(last_status)
+    .execute(db_pool)
+    .await
+    .map_err(|e| {
+        tracing::error!("更新任务运行态失败 [{name}]: {e:?}");
+        anyhow::anyhow!("更新任务运行态失败")
+    })?
+    .rows_affected();
+
+    if rows_affected == 0 {
+        return Err(anyhow::anyhow!("任务不存在"));
+    }
+
     Ok(())
 }

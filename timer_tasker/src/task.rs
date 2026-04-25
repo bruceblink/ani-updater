@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use chrono::Utc;
 use common::api::ApiResponse;
 use common::po::ItemResult;
 use cron::Schedule;
@@ -137,4 +138,7 @@ pub fn build_tasks_from_meta(metas: &[TaskMeta], cmd_map: &HashMap<String, CmdFn
 pub struct TaskResult {
     pub name: String,
     pub result: Option<ItemResult>,
+    pub last_run: chrono::DateTime<Utc>,
+    pub next_run: Option<chrono::DateTime<Utc>>,
+    pub last_status: String,
 }
