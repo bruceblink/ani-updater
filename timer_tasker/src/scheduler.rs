@@ -114,15 +114,24 @@ impl Scheduler {
                     return;
                 }
                 Err(e) => {
-                    warn!(
-                        "任务 [{}] 执行失败: {}, 重试 {}/{}",
-                        task.name,
-                        e,
-                        attempt + 1,
-                        task.retry_times
-                    );
+                    let current_try = attempt + 1;
                     if attempt < task.retry_times {
+                        warn!(
+                            "任务 [{}] 执行失败: {}, 将重试 {}/{}",
+                            task.name,
+                            e,
+                            current_try,
+                            task.retry_times + 1
+                        );
                         sleep(Duration::from_secs(5)).await;
+                    } else {
+                        warn!(
+                            "任务 [{}] 执行失败: {}, 已达到最大重试次数 {}/{}",
+                            task.name,
+                            e,
+                            current_try,
+                            task.retry_times + 1
+                        );
                     }
                 }
             }

@@ -110,9 +110,14 @@ pub fn build_tasks_from_meta(metas: &[TaskMeta], cmd_map: &HashMap<String, CmdFn
                 move || {
                     let cmd_fn = cmd_fn.clone();
                     let urls = url_for_closure.clone();
-                    let args = arg_for_closure.clone();
+                    let arg = arg_for_closure.clone();
                     let name_for_log = name.clone();
                     async move {
+                        let args = if arg.trim().is_empty() {
+                            urls.clone()
+                        } else {
+                            arg
+                        };
                         let input = CommandInput {
                             urls: Some(urls),
                             args,
