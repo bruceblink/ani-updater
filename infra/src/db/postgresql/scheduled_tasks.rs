@@ -325,4 +325,3 @@ pub async fn update_scheduled_task_runtime(
 
     Ok(())
 }
-
