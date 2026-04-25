@@ -33,6 +33,16 @@ fn validate_task_req(req: &TaskReq) -> Result<(), ApiError> {
     Schedule::from_str(req.cron.trim())
         .map_err(|_| ApiError::BadRequest("cron 表达式不合法".into()))?;
 
+    let cmd = req
+        .params
+        .get("cmd")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .unwrap_or("");
+    if cmd.is_empty() {
+        return Err(ApiError::BadRequest("params.cmd 不能为空".into()));
+    }
+
     Ok(())
 }
 
@@ -80,7 +90,7 @@ mod tests {
         TaskReq {
             name: "news_task".to_string(),
             cron: "0 */5 * * * * *".to_string(),
-            params: serde_json::json!({"arg": "x"}),
+            params: serde_json::json!({"arg": "x", "cmd": "sync_news"}),
             retry_times: 3,
         }
     }
@@ -121,6 +131,20 @@ mod tests {
     fn validate_task_req_rejects_invalid_cron() {
         let mut req = sample_req();
         req.cron = "invalid cron".to_string();
+        assert!(validate_task_req(&req).is_err());
+    }
+
+    #[test]
+    fn validate_task_req_rejects_missing_cmd() {
+        let mut req = sample_req();
+        req.params = serde_json::json!({"arg": "x"});
+        assert!(validate_task_req(&req).is_err());
+    }
+
+    #[test]
+    fn validate_task_req_rejects_blank_cmd() {
+        let mut req = sample_req();
+        req.params = serde_json::json!({"arg": "x", "cmd": "   "});
         assert!(validate_task_req(&req).is_err());
     }
 }
