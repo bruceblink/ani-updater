@@ -12,10 +12,10 @@ pnpm-lock.yaml
 # 忽略 Rust 构建产物
 target
 web_services/tests
-Cargo.lock
 
-# 忽略 Dockerfile 本身（可选）
-Dockerfile
+# 保留 Docker 构建必要文件
+!Cargo.lock
+!Dockerfile
 .dockerignore
 /docker
 

@@ -1,5 +1,5 @@
 use crate::task::{Task, TaskResult};
-use chrono::Local;
+use chrono::{Local, Utc};
 use std::sync::Arc;
 use tokio::sync::{Notify, Semaphore, mpsc};
 use tokio::time::{Duration, sleep};
@@ -9,28 +9,21 @@ use tracing::{info, warn};
 pub struct Scheduler {
     pub tasks: Vec<Arc<Task>>,
     shutdown: Arc<Notify>,
-    semaphore: Arc<Semaphore>, // 控制并发的信号量
+    semaphore: Arc<Semaphore>,
 }
 
 impl Scheduler {
-    /// 构建定时任务执行器 <br>
-    /// tasks 定时任务的任务Vec <br>
-    /// max_concurrent_tasks 默认并发为系统的CPU核心数
     pub fn new(tasks: Vec<Task>, max_concurrent_tasks: Option<usize>) -> Self {
-        // 获取系统的 CPU 核心数
         let default_max_concurrent_tasks = num_cpus::get();
-
-        // 使用传入的值，或者默认值
         let max_concurrent_tasks = max_concurrent_tasks.unwrap_or(default_max_concurrent_tasks);
 
         Self {
             tasks: tasks.into_iter().map(Arc::new).collect(),
             shutdown: Arc::new(Notify::new()),
-            semaphore: Arc::new(Semaphore::new(max_concurrent_tasks)), // 限制并发任务数
+            semaphore: Arc::new(Semaphore::new(max_concurrent_tasks)),
         }
     }
 
-    /// 运行调度器，所有任务各自独立运行，互不干扰
     pub async fn run(&self, sender: mpsc::Sender<TaskResult>) {
         for task in &self.tasks {
             let t = task.clone();
@@ -44,7 +37,6 @@ impl Scheduler {
         }
     }
 
-    /// 运行单个任务的独立调度循环
     async fn run_single_task(
         task: Arc<Task>,
         sender: mpsc::Sender<TaskResult>,
@@ -68,17 +60,16 @@ impl Scheduler {
 
             let duration = (next_time - Local::now())
                 .to_std()
-                .unwrap_or(Duration::from_secs(0)); // 计算任务等待时间
+                .unwrap_or(Duration::from_secs(0));
 
             tokio::select! {
                 _ = sleep(duration) => {
-                    // 获取信号量许可
                     match semaphore.clone().acquire_owned().await {
                         Ok(permit) => {
                             let t = task.clone();
                             let s = sender.clone();
                             tokio::spawn(async move {
-                                let _permit = permit; // 确保在任务执行期间保持许可有效
+                                let _permit = permit;
                                 Self::execute_task(t, s).await;
                             });
                         }
@@ -96,8 +87,18 @@ impl Scheduler {
         }
     }
 
-    /// 实际执行任务逻辑 + 重试
     async fn execute_task(task: Arc<Task>, sender: mpsc::Sender<TaskResult>) {
+        let schedule = match task.schedule() {
+            Ok(s) => s,
+            Err(e) => {
+                warn!("{}", e);
+                return;
+            }
+        };
+
+        let last_run = Utc::now();
+        let next_run = schedule.upcoming(Utc).next();
+
         for attempt in 0..=task.retry_times {
             match task.action.run().await {
                 Ok(resp) => {
@@ -105,9 +106,12 @@ impl Scheduler {
                     let result = TaskResult {
                         name: task.name.clone(),
                         result: Some(resp.data.unwrap_or_default()),
+                        last_run,
+                        next_run,
+                        last_status: "success".to_string(),
                     };
                     let _ = sender.send(result).await;
-                    break;
+                    return;
                 }
                 Err(e) => {
                     warn!(
@@ -123,9 +127,17 @@ impl Scheduler {
                 }
             }
         }
+
+        let result = TaskResult {
+            name: task.name.clone(),
+            result: None,
+            last_run,
+            next_run,
+            last_status: "failed".to_string(),
+        };
+        let _ = sender.send(result).await;
     }
 
-    /// 外部调用，用于停止所有任务
     pub fn stop(&self) {
         self.shutdown.notify_waiters();
     }
@@ -141,7 +153,6 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
     use tokio::sync::mpsc;
 
-    /// 模拟的任务动作
     struct MockAction {
         id: String,
         counter: Arc<AtomicUsize>,
@@ -168,7 +179,6 @@ mod tests {
                 count
             );
 
-            // 构造一个假的结果数据
             let mut map = HashMap::new();
             let mut set = HashSet::new();
             set.insert(TaskItem::News(NewsInfo {
@@ -188,11 +198,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_multiple_cron_expressions_run_independently() {
-        // 任务 A: 在 6-23 小时每 20 分钟执行一次（模拟 cron_expr2）
         let counter_a = Arc::new(AtomicUsize::new(0));
         let task_a = Task {
             name: "任务A".into(),
-            cron_expr: "*/5 * * * * * *".into(), // 为测试改成每5秒执行一次
+            cron_expr: "*/5 * * * * * *".into(),
             retry_times: 0,
             action: Arc::new(MockAction {
                 id: "A".into(),
@@ -200,11 +209,10 @@ mod tests {
             }),
         };
 
-        // 任务 B: 指定某些小时点触发（模拟 cron_expr1）
         let counter_b = Arc::new(AtomicUsize::new(0));
         let task_b = Task {
             name: "任务B".into(),
-            cron_expr: "*/7 * * * * * *".into(), // 每7秒执行一次
+            cron_expr: "*/7 * * * * * *".into(),
             retry_times: 0,
             action: Arc::new(MockAction {
                 id: "B".into(),
@@ -219,7 +227,6 @@ mod tests {
             scheduler.run(tx).await;
         });
 
-        // 收集部分结果
         let mut received = vec![];
         tokio::spawn(async move {
             while let Some(res) = rx.recv().await {
@@ -228,7 +235,6 @@ mod tests {
             }
         });
 
-        // 观察 15 秒
         sleep(Duration::from_secs(15)).await;
 
         println!(

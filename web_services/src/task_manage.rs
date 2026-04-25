@@ -2,7 +2,7 @@ use actix_web::web;
 use common::TaskFilter;
 use common::po::{ItemResult, QueryPage, TaskItem};
 use common::utils::date_utils::get_today_weekday;
-use infra::{list_all_scheduled_tasks_by_page, upsert_news_info};
+use infra::{list_all_scheduled_tasks_by_page, update_scheduled_task_runtime, upsert_news_info};
 use service::timer_task_command::{CmdFn, build_cmd_map};
 use sqlx::PgPool;
 use std::collections::HashMap;
@@ -14,39 +14,30 @@ use timer_tasker::task::build_tasks_from_meta;
 use tokio::sync::{RwLock, mpsc};
 use tracing::{error, info, warn};
 
-// 全局单例
 static GLOBAL_TASK_MANAGER: OnceLock<Arc<TaskManager>> = OnceLock::new();
 
-// 全局定时任务管理器
 pub struct TaskManager {
     db_pool: Arc<PgPool>,
-    // 当前运行的调度器（用于重启）
     current_scheduler: Arc<RwLock<Option<Arc<Scheduler>>>>,
-    // 命令映射表
-    cmd_map: HashMap<String, CmdFn>, // CmdFn 是你的命令函数类型
+    cmd_map: HashMap<String, CmdFn>,
 }
 
-// 初始化并启动 TaskManager
 pub async fn initialize_task_manager(db_pool: PgPool) -> anyhow::Result<()> {
     let task_manager = Arc::new(TaskManager::new(db_pool.clone()));
 
-    // 设置全局实例
     GLOBAL_TASK_MANAGER
         .set(task_manager.clone())
         .map_err(|_| anyhow::anyhow!("TaskManager 已经初始化"))?;
 
-    // 启动定时任务
     start_async_timer_task_with_manager(task_manager).await;
 
     Ok(())
 }
 
-// 获取全局 TaskManager 实例
 pub fn get_global_task_manager() -> Option<Arc<TaskManager>> {
     GLOBAL_TASK_MANAGER.get().cloned()
 }
 
-// 修改后的启动函数，接收 TaskManager 实例
 async fn start_async_timer_task_with_manager(task_manager: Arc<TaskManager>) {
     if let Err(e) = task_manager.start_or_restart_tasks().await {
         error!("定时任务启动失败: {e:?}");
@@ -62,33 +53,23 @@ impl TaskManager {
         }
     }
 
-    // 启动或重启定时任务系统
     pub async fn start_or_restart_tasks(&self) -> anyhow::Result<()> {
-        // 1. 停止现有的调度器
         self.stop_current_scheduler().await;
 
-        // 2. 重新加载配置
         let task_conf = self.load_task_config().await?;
-
-        // 3. 构建任务
         let tasks = build_tasks_from_meta(&task_conf, &self.cmd_map);
-
-        // 4. 创建新调度器
         let scheduler = Arc::new(Scheduler::new(tasks, None));
 
-        // 5. 保存新调度器引用
         {
             let mut current = self.current_scheduler.write().await;
             *current = Some(scheduler.clone());
         }
 
-        // 6. 启动结果接收器和新调度器
         self.start_scheduler_with_channel(scheduler).await;
 
         Ok(())
     }
 
-    // 加载任务配置
     pub async fn load_task_config(&self) -> anyhow::Result<Vec<TaskMeta>> {
         let query = create_empty_query();
         let timer_tasker = list_all_scheduled_tasks_by_page(query, &self.db_pool).await?;
@@ -118,39 +99,45 @@ impl TaskManager {
         Ok(task_metas)
     }
 
-    // 强制刷新配置
     pub async fn refresh_config(&self) -> anyhow::Result<()> {
-        // 重新启动任务
         self.start_or_restart_tasks().await
     }
 
-    // 停止当前调度器
     async fn stop_current_scheduler(&self) {
         let mut current = self.current_scheduler.write().await;
-        // 安全地停止调度器
         if let Some(scheduler) = current.take() {
             scheduler.stop();
             info!("已停止当前的定时任务调度器");
         }
     }
 
-    // 启动调度器（包含通道创建）
     async fn start_scheduler_with_channel(&self, scheduler: Arc<Scheduler>) {
         let connect_pool = Arc::clone(&self.db_pool);
 
-        // 创建 mpsc channel 用于接收 TaskResult
         let (tx, mut rx) = mpsc::channel::<TaskResult>(128);
 
-        // 启动结果接收器
         tokio::spawn({
             let connect_pool = Arc::clone(&connect_pool);
             async move {
                 while let Some(res) = rx.recv().await {
+                    if let Err(e) = update_scheduled_task_runtime(
+                        &res.name,
+                        res.last_run,
+                        res.next_run,
+                        &res.last_status,
+                        &connect_pool,
+                    )
+                    .await
+                    {
+                        warn!("更新任务 [{}] 运行态失败: {e:?}", res.name);
+                    }
+
                     if let Some(item_result) = res.result {
                         let pool_clone = Arc::clone(&connect_pool);
+                        let task_name = res.name.clone();
                         tokio::spawn(async move {
                             if let Err(e) = run_task_service(item_result, pool_clone).await {
-                                warn!("task {:?} 保存失败", e);
+                                warn!("任务 [{}] 保存结果失败: {:?}", task_name, e);
                             }
                         });
                     }
@@ -158,17 +145,13 @@ impl TaskManager {
             }
         });
 
-        // 启动调度器
-        tokio::spawn({
-            async move {
-                scheduler.run(tx).await;
-            }
+        tokio::spawn(async move {
+            scheduler.run(tx).await;
         });
     }
 }
 
 pub async fn run_task_service(item_result: ItemResult, pool: Arc<PgPool>) -> anyhow::Result<()> {
-    // 启动定时任务服务
     let weekday = get_today_weekday().name_cn.to_string();
 
     let items = match item_result.get(&weekday) {
@@ -207,7 +190,6 @@ async fn handle_item(item: &TaskItem, pool: &PgPool) -> anyhow::Result<()> {
         TaskItem::ExtractNewsEvent(res) => {
             info!("新闻event提取结果: {} => {}", res.url, res.result);
         }
-
         TaskItem::MergeNewsItem(res) => {
             info!("新闻event合并结果: {} => {}", res.url, res.result);
         }
@@ -215,7 +197,6 @@ async fn handle_item(item: &TaskItem, pool: &PgPool) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// 创建空的分页查询条件
 fn create_empty_query() -> web::Query<QueryPage<TaskFilter>> {
     let filter = TaskFilter {
         name: None,

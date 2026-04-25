@@ -1,11 +1,12 @@
 mod admin;
 mod api;
 mod auth;
-mod index;
-mod login;
+pub mod index;
+pub mod login;
 
 pub mod register;
 pub use admin::*;
 pub use api::*;
 pub use auth::*;
+pub use index::*;
 pub use login::*;
