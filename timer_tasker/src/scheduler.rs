@@ -1,5 +1,5 @@
 use crate::task::{Task, TaskResult};
-use chrono::{Local, Utc};
+use chrono::Utc;
 use std::sync::Arc;
 use tokio::sync::{Notify, Semaphore, mpsc};
 use tokio::time::{Duration, Instant, sleep};
@@ -37,6 +37,11 @@ impl Scheduler {
         }
     }
 
+    fn next_run_delay(schedule: &cron::Schedule, now: chrono::DateTime<Utc>) -> Option<Duration> {
+        let next_time = schedule.after(&now).next()?;
+        Some((next_time - now).to_std().unwrap_or(Duration::from_secs(0)))
+    }
+
     async fn run_single_task(
         task: Arc<Task>,
         sender: mpsc::Sender<TaskResult>,
@@ -52,15 +57,10 @@ impl Scheduler {
         };
 
         loop {
-            let mut upcoming = schedule.upcoming(Local);
-            let Some(next_time) = upcoming.next() else {
+            let Some(duration) = Self::next_run_delay(&schedule, Utc::now()) else {
                 warn!(task_name = %task.name, "无下次运行时间，结束调度");
                 break;
             };
-
-            let duration = (next_time - Local::now())
-                .to_std()
-                .unwrap_or(Duration::from_secs(0));
 
             tokio::select! {
                 _ = sleep(duration) => {
@@ -166,9 +166,11 @@ impl Scheduler {
 mod tests {
     use super::*;
     use crate::task::{Task, TaskAction, TaskResult};
+    use chrono::{Duration as ChronoDuration, TimeZone, Utc};
     use common::api::ApiResponse;
     use common::po::{ItemResult, NewsInfo, TaskItem};
     use std::collections::HashSet;
+    use std::str::FromStr;
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use tokio::sync::mpsc;
@@ -246,6 +248,16 @@ mod tests {
             self.counter.fetch_add(1, Ordering::SeqCst);
             Err("always fail".to_string())
         }
+    }
+
+    #[test]
+    fn test_next_run_delay_uses_utc_baseline() {
+        let schedule = cron::Schedule::from_str("0 */5 * * * * *").unwrap();
+        let now = Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 2).unwrap();
+
+        let delay = Scheduler::next_run_delay(&schedule, now).unwrap();
+
+        assert_eq!(delay, ChronoDuration::seconds(298).to_std().unwrap());
     }
 
     #[tokio::test]
