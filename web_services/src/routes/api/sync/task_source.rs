@@ -2,8 +2,10 @@ use crate::common::AppState;
 use actix_web::{HttpResponse, post, web};
 use common::api::{ApiError, ApiResponse};
 use common::po::ApiResult;
+use cron::Schedule;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::str::FromStr;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TaskReq {
@@ -27,6 +29,9 @@ fn validate_task_req(req: &TaskReq) -> Result<(), ApiError> {
     if req.cron.trim().is_empty() {
         return Err(ApiError::BadRequest("cron 不能为空".into()));
     }
+
+    Schedule::from_str(req.cron.trim())
+        .map_err(|_| ApiError::BadRequest("cron 表达式不合法".into()))?;
 
     Ok(())
 }
@@ -109,6 +114,13 @@ mod tests {
     fn validate_task_req_rejects_blank_cron() {
         let mut req = sample_req();
         req.cron = "\t".to_string();
+        assert!(validate_task_req(&req).is_err());
+    }
+
+    #[test]
+    fn validate_task_req_rejects_invalid_cron() {
+        let mut req = sample_req();
+        req.cron = "invalid cron".to_string();
         assert!(validate_task_req(&req).is_err());
     }
 }
