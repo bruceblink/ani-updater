@@ -72,16 +72,23 @@ mod tests {
     }
 
     #[test]
-    fn has_admin_access_accepts_admin_role_or_admin_permission() {
+    fn has_admin_access_accepts_admin_role() {
         let claims_with_admin_role = build_claims(vec!["admin"]);
         assert!(has_admin_access(&claims_with_admin_role, &[]));
+    }
 
+    #[test]
+    fn has_admin_access_accepts_admin_permission() {
         let claims_without_admin_role = build_claims(vec!["user"]);
         assert!(has_admin_access(
             &claims_without_admin_role,
             &["admin:all".to_string()]
         ));
+    }
 
+    #[test]
+    fn has_admin_access_rejects_non_admin_user() {
+        let claims_without_admin_role = build_claims(vec!["user"]);
         assert!(!has_admin_access(&claims_without_admin_role, &[]));
     }
 }
