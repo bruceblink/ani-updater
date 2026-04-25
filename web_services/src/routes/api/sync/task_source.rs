@@ -15,6 +15,9 @@ pub struct TaskReq {
 
 #[post("/sync/task_source")]
 async fn sync_task_source(req: web::Json<TaskReq>, app_state: web::Data<AppState>) -> ApiResult {
+    let retry_times = i16::try_from(req.retry_times)
+        .map_err(|_| ApiError::BadRequest("retryTimes 超出范围，必须在 0-32767 之间".into()))?;
+
     sqlx::query(
         r#"
         INSERT INTO scheduled_tasks  (name, cron, params, retry_times)
@@ -28,7 +31,7 @@ async fn sync_task_source(req: web::Json<TaskReq>, app_state: web::Data<AppState
     .bind(req.name.clone())
     .bind(req.cron.clone())
     .bind(req.params.clone())
-    .bind(req.retry_times)
+    .bind(retry_times)
     .execute(&app_state.db_pool)
     .await
     .map_err(|e| {
