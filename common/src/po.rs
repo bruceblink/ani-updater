@@ -1,7 +1,7 @@
 use crate::api::ApiError;
 use crate::dto::AniInfoDto;
 use actix_web::HttpResponse;
-use chrono::Utc;
+use chrono::{NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::FromRow;
@@ -168,8 +168,8 @@ pub struct ScheduledTasks {
     pub params: Value,
     pub is_enabled: bool,
     pub retry_times: i16,
-    pub last_run: Option<chrono::DateTime<Utc>>,
-    pub next_run: Option<chrono::DateTime<Utc>>,
+    pub last_run: Option<NaiveDateTime>,
+    pub next_run: Option<NaiveDateTime>,
     pub last_status: String,
     pub created_at: chrono::DateTime<Utc>,
     pub updated_at: Option<chrono::DateTime<Utc>>,

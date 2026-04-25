@@ -1,5 +1,5 @@
 use actix_web::web;
-use chrono::Utc;
+use chrono::{NaiveDateTime, Utc};
 use common::TaskFilter;
 use common::api::ApiError;
 use common::dto::{
@@ -17,8 +17,8 @@ struct ScheduledTasksWithTotal {
     pub params: serde_json::Value,
     pub is_enabled: bool,
     pub retry_times: i16,
-    pub last_run: Option<chrono::DateTime<Utc>>,
-    pub next_run: Option<chrono::DateTime<Utc>>,
+    pub last_run: Option<NaiveDateTime>,
+    pub next_run: Option<NaiveDateTime>,
     pub last_status: String,
     #[allow(dead_code)]
     pub created_at: chrono::DateTime<Utc>,
@@ -294,6 +294,9 @@ pub async fn update_scheduled_task_runtime(
     last_status: &str,
     db_pool: &PgPool,
 ) -> anyhow::Result<()> {
+    let last_run = last_run.naive_utc();
+    let next_run = next_run.map(|dt| dt.naive_utc());
+
     let rows_affected = sqlx::query(
         r#"
         UPDATE scheduled_tasks
@@ -322,3 +325,4 @@ pub async fn update_scheduled_task_runtime(
 
     Ok(())
 }
+

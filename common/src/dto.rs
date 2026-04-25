@@ -90,8 +90,8 @@ pub struct ScheduledTasksDTO {
     pub params: serde_json::Value,
     pub is_enabled: bool,
     pub retry_times: u8,
-    pub last_run: Option<chrono::DateTime<Utc>>,
-    pub next_run: Option<chrono::DateTime<Utc>>,
+    pub last_run: Option<chrono::NaiveDateTime>,
+    pub next_run: Option<chrono::NaiveDateTime>,
     pub last_status: String,
 }
 
