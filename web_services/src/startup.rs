@@ -2,7 +2,7 @@ use crate::common::AppState;
 use crate::middleware::{AuthMiddleware, CharsetMiddleware};
 use crate::routes::register::register;
 use crate::routes::{
-    ani_collect_create, ani_collect_delete, ani_collect_list, ani_collect_watched,
+    ani_collect_create, ani_collect_delete, ani_collect_list, ani_collect_watched, health,
 };
 use crate::routes::{auth_github_callback, auth_github_login, auth_token_refresh};
 use crate::routes::{get_ani, get_anis};
@@ -101,6 +101,7 @@ async fn create_server(
             .wrap(CharsetMiddleware)
             .app_data(app_state.clone())
             // 公开路由（无需认证）
+            .service(health)
             .service(logout)
             .service(register)
             .service(auth_token_refresh)
