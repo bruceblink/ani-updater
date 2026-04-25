@@ -13,10 +13,15 @@ pub struct TaskReq {
     pub retry_times: i32,
 }
 
+fn parse_retry_times(retry_times: i32) -> Result<i16, ApiError> {
+    let retry_times = u8::try_from(retry_times)
+        .map_err(|_| ApiError::BadRequest("retryTimes 超出范围，必须在 0-255 之间".into()))?;
+    Ok(i16::from(retry_times))
+}
+
 #[post("/sync/task_source")]
 async fn sync_task_source(req: web::Json<TaskReq>, app_state: web::Data<AppState>) -> ApiResult {
-    let retry_times = i16::try_from(req.retry_times)
-        .map_err(|_| ApiError::BadRequest("retryTimes 超出范围，必须在 0-32767 之间".into()))?;
+    let retry_times = parse_retry_times(req.retry_times)?;
 
     sqlx::query(
         r#"
@@ -47,4 +52,21 @@ async fn sync_task_source(req: web::Json<TaskReq>, app_state: web::Data<AppState
     Ok(HttpResponse::Ok().json(ApiResponse::ok(serde_json::json!({
         "message": "同步成功",
     }))))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_retry_times;
+
+    #[test]
+    fn parse_retry_times_accepts_u8_range() {
+        assert_eq!(parse_retry_times(0).unwrap(), 0);
+        assert_eq!(parse_retry_times(255).unwrap(), 255);
+    }
+
+    #[test]
+    fn parse_retry_times_rejects_out_of_range_values() {
+        assert!(parse_retry_times(-1).is_err());
+        assert!(parse_retry_times(256).is_err());
+    }
 }
