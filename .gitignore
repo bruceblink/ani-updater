@@ -6,3 +6,4 @@
 /postgresql/logs
 .env
 .claude/
+.vscode/
