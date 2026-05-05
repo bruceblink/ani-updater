@@ -50,6 +50,28 @@ fn get_jwt_secret() -> Result<String, ApiError> {
     std::env::var("JWT_SECRET").map_err(|_| ApiError::Internal("JWT_SECRET 环境变量未设置".into()))
 }
 
+fn get_token_window_days(
+    app_state: &web::Data<AppState>,
+    token_key: &'static str,
+) -> Result<i64, ApiError> {
+    app_state
+        .configuration
+        .token
+        .get(token_key)
+        .copied()
+        .ok_or_else(|| {
+            error!("token 配置缺失: {token_key}");
+            ApiError::Internal("token 配置缺失".into())
+        })
+}
+
+fn oauth_client_from_state(app_state: &web::Data<AppState>) -> Result<&BasicClient, ApiError> {
+    app_state.oauth_client.as_ref().ok_or_else(|| {
+        error!("oauth client 未初始化");
+        ApiError::Internal("OAuth 未配置".into())
+    })
+}
+
 ///
 ///    GitHub 第三方登录的 API <br>
 ///    /auth/github/login Get 请求 <br>
@@ -66,8 +88,7 @@ async fn auth_github_login(
         .ok_or_else(|| ApiError::BadRequest("Invalid redirect_uri".into()))
         .and_then(|uri| validate_redirect_uri(uri))?;
 
-    // 路由仅在 OAuth 已配置时注册，此处 unwrap 安全
-    let oauth_client = app_state.oauth_client.as_ref().unwrap();
+    let oauth_client = oauth_client_from_state(&app_state)?;
     let jwt_secret = get_jwt_secret()?;
 
     // 2. 生成 GitHub 授权地址
@@ -123,8 +144,7 @@ async fn auth_github_callback(
         .map_err(|_| ApiError::Unauthorized("Invalid redirect_uri".into()))?;
 
     let pkce_verifier = PkceCodeVerifier::new(token_data.claims.pkce_verifier);
-    // 路由仅在 OAuth 已配置时注册，此处 unwrap 安全
-    let oauth_client = app_state.oauth_client.as_ref().unwrap();
+    let oauth_client = oauth_client_from_state(&app_state)?;
     // 换取GitHub access_token
     let github_access_token =
         exchange_github_access_token(oauth_client, code, pkce_verifier).await?;
@@ -140,15 +160,15 @@ async fn auth_github_callback(
             })?;
 
     let is_prod = app_state.configuration.is_production;
+    let access_token_mins = get_token_window_days(&app_state, ACCESS_TOKEN)?;
+    let refresh_token_days = get_token_window_days(&app_state, REFRESH_TOKEN)?;
     // 生成 access_token的cookie
     let access_cookie = Cookie::build(ACCESS_TOKEN, access_token.token)
         .http_only(true)
         .secure(is_prod) // 生产环境必须 https
         .path("/")
         .same_site(actix_web::cookie::SameSite::None) // 为None时可以跨站点请求携带 Cookie
-        .max_age(time::Duration::minutes(
-            app_state.configuration.token[ACCESS_TOKEN],
-        ))
+        .max_age(time::Duration::minutes(access_token_mins))
         .finish();
     // 生成 refresh_token的cookie
     let refresh_cookie = Cookie::build(REFRESH_TOKEN, refresh_token.token)
@@ -156,9 +176,7 @@ async fn auth_github_callback(
         .secure(is_prod)
         .path("/")
         .same_site(actix_web::cookie::SameSite::None)
-        .max_age(time::Duration::days(
-            app_state.configuration.token[REFRESH_TOKEN],
-        ))
+        .max_age(time::Duration::days(refresh_token_days))
         .finish();
 
     Ok(HttpResponse::Found()

@@ -6,6 +6,21 @@ use common::{ACCESS_TOKEN, REFRESH_TOKEN};
 use serde::{Deserialize, Serialize};
 use tracing::error;
 
+fn token_window_days(
+    app_state: &web::Data<AppState>,
+    token_key: &'static str,
+) -> Result<i64, HttpResponse> {
+    app_state
+        .configuration
+        .token
+        .get(token_key)
+        .copied()
+        .ok_or_else(|| {
+            error!("token 配置缺失: {token_key}");
+            HttpResponse::InternalServerError().json(ApiResponse::<()>::err("服务器内部错误"))
+        })
+}
+
 #[derive(Deserialize)]
 pub struct RegisterRequest {
     pub username: String,      // 用户名
@@ -99,8 +114,14 @@ pub async fn register(
                 roles,
                 ver: 0,
             };
-            let access_token_mins = app_state.configuration.token[ACCESS_TOKEN];
-            let refresh_token_days = app_state.configuration.token[REFRESH_TOKEN];
+            let access_token_mins = match token_window_days(&app_state, ACCESS_TOKEN) {
+                Ok(v) => v,
+                Err(resp) => return resp,
+            };
+            let refresh_token_days = match token_window_days(&app_state, REFRESH_TOKEN) {
+                Ok(v) => v,
+                Err(resp) => return resp,
+            };
 
             let access_token = match generate_jwt(&common_user, access_token_mins) {
                 Ok(t) => t,

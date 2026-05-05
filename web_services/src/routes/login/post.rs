@@ -8,6 +8,21 @@ use common::{ACCESS_TOKEN, REFRESH_TOKEN};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
+fn token_window_days(
+    app_state: &web::Data<AppState>,
+    token_key: &'static str,
+) -> Result<i64, ApiError> {
+    app_state
+        .configuration
+        .token
+        .get(token_key)
+        .copied()
+        .ok_or_else(|| {
+            tracing::error!("token 配置缺失: {token_key}");
+            ApiError::Internal("token 配置缺失".into())
+        })
+}
+
 #[derive(Debug, Deserialize)]
 pub struct LoginRequest {
     pub username: Option<String>,
@@ -95,10 +110,13 @@ async fn login(
     .bind(user.id)
     .fetch_all(&app_state.db_pool)
     .await
-    .unwrap_or_default();
+    .map_err(|e| {
+        tracing::error!("查询用户角色失败: {e}");
+        ApiError::Internal("服务器内部错误".into())
+    })?;
 
-    let access_token_mins = app_state.configuration.token[ACCESS_TOKEN];
-    let refresh_token_days = app_state.configuration.token[REFRESH_TOKEN];
+    let access_token_mins = token_window_days(&app_state, ACCESS_TOKEN)?;
+    let refresh_token_days = token_window_days(&app_state, REFRESH_TOKEN)?;
 
     let common_user = CommonUser {
         id: user.id,
@@ -111,11 +129,15 @@ async fn login(
         ver: user.token_version,
     };
 
-    let access_token = generate_jwt(&common_user, access_token_mins)
-        .map_err(|_| ApiError::Internal("access token 生成失败".into()))?;
+    let access_token = generate_jwt(&common_user, access_token_mins).map_err(|e| {
+        tracing::error!("access token 生成失败: {e}");
+        ApiError::Internal("access token 生成失败".into())
+    })?;
 
-    let refresh_token = generate_refresh_token(refresh_token_days)
-        .map_err(|_| ApiError::Internal("refresh token 生成失败".into()))?;
+    let refresh_token = generate_refresh_token(refresh_token_days).map_err(|e| {
+        tracing::error!("refresh token 生成失败: {e}");
+        ApiError::Internal("refresh token 生成失败".into())
+    })?;
 
     let session_expires_at = Utc::now() + chrono::Duration::days(30);
 

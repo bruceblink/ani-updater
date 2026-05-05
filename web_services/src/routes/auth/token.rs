@@ -9,6 +9,21 @@ use common::{ACCESS_TOKEN, REFRESH_TOKEN};
 use serde::Serialize;
 use sqlx::FromRow;
 
+fn token_window_days(
+    app_state: &web::Data<AppState>,
+    token_key: &'static str,
+) -> Result<i64, ApiError> {
+    app_state
+        .configuration
+        .token
+        .get(token_key)
+        .copied()
+        .ok_or_else(|| {
+            tracing::error!("token 配置缺失: {token_key}");
+            ApiError::Internal("token 配置缺失".into())
+        })
+}
+
 #[derive(Debug, Serialize, FromRow)]
 struct UserWithIdentity {
     id: i64,
@@ -91,7 +106,7 @@ async fn auth_token_refresh(req: HttpRequest, app_state: web::Data<AppState>) ->
     })?;
 
     // 3️⃣ 生成新 refresh_token（滑动窗口 + 终点）
-    let refresh_window_days = app_state.configuration.token[REFRESH_TOKEN];
+    let refresh_window_days = token_window_days(&app_state, REFRESH_TOKEN)?;
     let now = Utc::now();
 
     let mut new_expires_at = now + chrono::Duration::days(refresh_window_days);
@@ -99,8 +114,10 @@ async fn auth_token_refresh(req: HttpRequest, app_state: web::Data<AppState>) ->
         new_expires_at = session_expires_at;
     }
 
-    let new_refresh_token = generate_refresh_token(refresh_window_days)
-        .map_err(|_| ApiError::Internal("refresh_token 生成失败".into()))?;
+    let new_refresh_token = generate_refresh_token(refresh_window_days).map_err(|e| {
+        tracing::error!("refresh_token 生成失败: {e}");
+        ApiError::Internal("refresh_token 生成失败".into())
+    })?;
 
     sqlx::query(
         r#"
@@ -140,7 +157,10 @@ async fn auth_token_refresh(req: HttpRequest, app_state: web::Data<AppState>) ->
     .bind(user_id)
     .fetch_one(&mut *tx)
     .await
-    .map_err(|_| ApiError::Internal("用户不存在".into()))?;
+    .map_err(|e| {
+        tracing::error!("查询用户信息失败 user_id={user_id}: {e}");
+        ApiError::Internal("服务器错误".into())
+    })?;
 
     let roles: Vec<String> = sqlx::query_scalar(
         r#"
@@ -153,7 +173,10 @@ async fn auth_token_refresh(req: HttpRequest, app_state: web::Data<AppState>) ->
     .bind(user_id)
     .fetch_all(&mut *tx)
     .await
-    .unwrap_or_default();
+    .map_err(|e| {
+        tracing::error!("查询用户角色失败 user_id={user_id}: {e}");
+        ApiError::Internal("服务器错误".into())
+    })?;
 
     tx.commit().await.map_err(|e| {
         tracing::error!("commit tx failed: {e}");
@@ -179,8 +202,11 @@ async fn auth_token_refresh(req: HttpRequest, app_state: web::Data<AppState>) ->
         avatar_url: user.avatar_url,
     };
 
-    let access_token = generate_jwt(&common_user, app_state.configuration.token[ACCESS_TOKEN])
-        .map_err(|_| ApiError::Internal("access token 生成失败".into()))?;
+    let access_token_minutes = token_window_days(&app_state, ACCESS_TOKEN)?;
+    let access_token = generate_jwt(&common_user, access_token_minutes).map_err(|e| {
+        tracing::error!("access token 生成失败: {e}");
+        ApiError::Internal("access token 生成失败".into())
+    })?;
 
     // 6️⃣ 写入 Cookie
     let is_prod = app_state.configuration.is_production;

@@ -8,6 +8,14 @@ use infra::Setting;
 use infra::UserInfoWithTokenDTO;
 use infra::upsert_user_with_third_part;
 use sqlx::PgPool;
+use tracing::error;
+
+fn token_window_days(configuration: &Setting, token_key: &'static str) -> Result<i64, ApiError> {
+    configuration.token.get(token_key).copied().ok_or_else(|| {
+        error!("token 配置缺失: {token_key}");
+        ApiError::Internal("token 配置缺失".into())
+    })
+}
 
 /**
   Githu登录的用户注册<br>
@@ -18,8 +26,11 @@ pub async fn github_user_register(
     configuration: &Setting,
     github_user: GithubUser,
 ) -> anyhow::Result<(AccessToken, RefreshToken)> {
+    let refresh_token_days = token_window_days(configuration, REFRESH_TOKEN)?;
+    let access_token_mins = token_window_days(configuration, ACCESS_TOKEN)?;
+
     // 生成系统的refresh_token
-    let refresh_token = generate_refresh_token(configuration.token[REFRESH_TOKEN])
+    let refresh_token = generate_refresh_token(refresh_token_days)
         .map_err(|_| ApiError::Internal("refresh_token 生成失败".into()))?;
     // 通过第三方用户创建系统用户
     let user: UserInfoWithTokenDTO = upsert_user_with_third_part(
@@ -50,7 +61,7 @@ pub async fn github_user_register(
             roles: user.roles,
             ver: 0,
         },
-        configuration.token[ACCESS_TOKEN],
+        access_token_mins,
     )?;
 
     Ok((access_token, refresh_token))
