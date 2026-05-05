@@ -11,7 +11,7 @@ use web_services::task_manage::initialize_task_manager;
 async fn main() -> Result<()> {
     // 初始化日志组件
     let subscriber = get_subscriber("agora".into(), "info".into(), std::io::stdout);
-    init_subscriber(subscriber);
+    init_subscriber(subscriber).context("Failed to initialize logging subscriber")?;
     // 读取配置文件
     let configuration = get_configuration(Some(PathBuf::from("./configuration")))
         .context("Failed to read configuration")?;

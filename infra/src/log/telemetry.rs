@@ -1,6 +1,7 @@
+use anyhow::Context;
 use chrono::Local;
 use tracing::Subscriber;
-use tracing_actix_web::root_span_macro::private::tracing::dispatcher::set_global_default;
+use tracing::subscriber::set_global_default;
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_log::LogTracer;
 use tracing_subscriber::fmt::MakeWriter;
@@ -56,9 +57,9 @@ where
 }
 
 /// 全局初始化 Subscriber
-pub fn init_subscriber(subscriber: impl Subscriber + Send + Sync) {
-    LogTracer::init().expect("Failed to set logger");
-    set_global_default(subscriber.into()).expect("Failed to set subscriber");
+pub fn init_subscriber(subscriber: impl Subscriber + Send + Sync) -> anyhow::Result<()> {
+    LogTracer::init().context("Failed to set logger")?;
+    set_global_default(subscriber).context("Failed to set subscriber")
 }
 
 struct MilliTimeFormater;

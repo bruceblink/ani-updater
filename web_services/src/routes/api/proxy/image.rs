@@ -8,7 +8,7 @@ use std::io::Error as IoError;
 use std::str::FromStr;
 
 // 全局 reqwest client（可复用）
-static HTTP: Lazy<Client> = Lazy::new(|| http_client().unwrap());
+static HTTP: Lazy<Result<Client, String>> = Lazy::new(http_client);
 
 /// 定义图片源信息
 struct ImageSource {
@@ -59,8 +59,12 @@ async fn proxy_image(
         .find(|s| host == s.domain || host.ends_with(&format!(".{}", s.domain)))
         .ok_or_else(|| actix_web::error::ErrorForbidden("host 不允许"))?;
 
+    let http = HTTP.as_ref().map_err(|e| {
+        actix_web::error::ErrorInternalServerError(format!("http client 初始化失败: {e}"))
+    })?;
+
     // 发起上游请求
-    let upstream_resp = HTTP
+    let upstream_resp = http
         .get(url)
         .header("Referer", source.referer)
         .header("User-Agent", source.user_agent)
