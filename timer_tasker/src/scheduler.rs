@@ -1,14 +1,15 @@
 use crate::task::{Task, TaskResult};
 use chrono::Utc;
 use std::sync::Arc;
-use tokio::sync::{Notify, Semaphore, mpsc};
+use tokio::sync::{Semaphore, mpsc, watch};
 use tokio::time::{Duration, Instant, sleep};
 use tracing::{info, warn};
 
 #[derive(Clone)]
 pub struct Scheduler {
     pub tasks: Vec<Arc<Task>>,
-    shutdown: Arc<Notify>,
+    shutdown_tx: watch::Sender<bool>,
+    shutdown_rx: watch::Receiver<bool>,
     semaphore: Arc<Semaphore>,
 }
 
@@ -16,24 +17,34 @@ impl Scheduler {
     pub fn new(tasks: Vec<Task>, max_concurrent_tasks: Option<usize>) -> Self {
         let default_max_concurrent_tasks = num_cpus::get();
         let max_concurrent_tasks = max_concurrent_tasks.unwrap_or(default_max_concurrent_tasks);
+        let (shutdown_tx, shutdown_rx) = watch::channel(false);
 
         Self {
             tasks: tasks.into_iter().map(Arc::new).collect(),
-            shutdown: Arc::new(Notify::new()),
+            shutdown_tx,
+            shutdown_rx,
             semaphore: Arc::new(Semaphore::new(max_concurrent_tasks)),
         }
     }
 
     pub async fn run(&self, sender: mpsc::Sender<TaskResult>) {
+        let mut task_handles = Vec::with_capacity(self.tasks.len());
+
         for task in &self.tasks {
             let t = task.clone();
             let s = sender.clone();
-            let shutdown = self.shutdown.clone();
+            let shutdown = self.shutdown_rx.clone();
             let semaphore = self.semaphore.clone();
 
-            tokio::spawn(async move {
+            task_handles.push(tokio::spawn(async move {
                 Self::run_single_task(t, s, semaphore, shutdown).await;
-            });
+            }));
+        }
+
+        for handle in task_handles {
+            if let Err(e) = handle.await {
+                warn!(error = %e, "任务调度线程退出异常");
+            }
         }
     }
 
@@ -42,11 +53,20 @@ impl Scheduler {
         Some((next_time - now).to_std().unwrap_or(Duration::from_secs(0)))
     }
 
+    fn backoff_with_jitter(attempt: u8) -> Duration {
+        let base_secs = 1_u64;
+        let max_secs = 30_u64;
+        let exp = 2_u64.saturating_pow(attempt as u32);
+        let capped = (base_secs.saturating_mul(exp)).min(max_secs);
+        let jitter = rand::random_range(80_u64..=120_u64);
+        Duration::from_millis(capped.saturating_mul(1000).saturating_mul(jitter) / 100)
+    }
+
     async fn run_single_task(
         task: Arc<Task>,
         sender: mpsc::Sender<TaskResult>,
         semaphore: Arc<Semaphore>,
-        shutdown: Arc<Notify>,
+        mut shutdown: watch::Receiver<bool>,
     ) {
         let schedule = match task.schedule() {
             Ok(s) => s,
@@ -57,6 +77,11 @@ impl Scheduler {
         };
 
         loop {
+            if *shutdown.borrow() {
+                warn!(task_name = %task.name, "收到停止信号，退出调度");
+                break;
+            }
+
             let Some(duration) = Self::next_run_delay(&schedule, Utc::now()) else {
                 warn!(task_name = %task.name, "无下次运行时间，结束调度");
                 break;
@@ -68,9 +93,10 @@ impl Scheduler {
                         Ok(permit) => {
                             let t = task.clone();
                             let s = sender.clone();
+                            let schedule_for_exec = schedule.clone();
                             tokio::spawn(async move {
                                 let _permit = permit;
-                                Self::execute_task(t, s).await;
+                                Self::execute_task(t, s, schedule_for_exec).await;
                             });
                         }
                         Err(e) => {
@@ -79,23 +105,28 @@ impl Scheduler {
                         }
                     }
                 }
-                _ = shutdown.notified() => {
-                    warn!(task_name = %task.name, "收到停止信号，退出调度");
-                    break;
+                change = shutdown.changed() => {
+                    match change {
+                        Ok(()) if *shutdown.borrow() => {
+                            warn!(task_name = %task.name, "收到停止信号，退出调度");
+                            break;
+                        }
+                        Ok(()) => {}
+                        Err(e) => {
+                            warn!(task_name = %task.name, error = %e, "停止信号通道关闭，退出调度");
+                            break;
+                        }
+                    }
                 }
             }
         }
     }
 
-    async fn execute_task(task: Arc<Task>, sender: mpsc::Sender<TaskResult>) {
-        let schedule = match task.schedule() {
-            Ok(s) => s,
-            Err(e) => {
-                warn!(task_name = %task.name, error = %e, "cron 表达式无效，跳过执行");
-                return;
-            }
-        };
-
+    async fn execute_task(
+        task: Arc<Task>,
+        sender: mpsc::Sender<TaskResult>,
+        schedule: cron::Schedule,
+    ) {
         let started_at = Instant::now();
         let last_run = Utc::now();
         let next_run = schedule.upcoming(Utc).next();
@@ -119,20 +150,24 @@ impl Scheduler {
                         next_run,
                         last_status: "success".to_string(),
                     };
-                    let _ = sender.send(result).await;
+                    if let Err(e) = sender.send(result).await {
+                        warn!(task_name = %task.name, error = %e, "任务结果发送失败");
+                    }
                     return;
                 }
                 Err(e) => {
                     if attempt < task.retry_times {
+                        let backoff = Self::backoff_with_jitter(attempt);
                         warn!(
                             task_name = %task.name,
                             attempt = current_try,
                             max_attempts,
                             error = %e,
+                            backoff_ms = backoff.as_millis() as u64,
                             elapsed_ms = started_at.elapsed().as_millis() as u64,
                             "任务执行失败，准备重试"
                         );
-                        sleep(Duration::from_secs(5)).await;
+                        sleep(backoff).await;
                     } else {
                         warn!(
                             task_name = %task.name,
@@ -154,11 +189,13 @@ impl Scheduler {
             next_run,
             last_status: "failed".to_string(),
         };
-        let _ = sender.send(result).await;
+        if let Err(e) = sender.send(result).await {
+            warn!(task_name = %task.name, error = %e, "任务失败结果发送失败");
+        }
     }
 
     pub fn stop(&self) {
-        self.shutdown.notify_waiters();
+        let _ = self.shutdown_tx.send(true);
     }
 }
 
@@ -260,6 +297,15 @@ mod tests {
         assert_eq!(delay, ChronoDuration::seconds(298).to_std().unwrap());
     }
 
+    #[test]
+    fn test_backoff_with_jitter_has_bounds() {
+        for attempt in 0..=6 {
+            let delay = Scheduler::backoff_with_jitter(attempt);
+            assert!(delay >= Duration::from_millis(800));
+            assert!(delay <= Duration::from_millis(36_000));
+        }
+    }
+
     #[tokio::test]
     async fn test_execute_task_retries_until_success() {
         let attempts = Arc::new(AtomicUsize::new(0));
@@ -274,7 +320,8 @@ mod tests {
         });
 
         let (tx, mut rx) = mpsc::channel::<TaskResult>(8);
-        Scheduler::execute_task(task, tx).await;
+        let schedule = task.schedule().unwrap();
+        Scheduler::execute_task(task, tx, schedule).await;
 
         let result = rx.recv().await.unwrap();
         assert_eq!(result.last_status, "success");
@@ -294,7 +341,8 @@ mod tests {
         });
 
         let (tx, mut rx) = mpsc::channel::<TaskResult>(8);
-        Scheduler::execute_task(task, tx).await;
+        let schedule = task.schedule().unwrap();
+        Scheduler::execute_task(task, tx, schedule).await;
 
         let result = rx.recv().await.unwrap();
         assert_eq!(result.last_status, "failed");
@@ -329,8 +377,9 @@ mod tests {
         let scheduler = Scheduler::new(vec![task_a, task_b], Some(2));
         let (tx, mut rx) = mpsc::channel::<TaskResult>(100);
 
-        tokio::spawn(async move {
-            scheduler.run(tx).await;
+        let scheduler_clone = scheduler.clone();
+        let run_handle = tokio::spawn(async move {
+            scheduler_clone.run(tx).await;
         });
 
         let mut received = vec![];
@@ -342,6 +391,8 @@ mod tests {
         });
 
         sleep(Duration::from_secs(15)).await;
+        scheduler.stop();
+        let _ = run_handle.await;
 
         println!(
             "任务A执行次数: {}, 任务B执行次数: {}",

@@ -19,5 +19,6 @@ common = { path = "../common" }
 cron = { workspace = true }
 async-trait = { workspace = true }
 num_cpus = { workspace = true }
+rand = { workspace = true }
 service = {path = "../service"}
 sqlx.workspace = true

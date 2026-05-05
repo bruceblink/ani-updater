@@ -11,14 +11,23 @@ use timer_tasker::scheduler::Scheduler;
 use timer_tasker::task::TaskMeta;
 use timer_tasker::task::TaskResult;
 use timer_tasker::task::build_tasks_from_meta;
-use tokio::sync::{RwLock, mpsc};
+use tokio::sync::{Mutex, RwLock, Semaphore, mpsc};
+use tokio::task::JoinHandle;
+use tokio::time::{Duration, timeout};
 use tracing::{error, info, warn};
 
 static GLOBAL_TASK_MANAGER: OnceLock<Arc<TaskManager>> = OnceLock::new();
 
+struct SchedulerRuntime {
+    scheduler: Arc<Scheduler>,
+    scheduler_handle: JoinHandle<()>,
+    result_handle: JoinHandle<()>,
+}
+
 pub struct TaskManager {
     db_pool: Arc<PgPool>,
-    current_scheduler: Arc<RwLock<Option<Arc<Scheduler>>>>,
+    current_runtime: Arc<RwLock<Option<SchedulerRuntime>>>,
+    restart_lock: Arc<Mutex<()>>,
     cmd_map: HashMap<String, CmdFn>,
 }
 
@@ -48,24 +57,30 @@ impl TaskManager {
     pub fn new(db_pool: PgPool) -> Self {
         Self {
             db_pool: Arc::new(db_pool),
-            current_scheduler: Arc::new(RwLock::new(None)),
+            current_runtime: Arc::new(RwLock::new(None)),
+            restart_lock: Arc::new(Mutex::new(())),
             cmd_map: build_cmd_map(),
         }
     }
 
     pub async fn start_or_restart_tasks(&self) -> anyhow::Result<()> {
+        let _restart_guard = self.restart_lock.lock().await;
         self.stop_current_scheduler().await;
 
         let task_conf = self.load_task_config().await?;
         let tasks = build_tasks_from_meta(&task_conf, &self.cmd_map);
         let scheduler = Arc::new(Scheduler::new(tasks, None));
+        let (scheduler_handle, result_handle) =
+            self.start_scheduler_with_channel(scheduler.clone());
 
         {
-            let mut current = self.current_scheduler.write().await;
-            *current = Some(scheduler.clone());
+            let mut current = self.current_runtime.write().await;
+            *current = Some(SchedulerRuntime {
+                scheduler,
+                scheduler_handle,
+                result_handle,
+            });
         }
-
-        self.start_scheduler_with_channel(scheduler).await;
 
         Ok(())
     }
@@ -104,20 +119,46 @@ impl TaskManager {
     }
 
     async fn stop_current_scheduler(&self) {
-        let mut current = self.current_scheduler.write().await;
-        if let Some(scheduler) = current.take() {
-            scheduler.stop();
-            info!("已停止当前的定时任务调度器");
+        let runtime = {
+            let mut current = self.current_runtime.write().await;
+            current.take()
+        };
+
+        let Some(runtime) = runtime else {
+            return;
+        };
+
+        runtime.scheduler.stop();
+        info!("已停止当前的定时任务调度器");
+
+        Self::await_shutdown("scheduler", runtime.scheduler_handle).await;
+        Self::await_shutdown("result-processor", runtime.result_handle).await;
+    }
+
+    async fn await_shutdown(name: &str, handle: JoinHandle<()>) {
+        match timeout(Duration::from_secs(2), handle).await {
+            Ok(Ok(())) => info!(component = name, "任务已退出"),
+            Ok(Err(e)) => warn!(component = name, error = %e, "任务退出异常"),
+            Err(_) => warn!(component = name, "等待任务退出超时"),
         }
     }
 
-    async fn start_scheduler_with_channel(&self, scheduler: Arc<Scheduler>) {
+    fn start_scheduler_with_channel(
+        &self,
+        scheduler: Arc<Scheduler>,
+    ) -> (JoinHandle<()>, JoinHandle<()>) {
         let connect_pool = Arc::clone(&self.db_pool);
 
         let (tx, mut rx) = mpsc::channel::<TaskResult>(128);
+        let worker_parallelism = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(4)
+            .max(4);
+        let result_worker_limit = Arc::new(Semaphore::new(worker_parallelism));
 
-        tokio::spawn({
+        let result_handle = tokio::spawn({
             let connect_pool = Arc::clone(&connect_pool);
+            let result_worker_limit = Arc::clone(&result_worker_limit);
             async move {
                 while let Some(res) = rx.recv().await {
                     if let Err(e) = update_scheduled_task_runtime(
@@ -135,19 +176,30 @@ impl TaskManager {
                     if let Some(item_result) = res.result {
                         let pool_clone = Arc::clone(&connect_pool);
                         let task_name = res.name.clone();
-                        tokio::spawn(async move {
-                            if let Err(e) = run_task_service(item_result, pool_clone).await {
-                                warn!("任务 [{}] 保存结果失败: {:?}", task_name, e);
+                        match result_worker_limit.clone().acquire_owned().await {
+                            Ok(permit) => {
+                                tokio::spawn(async move {
+                                    let _permit = permit;
+                                    if let Err(e) = run_task_service(item_result, pool_clone).await
+                                    {
+                                        warn!("任务 [{}] 保存结果失败: {:?}", task_name, e);
+                                    }
+                                });
                             }
-                        });
+                            Err(e) => {
+                                warn!("任务 [{}] 无法获取结果处理许可: {}", task_name, e);
+                            }
+                        }
                     }
                 }
             }
         });
 
-        tokio::spawn(async move {
+        let scheduler_handle = tokio::spawn(async move {
             scheduler.run(tx).await;
         });
+
+        (scheduler_handle, result_handle)
     }
 }
 
