@@ -118,6 +118,12 @@ pub fn build_tasks_from_meta(metas: &[TaskMeta], cmd_map: &HashMap<String, CmdFn
                         } else {
                             arg
                         };
+                        if args.trim().is_empty() {
+                            return Err(format!(
+                                "Task '{}' missing required url/args",
+                                name_for_log
+                            ));
+                        }
                         let input = CommandInput {
                             urls: Some(urls),
                             args,

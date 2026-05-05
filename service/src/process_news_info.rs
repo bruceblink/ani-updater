@@ -2,7 +2,7 @@ use common::api::ApiResponse;
 use common::po::{HealthItem, ItemResult, NewsInfo, TaskItem};
 use common::utils::date_utils::get_today_weekday;
 use once_cell::sync::Lazy;
-use reqwest::Client;
+use reqwest::{Client, Url};
 use serde_json::json;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -12,9 +12,10 @@ pub(crate) static HTTP_CLIENT: Lazy<Client> = Lazy::new(Client::new);
 
 /// 通用：POST 空请求体到 api_url，返回响应的 JSON Value
 async fn post_and_get_json(api_url: &str) -> Result<serde_json::Value, String> {
+    let parsed_url = Url::parse(api_url).map_err(|e| format!("非法URL: {api_url}, error: {e}"))?;
     let response = HTTP_CLIENT
-        .post(api_url)
-        .header("Referer", api_url)
+        .post(parsed_url.clone())
+        .header("Referer", parsed_url.as_str())
         .header("Content-Type", "application/json")
         .json(&json!({}))
         .send()

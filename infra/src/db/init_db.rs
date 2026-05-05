@@ -2,12 +2,18 @@ use crate::Setting;
 use anyhow::Context;
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
+use std::time::Duration;
 
 /// 创建数据库连接池
 pub async fn create_database_pool(configuration: &Setting) -> anyhow::Result<PgPool> {
+    let pool_builder = PgPoolOptions::new()
+        .max_connections(configuration.database.max_connections)
+        .test_before_acquire(true)
+        .idle_timeout(Some(Duration::from_secs(300)))
+        .max_lifetime(Some(Duration::from_secs(1800)));
+
     if let Ok(database_url) = std::env::var("DATABASE_URL") {
-        return PgPoolOptions::new()
-            .max_connections(configuration.database.max_connections)
+        return pool_builder
             .connect(&database_url)
             .await
             .context("Failed to connect to database using DATABASE_URL environment variable");
@@ -17,8 +23,7 @@ pub async fn create_database_pool(configuration: &Setting) -> anyhow::Result<PgP
     let database_settings = configuration.database.clone();
     let connect_options = database_settings.connect_options();
 
-    PgPoolOptions::new()
-        .max_connections(database_settings.max_connections)
+    pool_builder
         .connect_with(connect_options)
         .await
         .context("Failed to connect to database using configuration settings")
