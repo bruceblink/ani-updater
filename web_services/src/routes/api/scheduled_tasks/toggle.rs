@@ -16,9 +16,10 @@ async fn scheduled_tasks_toggle(
     let id = path.into_inner();
     match toggle_scheduled_task(id, &body, &app_state.db_pool).await {
         Ok(()) => {
-            if let Err(e) = app_state.task_manager.refresh_config().await {
-                tracing::warn!("定时任务调度器刷新失败: {e:?}");
-            }
+            app_state.task_manager.refresh_config().await.map_err(|e| {
+                tracing::error!("定时任务调度器刷新失败: {e:?}");
+                ApiError::Internal("定时任务配置刷新失败".into())
+            })?;
             Ok(HttpResponse::Ok().json(ApiResponse::<()>::ok(())))
         }
         Err(e) => {

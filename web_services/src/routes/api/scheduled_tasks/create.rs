@@ -48,9 +48,10 @@ async fn scheduled_tasks_create(
 
     match create_scheduled_task(&dto, &app_state.db_pool).await {
         Ok(task) => {
-            if let Err(e) = app_state.task_manager.refresh_config().await {
-                tracing::warn!("定时任务调度器刷新失败: {e:?}");
-            }
+            app_state.task_manager.refresh_config().await.map_err(|e| {
+                tracing::error!("定时任务调度器刷新失败: {e:?}");
+                ApiError::Internal("定时任务配置刷新失败".into())
+            })?;
             Ok(HttpResponse::Created().json(ApiResponse::ok(task)))
         }
         Err(e) => {
